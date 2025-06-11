@@ -8,6 +8,7 @@ class OfferCard extends StatelessWidget {
   final String reviews;
 
   const OfferCard({
+    super.key,
     required this.imageUrl,
     required this.discount,
     required this.title,
@@ -20,10 +21,10 @@ class OfferCard extends StatelessWidget {
     return Container(
       width: 180,
       height: 210,
-      margin: EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: Colors.black12,
             blurRadius: 8,
@@ -46,14 +47,14 @@ class OfferCard extends StatelessWidget {
             top: 12,
             left: 12,
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: Color(0xFF7B61FF),
+                color: const Color(0xFF7B61FF),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 discount,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
@@ -68,7 +69,7 @@ class OfferCard extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 borderRadius:
-                    BorderRadius.vertical(bottom: Radius.circular(20)),
+                    const BorderRadius.vertical(bottom: Radius.circular(20)),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -78,35 +79,36 @@ class OfferCard extends StatelessWidget {
                   ],
                 ),
               ),
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.star, color: Colors.amber, size: 16),
-                      SizedBox(width: 4),
+                      const Icon(Icons.star, color: Colors.amber, size: 16),
+                      const SizedBox(width: 4),
                       Text(
                         rating.toString(),
-                        style: TextStyle(
+                        style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 14),
                       ),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(
                         '($reviews)',
-                        style: TextStyle(color: Colors.white70, fontSize: 13),
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 13),
                       ),
                     ],
                   ),

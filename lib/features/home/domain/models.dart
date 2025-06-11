@@ -12,6 +12,7 @@ class Offer {
   final String storeName;
   final double rating;
   final String reviews;
+  final String? title;
   Offer({
     required this.id,
     required this.imageUrl,
@@ -19,6 +20,7 @@ class Offer {
     required this.storeName,
     required this.rating,
     required this.reviews,
+    this.title,
   });
 }
 
