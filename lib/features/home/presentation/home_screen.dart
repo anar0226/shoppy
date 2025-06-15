@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../domain/models.dart';
+import 'floating_nav_bar.dart';
+import 'main_scaffold.dart';
 
 class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
@@ -7,34 +9,10 @@ class HomeScreen extends StatelessWidget {
   // Following stores data
   final List<Store> followingStores = [
     Store(
-      id: 'etravelsim',
-      name: 'ETravelSim',
-      imageUrl:
-          'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=400',
-    ),
-    Store(
-      id: 'unsalties',
-      name: 'UNSALTIES',
-      imageUrl:
-          'https://images.unsplash.com/photo-1572635196237-6f3c6a5b8d5c?w=400',
-    ),
-    Store(
-      id: 'paintbrighter',
-      name: 'Paint A Brighter Color',
-      imageUrl:
-          'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400',
-    ),
-    Store(
       id: 'mrbeast',
       name: 'MRBEAST STORE',
       imageUrl:
           'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400',
-    ),
-    Store(
-      id: 'uspolo',
-      name: 'U.S. POLO ASSN.',
-      imageUrl:
-          'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400',
     ),
   ];
 
@@ -45,7 +23,7 @@ class HomeScreen extends StatelessWidget {
       imageUrl:
           'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400',
       discount: 'Save \$25',
-      storeName: 'Dracoslides',
+      storeName: 'DRACOSLIDES',
       rating: 4.6,
       reviews: '16K',
       title: 'SPRING SALE',
@@ -53,7 +31,7 @@ class HomeScreen extends StatelessWidget {
     Offer(
       id: 'purplebrand',
       imageUrl:
-          'https://images.unsplash.com/photo-1506629905587-4b8b653337f0?w=400',
+          'https://i.pinimg.com/236x/3b/de/66/3bde66eb4a2eb105e1e8e5f0f341a925.jpg',
       discount: 'Save \$50',
       storeName: 'PURPLE BRAND',
       rating: 4.8,
@@ -91,61 +69,63 @@ class HomeScreen extends StatelessWidget {
           price: '\$15.00',
         ),
       ],
+      backgroundImageUrl: 'assets/images/placeholders/slfbg.jpg',
+      isAssetBg: true,
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(context),
+    return MainScaffold(
+      currentIndex: 0,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F5F5),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              _buildHeader(context),
 
-            // Scrollable Content
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
+              // Scrollable Content
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
 
-                    // Following Section
-                    _buildFollowingSection(context),
+                      // Following Section
+                      _buildFollowingSection(context),
 
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                    // Your Offers Section
-                    _buildYourOffersSection(context),
+                      // Your Offers Section
+                      _buildYourOffersSection(context),
 
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                    // Seller Cards
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: sellers
-                            .map((seller) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 24),
-                                  child: _buildSellerCard(context, seller),
-                                ))
-                            .toList(),
+                      // Seller Cards
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          children: sellers
+                              .map((seller) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 24),
+                                    child: _buildSellerCard(context, seller),
+                                  ))
+                              .toList(),
+                        ),
                       ),
-                    ),
 
-                    const SizedBox(height: 80), // Space for bottom nav
-                  ],
+                      const SizedBox(height: 80), // Space for bottom nav
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-
-      // Bottom Navigation
-      bottomNavigationBar: _buildBottomNavigation(context),
     );
   }
 
@@ -161,8 +141,8 @@ class HomeScreen extends StatelessWidget {
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF7B61FF),
-              letterSpacing: 1.2,
+              color: Color.fromARGB(255, 22, 14, 179),
+              letterSpacing: 0.5,
             ),
           ),
 
@@ -237,23 +217,10 @@ class HomeScreen extends StatelessWidget {
                 onTap: () {
                   Navigator.pushNamed(context, '/account');
                 },
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const CircleAvatar(
-                    backgroundImage: NetworkImage(
-                      'https://images.unsplash.com/photo-1494790108755-2616b5d10c39?w=200',
-                    ),
+                child: const CircleAvatar(
+                  radius: 20,
+                  backgroundImage: AssetImage(
+                    'assets/images/placeholders/ASAP.jpg',
                   ),
                 ),
               ),
@@ -274,7 +241,7 @@ class HomeScreen extends StatelessWidget {
           child: Row(
             children: [
               const Text(
-                'Following',
+                'Таны дагадаг дэлгүүрүүд',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 20,
@@ -324,9 +291,8 @@ class HomeScreen extends StatelessWidget {
               final store = followingStores[index];
               return GestureDetector(
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${store.name} tapped!')),
-                  );
+                  // Navigate to store screen
+                  Navigator.pushNamed(context, '/store/${store.id}');
                 },
                 child: Column(
                   children: [
@@ -394,7 +360,7 @@ class HomeScreen extends StatelessWidget {
           child: Row(
             children: [
               const Text(
-                'Your offers',
+                'Xямдралтай бараа',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 20,
@@ -475,28 +441,6 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
 
-                      // Discount badge
-                      Positioned(
-                        top: 12,
-                        left: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF7B61FF),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            offer.discount,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ),
-
                       // Bottom content
                       Positioned(
                         left: 12,
@@ -506,17 +450,6 @@ class HomeScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (offer.title != null) ...[
-                              Text(
-                                offer.title!,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                            ],
                             Text(
                               offer.storeName,
                               style: const TextStyle(
@@ -576,6 +509,18 @@ class HomeScreen extends StatelessWidget {
             offset: const Offset(0, 4),
           ),
         ],
+        image: seller.backgroundImageUrl != null
+            ? DecorationImage(
+                image: seller.isAssetBg
+                    ? AssetImage(seller.backgroundImageUrl!)
+                    : NetworkImage(seller.backgroundImageUrl!) as ImageProvider,
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.white.withOpacity(0.7),
+                  BlendMode.lighten,
+                ),
+              )
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -789,52 +734,6 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildBottomNavigation(BuildContext context) {
-    return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(context, Icons.home, 0, true),
-          _buildNavItem(context, Icons.search, 1, false),
-          _buildNavItem(context, Icons.bookmark_border, 2, false),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(
-      BuildContext context, IconData icon, int index, bool isActive) {
-    return GestureDetector(
-      onTap: () {
-        switch (index) {
-          case 0:
-            // Already on home
-            break;
-          case 1:
-            Navigator.pushNamed(context, '/search');
-            break;
-          case 2:
-            Navigator.pushNamed(context, '/orders');
-            break;
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF7B61FF) : Colors.transparent,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          icon,
-          color: isActive ? Colors.white : Colors.black54,
-          size: 22,
-        ),
-      ),
-    );
-  }
 }
 
 // Data models
@@ -844,6 +743,8 @@ class SellerData {
   final double rating;
   final int reviews;
   final List<SellerProduct> products;
+  final String? backgroundImageUrl;
+  final bool isAssetBg;
 
   SellerData({
     required this.name,
@@ -851,5 +752,7 @@ class SellerData {
     required this.rating,
     required this.reviews,
     required this.products,
+    this.backgroundImageUrl,
+    this.isAssetBg = false,
   });
 }
