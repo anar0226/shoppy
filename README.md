@@ -1,6 +1,6 @@
 # shoppy
 
-A new Flutter project.
+lalala
 
 ## Getting Started
 
