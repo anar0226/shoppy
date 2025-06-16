@@ -4,6 +4,11 @@ import 'features/stores/presentation/store_screen.dart';
 import 'features/stores/data/sample_stores.dart';
 import 'features/home/presentation/main_scaffold.dart';
 import 'package:shoppy/features/Profile/profile_page.dart';
+import 'package:provider/provider.dart';
+import 'features/cart/providers/cart_provider.dart';
+import 'package:shoppy/features/profile/providers/recently_viewed_provider.dart';
+import 'package:shoppy/features/theme/theme_provider.dart';
+import 'package:shoppy/features/addresses/providers/address_provider.dart';
 
 void main() {
   runApp(const ShopUBApp());
@@ -14,31 +19,43 @@ class ShopUBApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Shop UB',
-      theme: ThemeData(
-        primarySwatch: Colors.teal,
-        fontFamily: 'Roboto',
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => RecentlyViewedProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => AddressProvider()),
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (_, themeProvider, __) => MaterialApp(
+          title: 'Shop UB',
+          theme: ThemeData(
+            primarySwatch: Colors.teal,
+            fontFamily: 'Roboto',
+          ),
+          darkTheme: ThemeData.dark().copyWith(primaryColor: Colors.deepPurple),
+          themeMode: themeProvider.mode,
+          home: HomeScreen(),
+          routes: {
+            '/home': (_) => HomeScreen(),
+            '/search': (_) => const SearchScreen(),
+            '/orders': (_) => const OrdersScreen(),
+            '/account': (_) => ProfilePage(),
+          },
+          onGenerateRoute: (settings) {
+            if (settings.name != null && settings.name!.startsWith('/store/')) {
+              final storeId = settings.name!.split('/')[2];
+              final storeData = SampleStores.getStoreById(storeId);
+              if (storeData != null) {
+                return MaterialPageRoute(
+                  builder: (context) => StoreScreen(storeData: storeData),
+                );
+              }
+            }
+            return null;
+          },
+        ),
       ),
-      home: HomeScreen(),
-      routes: {
-        '/home': (_) => HomeScreen(),
-        '/search': (_) => const SearchScreen(),
-        '/orders': (_) => const OrdersScreen(),
-        '/account': (_) => ProfilePage(),
-      },
-      onGenerateRoute: (settings) {
-        if (settings.name != null && settings.name!.startsWith('/store/')) {
-          final storeId = settings.name!.split('/')[2];
-          final storeData = SampleStores.getStoreById(storeId);
-          if (storeData != null) {
-            return MaterialPageRoute(
-              builder: (context) => StoreScreen(storeData: storeData),
-            );
-          }
-        }
-        return null;
-      },
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'floating_nav_bar.dart';
+import 'package:shoppy/features/cart/presentation/cart_button.dart';
 
 class MainScaffold extends StatelessWidget {
   final Widget child;
@@ -66,6 +67,12 @@ class MainScaffold extends StatelessWidget {
             currentIndex: currentIndex,
             onTap: (i) => _onNavTap(context, i),
           ),
+        ),
+        // Cart button bottom right
+        const Positioned(
+          right: 16,
+          bottom: 25,
+          child: CartButton(),
         ),
       ],
     );

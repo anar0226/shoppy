@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/assets.dart';
 import 'package:shoppy/features/home/presentation/main_scaffold.dart';
+import 'package:shoppy/features/products/models/product_model.dart';
+import 'package:shoppy/features/products/presentation/product_page.dart';
 
 class StoreScreen extends StatefulWidget {
   final StoreData storeData;
@@ -395,8 +397,47 @@ class _StoreScreenState extends State<StoreScreen> {
   Widget _buildProductCard(StoreProduct product) {
     return GestureDetector(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${product.name} tapped!')),
+        // Navigate to the ProductPage template using placeholder data.
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) {
+              // Convert StoreProduct to ProductModel with placeholder fields.
+              final productModel = ProductModel(
+                id: product.id,
+                storeId: widget.storeData.id,
+                name: product.name,
+                description: 'Exclusive item from MrBeast.Store',
+                price: product.price,
+                images: [product.imageUrl],
+                category: 'Merch',
+                stock: 100,
+                variants: [],
+                isActive: true,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              );
+
+              // Parse rating count from string like "6.6K".
+              int ratingCount = 0;
+              final countStr = widget.storeData.reviewCount.toLowerCase();
+              if (countStr.endsWith('k')) {
+                ratingCount =
+                    ((double.tryParse(countStr.replaceAll('k', '')) ?? 0) *
+                            1000)
+                        .toInt();
+              } else {
+                ratingCount = int.tryParse(countStr) ?? 0;
+              }
+
+              return ProductPage(
+                product: productModel,
+                storeName: widget.storeData.displayName,
+                storeLogoUrl: widget.storeData.heroImageUrl,
+                storeRating: widget.storeData.rating,
+                storeRatingCount: ratingCount,
+              );
+            },
+          ),
         );
       },
       child: Container(

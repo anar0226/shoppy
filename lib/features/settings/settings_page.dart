@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shoppy/features/home/presentation/floating_nav_bar.dart';
+import 'package:provider/provider.dart';
+import 'package:shoppy/features/theme/theme_provider.dart';
+import 'package:shoppy/features/addresses/presentation/manage_addresses_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -9,12 +12,8 @@ class SettingsPage extends StatelessWidget {
     final List<_SettingsItem> items = [
       _SettingsItem(Icons.location_on, "Addresses"),
       _SettingsItem(Icons.notifications, "Notifications"),
-      _SettingsItem(Icons.vpn_key, "Passkeys"),
-      _SettingsItem(Icons.link, "Connections"),
       _SettingsItem(Icons.verified_user, "Data and privacy"),
       _SettingsItem(Icons.language, "Language"),
-      _SettingsItem(Icons.palette, "Appearance"),
-      _SettingsItem(Icons.code, "Development mode"),
     ];
 
     return Scaffold(
@@ -43,41 +42,63 @@ class SettingsPage extends StatelessWidget {
                   crossAxisSpacing: 20,
                   physics: const NeverScrollableScrollPhysics(),
                   childAspectRatio: 2.4,
-                  children: items
-                      .map((item) => Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.07),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
+                  children: items.map((item) {
+                    return GestureDetector(
+                      onTap: () {
+                        if (item.label == 'Addresses') {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const ManageAddressesPage(),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 18, vertical: 12),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Icon(item.icon, size: 28, color: Colors.black),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    item.label,
-                                    style: const TextStyle(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                          );
+                        }
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.07),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
                             ),
-                          ))
-                      .toList(),
+                          ],
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Icon(item.icon, size: 28, color: Colors.black),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Text(
+                                item.label,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
-                const SizedBox(height: 60),
+                const SizedBox(height: 40),
+                // Dark mode toggle
+                Consumer<ThemeProvider>(
+                  builder: (_, themeProv, __) => SwitchListTile(
+                    value: themeProv.mode == ThemeMode.dark,
+                    onChanged: (_) => themeProv.toggle(),
+                    title: const Text('Dark mode',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w500)),
+                  ),
+                ),
+                const SizedBox(height: 20),
                 Center(
                   child: TextButton.icon(
                     onPressed: () {},

@@ -4,6 +4,9 @@ import 'package:shoppy/features/home/presentation/main_scaffold.dart';
 import 'package:shoppy/features/settings/settings_page.dart';
 import 'package:shoppy/features/Profile/widgets/edit_profile_popup.dart';
 import 'package:shoppy/features/payment/add_card_page.dart';
+import 'package:shoppy/features/products/presentation/product_page.dart';
+import 'package:provider/provider.dart';
+import 'package:shoppy/features/profile/providers/recently_viewed_provider.dart';
 
 class ProfilePage extends StatelessWidget {
   // Replace with your user data
@@ -101,43 +104,9 @@ class ProfilePage extends StatelessWidget {
             // Saved & Following Cards
             Row(
               children: [
-                SizedBox(
-                  width: 185,
-                  height: 108,
-                  child: Card(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24)),
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(
-                        child: Text(
-                          'Хадагласан Бараанууд',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                _iconCard(context, title: 'Saved', icons: []),
                 const SizedBox(width: 8),
-                SizedBox(
-                  width: 186,
-                  height: 108,
-                  child: Card(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24)),
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(
-                        child: Text(
-                          'Дагдаг Дэлгүүрүүд',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                _iconCard(context, title: 'Following', icons: []),
               ],
             ),
             SizedBox(height: 24),
@@ -153,20 +122,41 @@ class ProfilePage extends StatelessWidget {
               ],
             ),
             SizedBox(height: 12),
-            SizedBox(
-              height: 119,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _recentlyViewedCard(
-                      'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'),
-                  _recentlyViewedCard(
-                      'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400',
-                      price: '\$57.00'),
-                  _recentlyViewedCard(
-                      'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'),
-                ],
-              ),
+            Consumer<RecentlyViewedProvider>(
+              builder: (_, recent, __) {
+                if (recent.items.isEmpty) {
+                  return const Text('No recently viewed items');
+                }
+                return SizedBox(
+                  height: 119,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: recent.items.length,
+                    itemBuilder: (context, index) {
+                      final product = recent.items[index];
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProductPage(
+                                product: product,
+                                storeName: 'Store',
+                                storeLogoUrl: '',
+                                storeRating: 5.0,
+                                storeRatingCount: 0,
+                              ),
+                            ),
+                          );
+                        },
+                        child: _recentlyViewedCard(product.images.isNotEmpty
+                            ? product.images.first
+                            : ''),
+                      );
+                    },
+                  ),
+                );
+              },
             ),
             SizedBox(height: 24),
             // Payment Methods
@@ -229,42 +219,118 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _recentlyViewedCard(String imageUrl, {String? price}) {
-    return Container(
-      width: 119,
-      margin: EdgeInsets.only(right: 12),
-      child: Stack(
-        children: [
-          Card(
-            clipBehavior: Clip.antiAlias,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: EdgeInsets.all(8),
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
-                height: 119,
-                width: 119,
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          if (price != null)
-            Positioned(
-              top: 8,
-              left: 8,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(8),
+  Widget _iconCard(BuildContext context,
+      {required String title, required List<String> icons}) {
+    return SizedBox(
+      width: 185,
+      height: 108,
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Row(
+                  children:
+                      (icons.isNotEmpty ? icons : ['']).take(4).map((url) {
+                    if (url.isEmpty) {
+                      return const SizedBox(width: 40, height: 40);
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 4.0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: url.isEmpty
+                            ? Container(
+                                color: Colors.grey.shade200,
+                                width: 40,
+                                height: 40)
+                            : (url.startsWith('http')
+                                ? FadeInImage.assetNetwork(
+                                    placeholder:
+                                        'assets/images/placeholders/1px.png',
+                                    image: url,
+                                    width: 40,
+                                    height: 40,
+                                    fit: BoxFit.cover,
+                                    imageCacheWidth: 80,
+                                    fadeInDuration:
+                                        const Duration(milliseconds: 200),
+                                    fadeInCurve: Curves.easeIn,
+                                  )
+                                : Image.asset(url,
+                                    width: 40, height: 40, fit: BoxFit.cover)),
+                      ),
+                    );
+                  }).toList(),
                 ),
-                child: Text(price,
-                    style: TextStyle(color: Colors.white, fontSize: 12)),
               ),
-            ),
-        ],
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  Widget _recentlyViewedCard(String url) {
+    Widget thumb;
+    if (url.startsWith('http')) {
+      thumb = FadeInImage.assetNetwork(
+        placeholder:
+            'assets/images/placeholders/1px.png', // 1×1 transparent png
+        image: url,
+        width: 119,
+        height: 119,
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.none,
+        imageCacheWidth: 120,
+      );
+    } else if (url.isNotEmpty) {
+      thumb = Image.asset(url,
+          width: 119,
+          height: 119,
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.none);
+    } else {
+      thumb = Container(color: Colors.grey.shade200);
+    }
+
+    return SizedBox(
+      width: 119,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: thumb,
+      ),
+    );
+  }
+
+  Widget _smartImage(String url,
+      {required double height, required double width}) {
+    if (url.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: url,
+        height: height,
+        width: width,
+        fit: BoxFit.cover,
+      );
+    } else if (url.isNotEmpty) {
+      return Image.asset(
+        url,
+        height: height,
+        width: width,
+        fit: BoxFit.cover,
+      );
+    } else {
+      return Container(
+        color: Colors.grey.shade200,
+        height: height,
+        width: width,
+      );
+    }
   }
 }
