@@ -9,8 +9,14 @@ import 'features/cart/providers/cart_provider.dart';
 import 'package:shoppy/features/profile/providers/recently_viewed_provider.dart';
 import 'package:shoppy/features/theme/theme_provider.dart';
 import 'package:shoppy/features/addresses/providers/address_provider.dart';
+import 'package:shoppy/features/auth/providers/auth_provider.dart';
+import 'package:shoppy/features/auth/presentation/splash_router.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const ShopUBApp());
 }
 
@@ -22,6 +28,7 @@ class ShopUBApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => RecentlyViewedProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AddressProvider()),
@@ -35,7 +42,7 @@ class ShopUBApp extends StatelessWidget {
           ),
           darkTheme: ThemeData.dark().copyWith(primaryColor: Colors.deepPurple),
           themeMode: themeProvider.mode,
-          home: HomeScreen(),
+          home: const SplashRouter(),
           routes: {
             '/home': (_) => HomeScreen(),
             '/search': (_) => const SearchScreen(),
