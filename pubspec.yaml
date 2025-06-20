@@ -82,6 +82,26 @@ flutter:
     - assets/images/stores/
     - assets/images/categories/
     - assets/images/placeholders/
+    # Women
+    - assets/images/categories/Women/WomenTshirt.jpg
+    - assets/images/categories/Women/WomenShoe.jpg
+    - assets/images/categories/Women/WomenDress.jpg
+    - assets/images/categories/Women/WomenPants.jpg
+    - assets/images/categories/Women/WomenLingerie.jpg
+    - assets/images/categories/Women/WomenActivewear.jpg
+    # Shoes/Women
+    - assets/images/categories/Women/shoes/Heels.jpg
+    - assets/images/categories/Women/shoes/Slippers.jpg
+    - assets/images/categories/Women/shoes/Sneakers.jpg
+    - assets/images/categories/Women/shoes/Others.jpg
+    # Tops/Women
+    - assets\images\categories\Women\shoes\hoodie.jpg
+    # Intimates/Women
+    - assets\images\categories\Women\intimates\bra.jpg
+    - assets\images\categories\Women\intimates\lingerie.jpg
+    - assets\images\categories\Women\intimates\underwear.jpg
+    - assets\images\categories\Women\intimates\shapewear.jpg
+  
     
     # Animations (Lottie files, etc.)
     - assets/animations/

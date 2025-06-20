@@ -17,12 +17,22 @@ class FirestoreStoreScreen extends StatelessWidget {
   }
 
   Future<List<ProductModel>> _loadProducts() async {
-    final snap = await FirebaseFirestore.instance
-        .collection('products')
-        .where('storeId', isEqualTo: storeId)
-        .where('isActive', isEqualTo: true)
-        .get();
-    return snap.docs.map((d) => ProductModel.fromFirestore(d)).toList();
+    final db = FirebaseFirestore.instance.collection('products');
+
+    // Attempt 1: lowercase 'storeId'
+    final lowerSnap = await db.where('storeId', isEqualTo: storeId).get();
+    if (lowerSnap.docs.isNotEmpty) {
+      return lowerSnap.docs.map((d) => ProductModel.fromFirestore(d)).toList();
+    }
+
+    // Attempt 2: uppercase 'StoreId'
+    final upperSnap = await db.where('StoreId', isEqualTo: storeId).get();
+    if (upperSnap.docs.isNotEmpty) {
+      return upperSnap.docs.map((d) => ProductModel.fromFirestore(d)).toList();
+    }
+
+    // No products found
+    return [];
   }
 
   @override

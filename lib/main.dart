@@ -21,6 +21,7 @@ import 'features/home/presentation/widgets/seller_card.dart';
 import 'features/saved/saved_screen.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'features/orders/presentation/order_detail_page.dart';
+import 'search/women/women_category_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -116,12 +117,6 @@ class _SearchScreenState extends State<SearchScreen> {
       color: const Color(0xFFB8A082),
     ),
     CategoryItem(
-      name: 'Baby & toddler',
-      imageUrl:
-          'https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=400',
-      color: const Color(0xFFE8B5C8),
-    ),
-    CategoryItem(
       name: 'Home',
       imageUrl:
           'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400',
@@ -156,24 +151,6 @@ class _SearchScreenState extends State<SearchScreen> {
       imageUrl:
           'https://images.unsplash.com/photo-1518655048521-f130df041f66?w=400',
       color: const Color(0xFF2F2F2F),
-    ),
-    CategoryItem(
-      name: 'Arts & crafts',
-      imageUrl:
-          'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400',
-      color: const Color(0xFFDEB887),
-    ),
-    CategoryItem(
-      name: 'Luggage & bags',
-      imageUrl:
-          'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400',
-      color: const Color(0xFF808080),
-    ),
-    CategoryItem(
-      name: 'Sporting goods',
-      imageUrl:
-          'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400',
-      color: const Color(0xFF4682B4),
     ),
   ];
 
@@ -258,9 +235,16 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildCategoryCard(CategoryItem category) {
     return GestureDetector(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${category.name} category tapped!')),
-        );
+        if (category.name == 'Women') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const WomenCategoryPage()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${category.name} coming soon!')),
+          );
+        }
       },
       child: Container(
         decoration: BoxDecoration(

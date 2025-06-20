@@ -143,21 +143,30 @@ class _ReviewFormState extends State<_ReviewForm> {
   Future<void> _submit() async {
     if (_rating == 0) return;
     setState(() => _submitting = true);
-    await FirebaseFirestore.instance
-        .collection('products')
-        .doc(widget.productId)
-        .collection('reviews')
-        .add({
-      'userId': FirebaseAuth.instance.currentUser?.uid ?? '',
-      'rating': _rating,
-      'comment': _controller.text.trim(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    if (mounted) {
-      setState(() => _submitting = false);
+    try {
+      await FirebaseFirestore.instance
+          .collection('products')
+          .doc(widget.productId)
+          .collection('reviews')
+          .add({
+        'userId': FirebaseAuth.instance.currentUser?.uid ?? '',
+        'displayName': FirebaseAuth.instance.currentUser?.displayName ?? '',
+        'photoUrl': FirebaseAuth.instance.currentUser?.photoURL ?? '',
+        'rating': _rating,
+        'comment': _controller.text.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      if (mounted) {
+        setState(() => _submitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Thank you for your review!')));
+        Navigator.pop(context);
+      }
+    } on FirebaseException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Thank you for your review!')));
-      Navigator.pop(context);
+          SnackBar(content: Text(e.message ?? 'Failed to submit review')));
+      setState(() => _submitting = false);
+      return;
     }
   }
 }

@@ -13,6 +13,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shoppy/features/addresses/providers/address_provider.dart';
 import 'package:shoppy/features/addresses/presentation/manage_addresses_page.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import 'dart:async';
+import 'package:shoppy/features/stores/models/store_model.dart';
 
 class ProductPage extends StatefulWidget {
   final ProductModel product;
@@ -41,9 +43,29 @@ class _ProductPageState extends State<ProductPage> {
 
   final GlobalKey _imageKey = GlobalKey();
 
+  // Runtime store info (may be loaded from Firestore if missing).
+  late String _storeName;
+  late String _storeLogoUrl;
+
+  // Reviews data
+  double _avgRating = 0;
+  int _reviewCount = 0;
+  List<Map<String, dynamic>> _reviews = [];
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _reviewSub;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize store info with provided values.
+    _storeName = widget.storeName;
+    _storeLogoUrl = widget.storeLogoUrl;
+
+    // If missing, attempt to load from Firestore using product.storeId.
+    if (_storeName.isEmpty || _storeLogoUrl.isEmpty) {
+      _fetchStoreInfo();
+    }
+
     // add to recently viewed provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final recent =
@@ -64,6 +86,61 @@ class _ProductPageState extends State<ProductPage> {
         }
       });
     }
+
+    // Listen to reviews for this product
+    _reviewSub = FirebaseFirestore.instance
+        .collection('products')
+        .doc(widget.product.id)
+        .collection('reviews')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen((snap) {
+      _reviews = snap.docs.map((d) => d.data()).toList();
+      _reviewCount = _reviews.length;
+      if (_reviewCount > 0) {
+        final total =
+            _reviews.fold<int>(0, (sum, r) => sum + (r['rating'] ?? 0) as int);
+        _avgRating = total / _reviewCount;
+      } else {
+        _avgRating = 0;
+      }
+      if (mounted) setState(() {});
+    }, onError: (e) {
+      // Permission denied or other errors – just hide reviews section.
+      if (mounted) {
+        setState(() {
+          _reviews = [];
+          _reviewCount = 0;
+          _avgRating = 0;
+        });
+      }
+    });
+  }
+
+  Future<void> _fetchStoreInfo() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(widget.product.storeId)
+          .get();
+      if (doc.exists) {
+        final store = StoreModel.fromFirestore(doc);
+        if (mounted) {
+          setState(() {
+            if (_storeName.isEmpty) _storeName = store.name;
+            if (_storeLogoUrl.isEmpty) {
+              _storeLogoUrl = store.logo.isNotEmpty ? store.logo : store.banner;
+            }
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _reviewSub?.cancel();
+    super.dispose();
   }
 
   @override
@@ -157,8 +234,8 @@ class _ProductPageState extends State<ProductPage> {
   Widget _buildStoreAvatar() {
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
-      child: widget.storeLogoUrl.isNotEmpty
-          ? Image.network(widget.storeLogoUrl,
+      child: _storeLogoUrl.isNotEmpty
+          ? Image.network(_storeLogoUrl,
               width: 32, height: 32, fit: BoxFit.cover)
           : Container(
               width: 32,
@@ -166,7 +243,7 @@ class _ProductPageState extends State<ProductPage> {
               color: Colors.grey.shade300,
               alignment: Alignment.center,
               child: Text(
-                widget.storeName.isNotEmpty ? widget.storeName[0] : '?',
+                _storeName.isNotEmpty ? _storeName[0] : '?',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
@@ -178,7 +255,7 @@ class _ProductPageState extends State<ProductPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          widget.storeName,
+          _storeName,
           style: const TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 14,
@@ -562,7 +639,7 @@ class _ProductPageState extends State<ProductPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: InkWell(
         onTap: () async {
-          final uri = Uri.tryParse(widget.storeLogoUrl ?? '') ?? Uri();
+          final uri = Uri.tryParse(_storeLogoUrl) ?? Uri();
           if (await canLaunchUrl(uri)) {
             await launchUrl(uri, mode: LaunchMode.externalApplication);
           }
@@ -578,7 +655,7 @@ class _ProductPageState extends State<ProductPage> {
             children: [
               const Icon(Icons.link),
               const SizedBox(width: 8),
-              Text('Visit ${widget.storeName.toUpperCase()}'),
+              Text('Visit ${_storeName.toUpperCase()}'),
             ],
           ),
         ),
@@ -587,47 +664,45 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   Widget _buildRatingsSection() {
-    const average = 5.0; // placeholder
-    const totalRatings = 11;
+    if (_reviewCount == 0) {
+      return const SizedBox.shrink();
+    }
 
-    const distribution = [
-      10, // 5 stars
-      0, // 4
-      0, // 3
-      0, // 2
-      1, // 1
-    ];
+    // compute distribution (index0=>5stars)
+    final dist = List<int>.filled(5, 0);
+    for (final r in _reviews) {
+      final rating = (r['rating'] ?? 0) as int;
+      if (rating >= 1 && rating <= 5) {
+        dist[5 - rating] += 1;
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Ratings and reviews',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          const Text('Ratings and reviews',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                average.toStringAsFixed(1),
-                style:
-                    const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
-              ),
+              Text(_avgRating.toStringAsFixed(1),
+                  style: const TextStyle(
+                      fontSize: 48, fontWeight: FontWeight.bold)),
               const SizedBox(width: 4),
               const Icon(Icons.star, size: 32),
               Padding(
                 padding: const EdgeInsets.only(top: 14.0),
-                child: Text('$totalRatings ratings'),
+                child: Text('$_reviewCount ratings'),
               ),
             ],
           ),
           const SizedBox(height: 8),
           ...List.generate(5, (i) {
-            final index = 5 - i; // 5 to 1
-            return _starDistributionRow(index, distribution[5 - index]);
+            final stars = 5 - i;
+            return _starDistributionRow(stars, dist[i]);
           }),
         ],
       ),
@@ -636,8 +711,8 @@ class _ProductPageState extends State<ProductPage> {
 
   Widget _starDistributionRow(int stars, int count) {
     const maxBarWidth = 200.0;
-    const total = 11; // same as above placeholder
-    final width = total == 0 ? 0.0 : (count / total) * maxBarWidth;
+    final width =
+        _reviewCount == 0 ? 0.0 : (count / _reviewCount) * maxBarWidth;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
@@ -667,22 +742,7 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   Widget _buildReviewsList() {
-    final reviews = [
-      {
-        'author': 'RICARDO',
-        'daysAgo': 3,
-        'text':
-            'Super comfortable, thick material, high quality and nice graphics, Worth it',
-        'stars': 5
-      },
-      {
-        'author': 'JOHN',
-        'daysAgo': 6,
-        'text': 'Good quality, fits as expected.',
-        'stars': 5
-      },
-      {'author': 'ALICE', 'daysAgo': 10, 'text': 'Awesome shirt!', 'stars': 4},
-    ];
+    if (_reviewCount == 0) return const SizedBox.shrink();
 
     return SizedBox(
       height: 200,
@@ -690,17 +750,30 @@ class _ProductPageState extends State<ProductPage> {
         physics: const BouncingScrollPhysics(),
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        itemBuilder: (context, i) => _reviewCard(reviews[i]),
+        itemBuilder: (context, i) => _reviewCard(_reviews[i]),
         separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemCount: reviews.length,
+        itemCount: _reviews.length,
       ),
     );
   }
 
   Widget _reviewCard(Map review) {
+    final int rating = (review['rating'] ?? 0) as int;
+    final String comment = (review['comment'] ?? '') as String;
+    final String name = (review['displayName'] ?? '') as String;
+    final String photo = (review['photoUrl'] ?? '') as String;
+    final Timestamp? ts = review['createdAt'] as Timestamp?;
+    final String dateStr;
+    if (ts != null) {
+      final dt = ts.toDate();
+      dateStr = '${dt.month}/${dt.day}/${dt.year}';
+    } else {
+      dateStr = '';
+    }
+
     return Container(
       width: 300,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -709,14 +782,56 @@ class _ProductPageState extends State<ProductPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(review['text'], maxLines: 3, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 8),
+          // Header row: avatar + name
           Row(
-              children: List.generate(
-                  review['stars'], (_) => const Icon(Icons.star, size: 14))),
-          const Spacer(),
-          Text('${review['author']} • ${review['daysAgo']} days ago',
-              style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundImage: photo.isNotEmpty ? NetworkImage(photo) : null,
+                child: photo.isEmpty
+                    ? Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : '?',
+                        style: const TextStyle(color: Colors.white),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(name.isNotEmpty ? name : 'Anonymous',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Comment box
+          Container(
+            width: double.infinity,
+            height: 116, // fixed height so card size stays consistent
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              comment,
+              maxLines: 5,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const Spacer(), // pushes stars/date row to bottom
+          // Stars + date row
+          Row(
+            children: [
+              Row(
+                  children: List.generate(
+                      rating,
+                      (_) => const Icon(Icons.star,
+                          size: 16, color: Colors.black))),
+              const Spacer(),
+              Text(dateStr,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            ],
+          ),
         ],
       ),
     );
