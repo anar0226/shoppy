@@ -7,6 +7,7 @@ class SellerCard extends StatelessWidget {
   final double rating;
   final int reviews;
   final List<SellerProduct> products;
+  final VoidCallback? onShopAllTap;
 
   const SellerCard({
     super.key,
@@ -15,6 +16,7 @@ class SellerCard extends StatelessWidget {
     required this.rating,
     required this.reviews,
     required this.products,
+    this.onShopAllTap,
   });
 
   @override
@@ -126,14 +128,21 @@ class SellerCard extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF0F0F0),
-                    shape: BoxShape.circle,
+                GestureDetector(
+                  onTap: onShopAllTap ??
+                      () {
+                        Navigator.pushNamed(
+                            context, '/store/${sellerName.toLowerCase()}');
+                      },
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF0F0F0),
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(14),
+                    child: const Icon(Icons.arrow_forward,
+                        size: 24, color: Colors.black),
                   ),
-                  padding: const EdgeInsets.all(14),
-                  child: const Icon(Icons.arrow_forward,
-                      size: 24, color: Colors.black),
                 ),
               ],
             ),

@@ -8,6 +8,11 @@ import 'package:shoppy/features/cart/models/cart_item.dart';
 import 'package:shoppy/features/profile/providers/recently_viewed_provider.dart';
 import 'package:shoppy/features/checkout/presentation/checkout_page.dart';
 import 'package:shoppy/features/checkout/models/checkout_item.dart';
+import 'package:shoppy/features/auth/providers/auth_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shoppy/features/addresses/providers/address_provider.dart';
+import 'package:shoppy/features/addresses/presentation/manage_addresses_page.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 
 class ProductPage extends StatefulWidget {
   final ProductModel product;
@@ -45,6 +50,20 @@ class _ProductPageState extends State<ProductPage> {
           Provider.of<RecentlyViewedProvider>(context, listen: false);
       recent.add(widget.product);
     });
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.user != null) {
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(auth.user!.uid)
+          .get()
+          .then((doc) {
+        final saved = List<String>.from(doc.data()?['savedProductIds'] ?? []);
+        if (saved.contains(widget.product.id)) {
+          setState(() => _isFavorite = true);
+        }
+      });
+    }
   }
 
   @override
@@ -112,8 +131,19 @@ class _ProductPageState extends State<ProductPage> {
             _isFavorite ? Icons.favorite : Icons.favorite_border,
             color: _isFavorite ? Colors.red : Colors.black,
           ),
-          onPressed: () {
-            setState(() => _isFavorite = !_isFavorite);
+          onPressed: () async {
+            final auth = context.read<AuthProvider>();
+            if (auth.user == null) return;
+            final uid = auth.user!.uid;
+            final doc = FirebaseFirestore.instance.collection('users').doc(uid);
+            await doc.update({
+              'savedProductIds': _isFavorite
+                  ? FieldValue.arrayRemove([widget.product.id])
+                  : FieldValue.arrayUnion([widget.product.id])
+            });
+            if (mounted) {
+              setState(() => _isFavorite = !_isFavorite);
+            }
           },
         ),
         IconButton(
@@ -211,10 +241,10 @@ class _ProductPageState extends State<ProductPage> {
           const SizedBox(height: 8),
           Row(
             children: [
-              _buildStarRating(5),
+              _buildStarRating(widget.product.reviewStars.round()),
               const SizedBox(width: 6),
               Text(
-                '369 ratings', // Static for template; replace with real data if available
+                '${widget.product.reviewCount} ratings',
                 style: const TextStyle(fontSize: 14, color: Colors.black54),
               ),
             ],
@@ -230,14 +260,15 @@ class _ProductPageState extends State<ProductPage> {
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
-                '\$250.00', // Original price placeholder
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.black45,
-                  decoration: TextDecoration.lineThrough,
+              if (widget.product.isDiscounted)
+                Text(
+                  _originalPriceFormatted(),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.black45,
+                    decoration: TextDecoration.lineThrough,
+                  ),
                 ),
-              ),
             ],
           ),
         ],
@@ -246,6 +277,10 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   Widget _buildCouponBanner() {
+    if (widget.product.discountPercent <= 0) return const SizedBox.shrink();
+
+    final original = _originalPriceFormatted();
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16.0),
       padding: const EdgeInsets.all(12),
@@ -261,17 +296,17 @@ class _ProductPageState extends State<ProductPage> {
               color: Colors.purple,
               borderRadius: BorderRadius.circular(4),
             ),
-            child: const Text(
-              'Save \$50',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            child: Text(
+              '-${widget.product.discountPercent.toStringAsFixed(0)}%',
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(width: 8),
-          const Expanded(
-            child: Text('on orders over \$190'),
+          Expanded(
+            child: Text(
+                'From $original to \$${widget.product.price.toStringAsFixed(2)}!'),
           ),
-          const Icon(Icons.keyboard_arrow_down),
         ],
       ),
     );
@@ -301,7 +336,21 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   Widget _buildSizeSelector() {
-    final sizes = ['28', '30', '32', '33', '34', '36', '38'];
+    // Try to find a variant named 'size' (case-insensitive). Fallback to first variant.
+    ProductVariant? sizeVariant;
+    sizeVariant ??= widget.product.variants.isNotEmpty
+        ? widget.product.variants.first
+        : ProductVariant(name: 'Size', options: [], priceAdjustments: {});
+
+    // Flatten options; split by comma if only one string
+    final List<String> sizes = [];
+    for (final opt in sizeVariant.options) {
+      if (opt.contains(',')) {
+        sizes.addAll(opt.split(',').map((s) => s.trim()));
+      } else {
+        sizes.add(opt.trim());
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -345,12 +394,24 @@ class _ProductPageState extends State<ProductPage> {
     );
   }
 
-  Widget _buildStarRating(int stars) {
+  Widget _buildStarRating(int roundedStars) {
+    // If no rating yet, show 5 outlined stars
+    if (widget.product.reviewStars == 0) {
+      return Row(
+        children: List.generate(
+          5,
+          (_) => const Icon(Icons.star_border, size: 14, color: Colors.black),
+        ),
+      );
+    }
+
     return Row(
-      children: List.generate(
-        stars,
-        (index) => const Icon(Icons.star, size: 14, color: Colors.black),
-      ),
+      children: List.generate(5, (i) {
+        if (i < roundedStars) {
+          return const Icon(Icons.star, size: 14, color: Colors.black);
+        }
+        return const Icon(Icons.star_border, size: 14, color: Colors.black);
+      }),
     );
   }
 
@@ -438,11 +499,13 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   Widget _buildDescriptionSection() {
-    final bulletDescription = widget.product.description
-        .split('\n')
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
-        .toList();
+    final bulletDescription = widget.product.description.contains('\n')
+        ? widget.product.description
+            .split('\n')
+            .map((line) => line.trim())
+            .where((line) => line.isNotEmpty)
+            .toList()
+        : [widget.product.description.trim()];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -454,7 +517,12 @@ class _ProductPageState extends State<ProductPage> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          ...bulletDescription.map((d) => Text('— $d')),
+          ...bulletDescription.asMap().entries.map((entry) {
+            if (bulletDescription.length == 1) {
+              return Text(entry.value);
+            }
+            return Text('— ${entry.value}');
+          }),
         ],
       ),
     );
@@ -661,9 +729,22 @@ class _ProductPageState extends State<ProductPage> {
     return count.toString();
   }
 
+  String _originalPriceFormatted() {
+    if (!widget.product.isDiscounted || widget.product.discountPercent == 0) {
+      return '';
+    }
+    final original =
+        widget.product.price / (1 - widget.product.discountPercent / 100);
+    return '\$${original.toStringAsFixed(2)}';
+  }
+
   void _addToCart() {
     final cart = Provider.of<CartProvider>(context, listen: false);
-    cart.addItem(CartItem(product: widget.product, quantity: _quantity));
+    cart.addItem(CartItem(
+      product: widget.product,
+      variant: _selectedSize,
+      quantity: _quantity,
+    ));
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Added to cart')),
@@ -673,13 +754,27 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   void _buyNow() {
+    final addrProvider = Provider.of<AddressProvider>(context, listen: false);
+
+    if (addrProvider.addresses.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Please add a shipping address before checkout')));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ManageAddressesPage()),
+      );
+      return;
+    }
+
+    final shippingAddr =
+        addrProvider.defaultAddress ?? addrProvider.addresses.first;
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => CheckoutPage(
-          email: 'anar0226@gmail.com',
-          fullAddress:
-              'Anar Borgil, 201 E South Temple, Brigham Apartments 815, Salt Lake City UT 84111, US',
+          email: '${fb_auth.FirebaseAuth.instance.currentUser?.email ?? ''}',
+          fullAddress: shippingAddr.formatted(),
           subtotal: widget.product.price * _quantity,
           shippingCost: 0,
           tax: (widget.product.price * _quantity) * 0.0825,

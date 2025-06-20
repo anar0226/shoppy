@@ -1,21 +1,89 @@
+// ignore_for_file: prefer_const_constructors
+
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shoppy/features/home/presentation/main_scaffold.dart';
 import 'package:shoppy/features/settings/settings_page.dart';
+import 'package:shoppy/features/saved/saved_screen.dart';
 import 'package:shoppy/features/Profile/widgets/edit_profile_popup.dart';
 import 'package:shoppy/features/payment/add_card_page.dart';
 import 'package:shoppy/features/products/presentation/product_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shoppy/features/profile/providers/recently_viewed_provider.dart';
+import 'package:shoppy/features/auth/providers/auth_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shoppy/features/stores/models/store_model.dart';
+import 'package:shoppy/features/following/following_screen.dart';
 
-class ProfilePage extends StatelessWidget {
-  // Replace with your user data
-  final String userName = 'ASAP';
-  final String userEmail = 'anar0226@gmail.com';
-  final String userAvatarUrl = 'assets/images/placeholders/ASAP.jpg';
+class ProfilePage extends StatefulWidget {
+  @override
+  _ProfilePageState createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  Future<List<String>>? _followedStoresFuture;
+  Future<List<String>>? _savedFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    final auth = context.read<AuthProvider>();
+    if (auth.user != null) {
+      _followedStoresFuture = _getFollowedStores(auth.user!.uid);
+      _savedFuture = _getSavedImages(auth.user!.uid);
+    }
+  }
+
+  Future<List<String>> _getFollowedStores(String uid) async {
+    try {
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final List<dynamic> storeIds = userDoc.data()?['followerStoreIds'] ?? [];
+
+      if (storeIds.isEmpty) return [];
+
+      final storesSnapshot = await FirebaseFirestore.instance
+          .collection('stores')
+          .where(FieldPath.documentId, whereIn: storeIds)
+          .get();
+
+      return storesSnapshot.docs
+          .map((doc) => StoreModel.fromFirestore(doc).logo)
+          .toList();
+    } catch (e) {
+      // Handle error appropriately
+      return [];
+    }
+  }
+
+  Future<List<String>> _getSavedImages(String uid) async {
+    try {
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final List<dynamic> productIds = userDoc.data()?['savedProductIds'] ?? [];
+      if (productIds.isEmpty) return [];
+      final prodSnap = await FirebaseFirestore.instance
+          .collection('products')
+          .where(FieldPath.documentId, whereIn: productIds)
+          .get();
+      return prodSnap.docs.map((d) {
+        final images = List<String>.from(d.data()['images'] ?? []);
+        return images.isNotEmpty ? images.first : '';
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final user = auth.user;
+    final String userName = user?.displayName ?? 'Guest';
+    final String userEmail = user?.email ?? '';
+    final String? userAvatarUrl = user?.photoURL;
+
     return MainScaffold(
       currentIndex: 3, // no icon highlighted in the bottom bar
       child: Scaffold(
@@ -74,7 +142,7 @@ class ProfilePage extends StatelessWidget {
                         ElevatedButton.icon(
                           onPressed: () {
                             showEditProfilePopup(
-                                context, userName, userAvatarUrl);
+                                context, userName, userAvatarUrl ?? '');
                           },
                           icon:
                               Icon(Icons.person, color: Colors.black, size: 14),
@@ -94,9 +162,19 @@ class ProfilePage extends StatelessWidget {
                     ),
                   ],
                 ),
-                CircleAvatar(
-                  radius: 45,
-                  backgroundImage: AssetImage(userAvatarUrl),
+                GestureDetector(
+                  onTap: () => showEditProfilePopup(
+                      context, userName, userAvatarUrl ?? ''),
+                  child: CircleAvatar(
+                    radius: 45,
+                    backgroundColor: Colors.grey.shade200,
+                    backgroundImage: userAvatarUrl != null
+                        ? (userAvatarUrl.startsWith('http')
+                            ? NetworkImage(userAvatarUrl)
+                            : FileImage(File(userAvatarUrl))) as ImageProvider
+                        : const AssetImage(
+                            'assets/images/placeholders/ASAP.jpg'),
+                  ),
                 ),
               ],
             ),
@@ -104,9 +182,38 @@ class ProfilePage extends StatelessWidget {
             // Saved & Following Cards
             Row(
               children: [
-                _iconCard(context, title: 'Saved', icons: []),
+                FutureBuilder<List<String>>(
+                  future: _savedFuture,
+                  builder: (context, snap) {
+                    final icons = snap.data ?? [];
+                    return GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SavedScreen()),
+                      ),
+                      child: _iconCard(context, title: 'Saved', icons: icons),
+                    );
+                  },
+                ),
                 const SizedBox(width: 8),
-                _iconCard(context, title: 'Following', icons: []),
+                FutureBuilder<List<String>>(
+                  future: _followedStoresFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const CircularProgressIndicator();
+                    }
+                    final icons = snapshot.data ?? [];
+                    return GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const FollowingScreen()),
+                      ),
+                      child:
+                          _iconCard(context, title: 'Following', icons: icons),
+                    );
+                  },
+                ),
               ],
             ),
             SizedBox(height: 24),

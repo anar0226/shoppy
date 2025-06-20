@@ -31,6 +31,15 @@ class ManageAddressesPage extends StatelessWidget {
                 subtitle:
                     Text('${addr.line1} ${addr.apartment}\n${addr.phone}'),
                 isThreeLine: true,
+                leading: Radio<String>(
+                  value: addr.id,
+                  groupValue: provider.defaultAddressId,
+                  onChanged: (val) {
+                    if (val != null) {
+                      provider.setDefaultAddress(val);
+                    }
+                  },
+                ),
                 onTap: () {
                   Navigator.push(
                     context,

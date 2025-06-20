@@ -1,20 +1,108 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import 'package:shoppy/features/auth/providers/auth_provider.dart';
+import 'package:shoppy/features/stores/models/store_model.dart';
+import 'package:shoppy/features/products/models/product_model.dart';
 import '../domain/models.dart';
 import 'floating_nav_bar.dart';
 import 'main_scaffold.dart';
+import 'firestore_store_screen.dart';
+import 'package:shoppy/features/stores/presentation/store_screen.dart';
+import 'package:shoppy/features/stores/presentation/store_screen.dart'
+    show StoreData, StoreProduct;
+import 'package:shoppy/features/products/presentation/product_page.dart';
 
-class HomeScreen extends StatelessWidget {
-  HomeScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
-  // Following stores data
-  final List<Store> followingStores = [
-    Store(
-      id: 'mrbeast',
-      name: 'MRBEAST STORE',
-      imageUrl:
-          'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400',
-    ),
-  ];
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  late Future<List<SellerData>> _sellersFuture;
+  Future<List<Store>>? _followingFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _sellersFuture = _loadSellers();
+
+    // Load followed stores for current user (logos + names)
+    final auth = context.read<AuthProvider>();
+    if (auth.user != null) {
+      _followingFuture = _loadFollowingStores(auth.user!.uid);
+    } else {
+      _followingFuture = Future.value([]);
+    }
+  }
+
+  Future<List<Store>> _loadFollowingStores(String uid) async {
+    final userDoc = await _db.collection('users').doc(uid).get();
+    final List<dynamic> ids = userDoc.data()?['followerStoreIds'] ?? [];
+    if (ids.isEmpty) return [];
+    final snap = await _db
+        .collection('stores')
+        .where(FieldPath.documentId, whereIn: ids)
+        .get();
+    return snap.docs
+        .map(StoreModel.fromFirestore)
+        .map((s) => Store(id: s.id, name: s.name, imageUrl: s.logo))
+        .toList();
+  }
+
+  Future<List<SellerData>> _loadSellers() async {
+    // Fetch all stores; you can add filters like status=='active' once data is consistent
+    final storeSnap = await _db.collection('stores').get();
+
+    final List<SellerData> result = [];
+    for (final doc in storeSnap.docs) {
+      final storeModel = StoreModel.fromFirestore(doc);
+      final products = await _fetchProducts(storeModel.id);
+
+      final sellerProducts = products
+          .map((p) => SellerProduct(
+                id: p.id,
+                imageUrl: p.images.isNotEmpty ? p.images.first : '',
+                price: '\$${p.price.toStringAsFixed(2)}',
+              ))
+          .toList();
+
+      result.add(SellerData(
+        name: storeModel.name,
+        storeId: storeModel.id,
+        profileLetter:
+            storeModel.name.isNotEmpty ? storeModel.name[0].toUpperCase() : '?',
+        rating: 4.9,
+        reviews: 25,
+        products: sellerProducts,
+        backgroundImageUrl: storeModel.banner,
+        isAssetBg: false,
+      ));
+    }
+    return result;
+  }
+
+  Future<List<ProductModel>> _fetchProducts(String storeId,
+      {int limit = 4}) async {
+    final lower = await _db
+        .collection('products')
+        .where('storeId', isEqualTo: storeId)
+        .limit(limit)
+        .get();
+    if (lower.docs.isNotEmpty) {
+      return lower.docs.map((d) => ProductModel.fromFirestore(d)).toList();
+    }
+    final upper = await _db
+        .collection('products')
+        .where('StoreId', isEqualTo: storeId)
+        .limit(limit)
+        .get();
+    return upper.docs.map((d) => ProductModel.fromFirestore(d)).toList();
+  }
 
   // Your offers data
   final List<Offer> offers = [
@@ -40,40 +128,6 @@ class HomeScreen extends StatelessWidget {
     ),
   ];
 
-  // Sample seller data
-  final List<SellerData> sellers = [
-    SellerData(
-      name: 'SLF',
-      profileLetter: 'S',
-      rating: 4.6,
-      reviews: 510,
-      products: [
-        SellerProduct(
-          imageUrl:
-              'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400',
-          price: '\$10.00',
-        ),
-        SellerProduct(
-          imageUrl:
-              'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400',
-          price: '\$5.00',
-        ),
-        SellerProduct(
-          imageUrl:
-              'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=400',
-          price: '\$15.00',
-        ),
-        SellerProduct(
-          imageUrl:
-              'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400',
-          price: '\$15.00',
-        ),
-      ],
-      backgroundImageUrl: 'assets/images/placeholders/slfbg.jpg',
-      isAssetBg: true,
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return MainScaffold(
@@ -95,7 +149,18 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(height: 16),
 
                       // Following Section
-                      _buildFollowingSection(context),
+                      FutureBuilder<List<Store>>(
+                        future: _followingFuture,
+                        builder: (context, snap) {
+                          if (!snap.hasData) {
+                            return const SizedBox(
+                                height: 100,
+                                child:
+                                    Center(child: CircularProgressIndicator()));
+                          }
+                          return _buildFollowingSection(context, snap.data!);
+                        },
+                      ),
 
                       const SizedBox(height: 24),
 
@@ -104,17 +169,35 @@ class HomeScreen extends StatelessWidget {
 
                       const SizedBox(height: 24),
 
-                      // Seller Cards
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          children: sellers
-                              .map((seller) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 24),
-                                    child: _buildSellerCard(context, seller),
-                                  ))
-                              .toList(),
-                        ),
+                      // Seller Cards (dynamic)
+                      FutureBuilder<List<SellerData>>(
+                        future: _sellersFuture,
+                        builder: (context, snap) {
+                          if (!snap.hasData) {
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          }
+                          final data = snap.data!;
+                          if (data.isEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: Text('No active stores yet'),
+                            );
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Column(
+                              children: data
+                                  .map((seller) => Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 24),
+                                        child:
+                                            _buildSellerCard(context, seller),
+                                      ))
+                                  .toList(),
+                            ),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 80), // Space for bottom nav
@@ -231,7 +314,8 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFollowingSection(BuildContext context) {
+  Widget _buildFollowingSection(
+      BuildContext context, List<Store> followingStores) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -248,29 +332,6 @@ class HomeScreen extends StatelessWidget {
                   color: Colors.black87,
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.circle, color: Colors.red, size: 8),
-                    SizedBox(width: 4),
-                    Text(
-                      '17 Updates',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               const SizedBox(width: 4),
               const Icon(Icons.chevron_right, size: 20, color: Colors.black54),
             ],
@@ -285,14 +346,18 @@ class HomeScreen extends StatelessWidget {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: followingStores.length,
+            itemCount: followingStores.isNotEmpty ? followingStores.length : 1,
             separatorBuilder: (_, __) => const SizedBox(width: 7), // 7px gap
             itemBuilder: (context, index) {
+              if (followingStores.isEmpty) {
+                // show placeholder text
+                return const Center(
+                    child: Text("You don't follow any stores at the moment"));
+              }
               final store = followingStores[index];
               return GestureDetector(
                 onTap: () {
-                  // Navigate to store screen
-                  Navigator.pushNamed(context, '/store/${store.id}');
+                  _openStore(context, store.id);
                 },
                 child: Column(
                   children: [
@@ -608,7 +673,7 @@ class HomeScreen extends StatelessWidget {
             ),
             itemCount: seller.products.length,
             itemBuilder: (context, index) {
-              return _buildProductCard(context, seller.products[index]);
+              return _buildProductCard(context, seller.products[index], seller);
             },
           ),
 
@@ -627,11 +692,7 @@ class HomeScreen extends StatelessWidget {
               ),
               const Spacer(),
               GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Shop all ${seller.name} tapped!')),
-                  );
-                },
+                onTap: () => _openStore(context, seller.storeId),
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: const BoxDecoration(
@@ -652,11 +713,28 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProductCard(BuildContext context, SellerProduct product) {
+  Widget _buildProductCard(
+      BuildContext context, SellerProduct product, SellerData seller) {
     return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Product ${product.price} tapped!')),
+      onTap: () async {
+        final doc = await FirebaseFirestore.instance
+            .collection('products')
+            .doc(product.id)
+            .get();
+        if (!doc.exists) return;
+        final prodModel = ProductModel.fromFirestore(doc);
+        if (!context.mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProductPage(
+              product: prodModel,
+              storeName: seller.name,
+              storeLogoUrl: '',
+              storeRating: seller.rating,
+              storeRatingCount: seller.reviews,
+            ),
+          ),
         );
       },
       child: Container(
@@ -734,11 +812,55 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+
+  void _openStore(BuildContext context, String storeId) async {
+    final storeDoc = await FirebaseFirestore.instance
+        .collection('stores')
+        .doc(storeId)
+        .get();
+    if (!storeDoc.exists) return;
+    final storeModel = StoreModel.fromFirestore(storeDoc);
+
+    final products = await _fetchProducts(storeModel.id, limit: 20);
+
+    // Build StoreData for legacy StoreScreen
+    final storeData = StoreData(
+      id: storeModel.id,
+      name: storeModel.name,
+      displayName: storeModel.name.toUpperCase(),
+      heroImageUrl:
+          storeModel.banner.isNotEmpty ? storeModel.banner : storeModel.logo,
+      backgroundColor: const Color(0xFF01BCE7),
+      rating: 4.9,
+      reviewCount: '25',
+      collections: const [],
+      categories: const ['All'],
+      productCount: products.length,
+      products: products
+          .map((p) => StoreProduct(
+                id: p.id,
+                name: p.name,
+                imageUrl: p.images.isNotEmpty ? p.images.first : '',
+                price: p.price,
+              ))
+          .toList(),
+      showFollowButton: true,
+      hasNotification: false,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StoreScreen(storeData: storeData),
+      ),
+    );
+  }
 }
 
 // Data models
 class SellerData {
   final String name;
+  final String storeId;
   final String profileLetter;
   final double rating;
   final int reviews;
@@ -748,6 +870,7 @@ class SellerData {
 
   SellerData({
     required this.name,
+    required this.storeId,
     required this.profileLetter,
     required this.rating,
     required this.reviews,

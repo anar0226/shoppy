@@ -3,6 +3,8 @@ import 'package:shoppy/features/home/presentation/floating_nav_bar.dart';
 import 'package:provider/provider.dart';
 import 'package:shoppy/features/theme/theme_provider.dart';
 import 'package:shoppy/features/addresses/presentation/manage_addresses_page.dart';
+import 'package:shoppy/features/auth/providers/auth_provider.dart';
+import 'package:shoppy/features/auth/presentation/login_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -101,7 +103,15 @@ class SettingsPage extends StatelessWidget {
                 const SizedBox(height: 20),
                 Center(
                   child: TextButton.icon(
-                    onPressed: () {},
+                    onPressed: () async {
+                      await context.read<AuthProvider>().signOut();
+                      if (context.mounted) {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (_) => const LoginPage()),
+                          (_) => false,
+                        );
+                      }
+                    },
                     icon: const Icon(Icons.logout, color: Colors.black),
                     label: const Text(
                       "Sign out",

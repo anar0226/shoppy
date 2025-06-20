@@ -4,6 +4,9 @@ import '../providers/cart_provider.dart';
 import '../models/cart_item.dart';
 import 'package:shoppy/features/checkout/presentation/checkout_page.dart';
 import 'package:shoppy/features/checkout/models/checkout_item.dart';
+import 'package:shoppy/features/addresses/providers/address_provider.dart';
+import 'package:shoppy/features/addresses/presentation/manage_addresses_page.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 
 class CartBottomSheet extends StatelessWidget {
   const CartBottomSheet({super.key});
@@ -37,7 +40,10 @@ class CartBottomSheet extends StatelessWidget {
                 child: ListView.builder(
                   controller: controller,
                   itemCount: cart.items.length,
-                  itemBuilder: (_, i) => _cartItemRow(context, cart.items[i]),
+                  itemBuilder: (context, index) {
+                    final item = cart.items[index];
+                    return _CartItemTile(context: context, item: item);
+                  },
                 ),
               ),
               const SizedBox(height: 12),
@@ -54,14 +60,32 @@ class CartBottomSheet extends StatelessWidget {
                   ),
                   onPressed: () {
                     if (cart.items.isEmpty) return;
+
+                    final addrProvider =
+                        Provider.of<AddressProvider>(context, listen: false);
+
+                    if (addrProvider.addresses.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text(
+                              'Please add a shipping address before checkout')));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const ManageAddressesPage()),
+                      );
+                      return;
+                    }
+
+                    final shippingAddr = addrProvider.addresses.first;
                     final first = cart.items.first;
+
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => CheckoutPage(
-                          email: 'anar0226@gmail.com',
-                          fullAddress:
-                              'Anar Borgil, 201 E South Temple, Brigham Apartments 815, Salt Lake City UT 84111, US',
+                          email:
+                              '${fb_auth.FirebaseAuth.instance.currentUser?.email ?? ''}',
+                          fullAddress: shippingAddr.formatted(),
                           subtotal: cart.subtotal,
                           shippingCost: 0,
                           tax: cart.subtotal * 0.0825,
@@ -80,6 +104,17 @@ class CartBottomSheet extends StatelessWidget {
                   child: const Text('Continue to checkout'),
                 ),
               ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    child: const Text('Done'),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              )
             ],
           ),
         );
@@ -98,7 +133,8 @@ class CartBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _cartItemRow(BuildContext context, CartItem item) {
+  Widget _CartItemTile(
+      {required BuildContext context, required CartItem item}) {
     final cart = Provider.of<CartProvider>(context, listen: false);
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),

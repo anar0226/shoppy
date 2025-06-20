@@ -44,7 +44,10 @@ dependencies:
   url_launcher: ^6.2.1
   google_sign_in: ^6.1.4
   sign_in_with_apple: ^5.0.0
+  flutter_facebook_auth: ^6.1.1
   shared_preferences: ^2.2.2
+  flutter_stripe: ^11.5.0
+  cloud_functions: ^5.5.2
 
 dev_dependencies:
   flutter_test:

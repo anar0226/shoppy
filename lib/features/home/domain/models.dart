@@ -25,7 +25,9 @@ class Offer {
 }
 
 class SellerProduct {
+  final String id;
   final String imageUrl;
   final String price;
-  SellerProduct({required this.imageUrl, required this.price});
+  SellerProduct(
+      {required this.id, required this.imageUrl, required this.price});
 }

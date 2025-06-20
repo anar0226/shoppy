@@ -19,89 +19,168 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 32),
-              const Text('Welcome back!',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              const Text('Log in to your account',
-                  style: TextStyle(fontSize: 16, color: Colors.grey)),
-              const SizedBox(height: 32),
-              Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    TextFormField(
-                      decoration: const InputDecoration(labelText: 'Email'),
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) => value != null && value.contains('@')
-                          ? null
-                          : 'Enter valid email',
-                      onSaved: (val) => _email = val!.trim(),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      decoration: const InputDecoration(labelText: 'Password'),
-                      obscureText: true,
-                      validator: (value) => value != null && value.length >= 6
-                          ? null
-                          : 'Min 6 chars',
-                      onSaved: (val) => _password = val!.trim(),
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: auth.loading
-                            ? null
-                            : () async {
-                                if (_formKey.currentState?.validate() ??
-                                    false) {
-                                  _formKey.currentState!.save();
-                                  try {
-                                    await auth.signIn(_email, _password);
-                                    if (context.mounted) {
-                                      Navigator.of(context)
-                                          .pushReplacementNamed('/home');
-                                    }
-                                  } catch (e) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text(e.toString())));
-                                  }
-                                }
-                              },
-                        child: auth.loading
-                            ? const CircularProgressIndicator()
-                            : const Text('Login'),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+      body: Stack(
+        children: [
+          // Gradient background
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF1F226C), Color(0xFF3C42D2)],
+                ),
+              ),
+            ),
+          ),
+
+          // Main content
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 40),
+                  const Text('Тавтай',
+                      style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                  const Text('морил',
+                      style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                  const SizedBox(height: 160),
+                  Form(
+                    key: _formKey,
+                    child: Column(
                       children: [
-                        const Text("Don't have an account?"),
-                        TextButton(
-                          onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                                builder: (_) => const SignUpPage()),
+                        TextFormField(
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: 'имэйл',
+                            labelStyle: const TextStyle(color: Colors.white70),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide:
+                                  const BorderSide(color: Colors.white70),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: const BorderSide(
+                                  color: Colors.white, width: 2),
+                            ),
                           ),
-                          child: const Text('Sign Up'),
-                        )
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) =>
+                              value != null && value.contains('@')
+                                  ? null
+                                  : 'бодит имэйл хаягаа оруулна уу',
+                          onSaved: (val) => _email = val!.trim(),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: 'нууц үг',
+                            labelStyle: const TextStyle(color: Colors.white70),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide:
+                                  const BorderSide(color: Colors.white70),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: const BorderSide(
+                                  color: Colors.white, width: 2),
+                            ),
+                          ),
+                          obscureText: true,
+                          validator: (value) =>
+                              value != null && value.length >= 6
+                                  ? null
+                                  : 'хамгийн багадаа 6 тэмдэгт оруулна уу',
+                          onSaved: (val) => _password = val!.trim(),
+                        ),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {},
+                            child: const Text('нууц үгээ мартсан уу?'),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1F226C),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            onPressed: auth.loading
+                                ? null
+                                : () async {
+                                    if (_formKey.currentState?.validate() ??
+                                        false) {
+                                      _formKey.currentState!.save();
+                                      try {
+                                        await auth.signIn(_email, _password);
+                                        if (context.mounted) {
+                                          Navigator.of(context)
+                                              .pushReplacementNamed('/home');
+                                        }
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(SnackBar(
+                                                content: Text(e.toString())));
+                                      }
+                                    }
+                                  },
+                            child: auth.loading
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white)
+                                : const Text('нэвтрэx'),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        _SocialButtons(auth: auth),
+                        const SizedBox(height: 120), // space for footer
                       ],
                     ),
-                    const Divider(height: 32),
-                    _SocialButtons(auth: auth),
-                  ],
-                ),
-              )
-            ],
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
+
+          // Bottom orange bar
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              color: const Color(0xFFFF8A32),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(".", style: TextStyle(color: Colors.white)),
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const SignUpPage())),
+                    child: const Text('шинээр бүртгэл үүсгэх',
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold)),
+                  )
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -119,7 +198,7 @@ class _SocialButtons extends StatelessWidget {
           width: double.infinity,
           child: OutlinedButton.icon(
             icon: const Icon(Icons.g_mobiledata),
-            label: const Text('Continue with Google'),
+            label: const Text('Google хаягаар нэвтрэx'),
             onPressed: auth.loading
                 ? null
                 : () async {
@@ -132,7 +211,7 @@ class _SocialButtons extends StatelessWidget {
           width: double.infinity,
           child: OutlinedButton.icon(
             icon: const Icon(Icons.apple),
-            label: const Text('Continue with Apple'),
+            label: const Text('Apple хаягаар нэвтрэx'),
             onPressed: auth.loading
                 ? null
                 : () async {

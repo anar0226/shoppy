@@ -35,8 +35,8 @@ class StoreModel {
       banner: data['banner'] ?? '',
       ownerId: data['ownerId'] ?? '',
       status: data['status'] ?? 'inactive',
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+      createdAt: _parseTimestamp(data['createdAt']),
+      updatedAt: _parseTimestamp(data['updatedAt']),
       settings: data['settings'] ?? {},
     );
   }
@@ -79,5 +79,10 @@ class StoreModel {
       updatedAt: updatedAt ?? this.updatedAt,
       settings: settings ?? this.settings,
     );
+  }
+
+  static DateTime _parseTimestamp(dynamic ts) {
+    if (ts is Timestamp) return ts.toDate();
+    return DateTime.now();
   }
 }

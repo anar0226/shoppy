@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'features/home/presentation/home_screen.dart';
+import 'features/home/presentation/home_screen.dart' as front_home;
 import 'features/stores/presentation/store_screen.dart';
 import 'features/stores/data/sample_stores.dart';
 import 'features/home/presentation/main_scaffold.dart';
@@ -13,9 +13,20 @@ import 'package:shoppy/features/auth/providers/auth_provider.dart';
 import 'package:shoppy/features/auth/presentation/splash_router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shoppy/features/products/models/product_model.dart';
+import 'package:shoppy/features/stores/models/store_model.dart';
+import 'features/home/domain/models.dart';
+import 'features/home/presentation/widgets/seller_card.dart';
+import 'features/saved/saved_screen.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'features/orders/presentation/order_detail_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  Stripe.publishableKey =
+      'pk_test_51R8IZ6PLGzeo2gGVz1b16SlSjNQQDkJdGZisxcPfZBZvwjwXR2mGoKr2Qtl8BMtKtTB1L6uR77c3WIeQqEClCguj00WxVX8EeP';
+  await Stripe.instance.applySettings();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const ShopUBApp());
 }
@@ -44,10 +55,11 @@ class ShopUBApp extends StatelessWidget {
           themeMode: themeProvider.mode,
           home: const SplashRouter(),
           routes: {
-            '/home': (_) => HomeScreen(),
+            '/home': (_) => const front_home.HomeScreen(),
             '/search': (_) => const SearchScreen(),
             '/orders': (_) => const OrdersScreen(),
             '/account': (_) => ProfilePage(),
+            '/saved': (_) => const SavedScreen(),
           },
           onGenerateRoute: (settings) {
             if (settings.name != null && settings.name!.startsWith('/store/')) {
@@ -338,115 +350,10 @@ class CategoryItem {
 class OrdersScreen extends StatelessWidget {
   const OrdersScreen({super.key});
 
-  // Buy again items
-  final List<BuyAgainItem> buyAgainItems = const [
-    BuyAgainItem(
-      id: '1',
-      imageUrl:
-          'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400',
-      name: 'RIOT Hoodie',
-    ),
-    BuyAgainItem(
-      id: '2',
-      imageUrl:
-          'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400',
-      name: 'Graphic Tee',
-    ),
-    BuyAgainItem(
-      id: '3',
-      imageUrl:
-          'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=400',
-      name: 'T-Shirt Mockup Pack',
-    ),
-    BuyAgainItem(
-      id: '4',
-      imageUrl:
-          'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400',
-      name: 'Casual Wear',
-    ),
-  ];
-
-  // Past orders data
-  final List<PastOrder> pastOrders = const [
-    PastOrder(
-      id: '1',
-      imageUrl:
-          'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200',
-      status: 'Delivered',
-      storeName: 'ETravelSim',
-      itemCount: '1 item',
-      price: '\$19.00',
-    ),
-    PastOrder(
-      id: '2',
-      imageUrl:
-          'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=200',
-      status: 'Delivered',
-      storeName: 'Amazon',
-      itemCount: '2 items',
-    ),
-    PastOrder(
-      id: '3',
-      imageUrl:
-          'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200',
-      status: 'In-store purchase',
-      storeName: 'Alo Yoga',
-      itemCount: '1 item',
-      price: '\$95.90',
-    ),
-    PastOrder(
-      id: '4',
-      imageUrl:
-          'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200',
-      status: 'Delivered',
-      storeName: 'Amazon',
-      itemCount: '2 items',
-    ),
-    PastOrder(
-      id: '5',
-      imageUrl:
-          'https://images.unsplash.com/photo-1586717799252-bd134ad00e26?w=200',
-      status: 'Delivered Apr 6',
-      storeName: 'FedEx',
-      itemCount: '',
-    ),
-    PastOrder(
-      id: '6',
-      imageUrl:
-          'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=200',
-      status: 'Ordered Apr 3',
-      storeName: 'Macy\'s',
-      itemCount: '1 item',
-    ),
-    PastOrder(
-      id: '7',
-      imageUrl:
-          'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=200',
-      status: 'Delivered',
-      storeName: 'Amazon',
-      itemCount: '2 items',
-    ),
-    PastOrder(
-      id: '8',
-      imageUrl:
-          'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=200',
-      status: 'Delivered Mar 29',
-      storeName: 'YZY',
-      itemCount: '2 items',
-      price: '\$58.10',
-    ),
-    PastOrder(
-      id: '9',
-      imageUrl:
-          'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=200',
-      status: 'Delivered',
-      storeName: 'Amazon',
-      itemCount: '2 items',
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
     return MainScaffold(
       currentIndex: 2,
       child: Scaffold(
@@ -454,29 +361,60 @@ class OrdersScreen extends StatelessWidget {
         body: SafeArea(
           child: Column(
             children: [
-              // Header
               _buildHeader(context),
-
-              // Scrollable Content
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 16),
+                child: auth.user == null
+                    ? const Center(child: Text('Sign in to view orders'))
+                    : StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(auth.user!.uid)
+                            .collection('orders')
+                            .orderBy('createdAt', descending: true)
+                            .snapshots(),
+                        builder: (context, snap) {
+                          if (snap.connectionState == ConnectionState.waiting) {
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          }
+                          final docs = snap.data?.docs ?? [];
 
-                      // Buy Again Section
-                      _buildBuyAgainSection(context),
+                          if (docs.isEmpty) {
+                            return _emptyState();
+                          }
 
-                      const SizedBox(height: 32),
+                          // Build buy again list unique by productId
+                          final Map<String, BuyAgainItem> buyAgainMap = {};
+                          for (final doc in docs) {
+                            final items = List<Map<String, dynamic>>.from(
+                                doc['items'] ?? []);
+                            for (final item in items) {
+                              final id = item['productId'];
+                              if (!buyAgainMap.containsKey(id)) {
+                                buyAgainMap[id] = BuyAgainItem(
+                                  id: id,
+                                  imageUrl: item['imageUrl'] ?? '',
+                                  name: item['name'] ?? '',
+                                );
+                              }
+                            }
+                          }
 
-                      // Past Orders Section
-                      _buildPastOrdersSection(context),
-
-                      const SizedBox(height: 80), // Space for bottom nav
-                    ],
-                  ),
-                ),
+                          return SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 16),
+                                _buildBuyAgainSection(
+                                    context, buyAgainMap.values.toList()),
+                                const SizedBox(height: 32),
+                                _buildPastOrdersSection(context, docs),
+                                const SizedBox(height: 80),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
               ),
             ],
           ),
@@ -562,7 +500,8 @@ class OrdersScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBuyAgainSection(BuildContext context) {
+  Widget _buildBuyAgainSection(
+      BuildContext context, List<BuyAgainItem> buyAgainItems) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -655,7 +594,8 @@ class OrdersScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPastOrdersSection(BuildContext context) {
+  Widget _buildPastOrdersSection(
+      BuildContext context, List<QueryDocumentSnapshot> ordersDocs) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -681,10 +621,10 @@ class OrdersScreen extends StatelessWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          itemCount: pastOrders.length,
+          itemCount: ordersDocs.length,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
-            final order = pastOrders[index];
+            final order = ordersDocs[index];
             return _buildPastOrderItem(context, order);
           },
         ),
@@ -692,11 +632,46 @@ class OrdersScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPastOrderItem(BuildContext context, PastOrder order) {
+  Widget _buildPastOrderItem(
+      BuildContext context, QueryDocumentSnapshot order) {
+    final data = order.data() as Map<String, dynamic>;
+    final statusKey = (data['status'] ?? 'placed') as String;
+    String status;
+    if (statusKey == 'delivered') {
+      final ts = (data['deliveredAt'] ?? data['updatedAt'] ?? data['createdAt'])
+          as Timestamp?;
+      final dateStr = ts != null ? _fmtDate(ts.toDate()) : '';
+      status = 'Delivered $dateStr';
+    } else if (statusKey == 'shipped') {
+      final ts = (data['shippedAt'] ?? data['updatedAt'] ?? data['createdAt'])
+          as Timestamp?;
+      final dateStr = ts != null ? _fmtDate(ts.toDate()) : '';
+      status = 'Shipped $dateStr';
+    } else if (statusKey == 'canceled') {
+      status = 'Cancelled';
+    } else {
+      status = 'Placed';
+    }
+    final storeName = (data['storeName'] ?? 'Store') as String;
+
+    final items = List<Map<String, dynamic>>.from(data['items'] ?? []);
+    String imageUrl = '';
+    if (items.isNotEmpty) {
+      imageUrl = items.first['imageUrl'] ?? '';
+    }
+    final int itemCnt =
+        items.fold<int>(0, (sum, e) => sum + ((e['quantity'] ?? 1) as int));
+    final itemCountStr = '$itemCnt item${itemCnt > 1 ? 's' : ''}';
+    final price =
+        data.containsKey('total') ? '\$${data['total'].toString()}' : null;
+
     return GestureDetector(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Order ${order.storeName} tapped!')),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OrderDetailPage(orderDoc: order),
+          ),
         );
       },
       child: Container(
@@ -725,7 +700,7 @@ class OrdersScreen extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
-                  order.imageUrl,
+                  imageUrl,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
@@ -744,7 +719,7 @@ class OrdersScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    order.status,
+                    status,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -755,13 +730,13 @@ class OrdersScreen extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        order.storeName,
+                        storeName,
                         style: const TextStyle(
                           fontSize: 14,
                           color: Colors.black54,
                         ),
                       ),
-                      if (order.itemCount.isNotEmpty) ...[
+                      if (itemCnt > 0) ...[
                         const Text(
                           ' • ',
                           style: TextStyle(
@@ -770,14 +745,14 @@ class OrdersScreen extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          order.itemCount,
+                          itemCountStr,
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black54,
                           ),
                         ),
                       ],
-                      if (order.price != null) ...[
+                      if (price != null) ...[
                         const Text(
                           ' • ',
                           style: TextStyle(
@@ -786,7 +761,7 @@ class OrdersScreen extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          order.price!,
+                          price,
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black54,
@@ -803,6 +778,19 @@ class OrdersScreen extends StatelessWidget {
       ),
     );
   }
+
+  String _fmtDate(DateTime dt) {
+    final month = dt.month.toString().padLeft(2, '0');
+    final day = dt.day.toString().padLeft(2, '0');
+    final hr = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final min = dt.minute.toString().padLeft(2, '0');
+    final amPm = dt.hour >= 12 ? 'PM' : 'AM';
+    return '$month/$day ${hr}:$min $amPm';
+  }
+
+  Widget _emptyState() {
+    return const Center(child: Text('Таньд захиалсан бүтээгдэхүүн алга.'));
+  }
 }
 
 // Data models for Orders screen
@@ -815,24 +803,6 @@ class BuyAgainItem {
     required this.id,
     required this.imageUrl,
     required this.name,
-  });
-}
-
-class PastOrder {
-  final String id;
-  final String imageUrl;
-  final String status;
-  final String storeName;
-  final String itemCount;
-  final String? price;
-
-  const PastOrder({
-    required this.id,
-    required this.imageUrl,
-    required this.status,
-    required this.storeName,
-    required this.itemCount,
-    this.price,
   });
 }
 
@@ -855,7 +825,7 @@ class ShopUBBottomNavBar extends StatelessWidget {
       {super.key, required this.currentIndex, this.floating = false});
 
   void _onTap(BuildContext context, int index) {
-    const routes = ['/home', '/search', '/orders'];
+    const routes = ['/home', '/search', '/orders', '/saved'];
     if (index != currentIndex) {
       Navigator.pushReplacementNamed(context, routes[index]);
     }
@@ -894,6 +864,7 @@ class ShopUBBottomNavBar extends StatelessWidget {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
           BottomNavigationBarItem(icon: Icon(Icons.receipt), label: 'Orders'),
+          BottomNavigationBarItem(icon: Icon(Icons.bookmark), label: 'Saved'),
         ],
       ),
     );
