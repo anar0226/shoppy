@@ -283,41 +283,70 @@ class _CategoryPageState extends State<CategoryPage> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: store.heroImageUrl.startsWith('http')
-                    ? Image.network(store.heroImageUrl, fit: BoxFit.cover)
+                    ? Image.network(
+                        store.heroImageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stack) => Container(
+                          color: Colors.grey.shade300,
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.broken_image, size: 40),
+                        ),
+                      )
                     : Image.asset(store.heroImageUrl, fit: BoxFit.cover),
               ),
             ),
             const SizedBox(height: 8),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                   child: store.heroImageUrl.startsWith('http')
-                      ? Image.network(store.heroImageUrl,
-                          width: 24, height: 24, fit: BoxFit.cover)
-                      : Image.asset(store.heroImageUrl,
-                          width: 24, height: 24, fit: BoxFit.cover),
+                      ? Image.network(
+                          store.heroImageUrl,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          errorBuilder: (c, e, s) =>
+                              const Icon(Icons.broken_image, size: 40),
+                        )
+                      : Image.asset(
+                          store.heroImageUrl,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                        ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    store.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        store.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            store.rating.toStringAsFixed(1),
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          const SizedBox(width: 1),
+                          const Icon(Icons.star, size: 14, color: Colors.black),
+                          const SizedBox(width: 3),
+                          Text(
+                            '(${store.reviewCount})',
+                            style: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.star, size: 14, color: Colors.black),
-                const SizedBox(width: 4),
-                Text(store.rating.toStringAsFixed(1)),
-                const SizedBox(width: 4),
-                Text('(${store.reviewCount})',
-                    style: const TextStyle(color: Colors.black54)),
               ],
             ),
           ],

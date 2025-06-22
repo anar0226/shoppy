@@ -22,6 +22,7 @@ import 'features/saved/saved_screen.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'features/orders/presentation/order_detail_page.dart';
 import 'search/women/women_category_page.dart';
+import 'search/men/men_category_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -239,6 +240,11 @@ class _SearchScreenState extends State<SearchScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const WomenCategoryPage()),
+          );
+        } else if (category.name == 'Men') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MenCategoryPage()),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(

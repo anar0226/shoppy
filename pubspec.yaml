@@ -95,12 +95,31 @@ flutter:
     - assets/images/categories/Women/shoes/Sneakers.jpg
     - assets/images/categories/Women/shoes/Others.jpg
     # Tops/Women
-    - assets\images\categories\Women\shoes\hoodie.jpg
+    - assets/images/categories/Women/shoes/hoodie.jpg
     # Intimates/Women
     - assets\images\categories\Women\intimates\bra.jpg
-    - assets\images\categories\Women\intimates\lingerie.jpg
-    - assets\images\categories\Women\intimates\underwear.jpg
-    - assets\images\categories\Women\intimates\shapewear.jpg
+    - assets/images/categories/Women/intimates/lingerie.jpg
+    - assets/images/categories/Women/intimates/underwear.jpg
+    - assets/images/categories/Women/intimates/shapewear.jpg
+    # Men
+    - assets/images/categories/Men/Tshirt.jpg
+    - assets/images/categories/Men/shoes.jpg
+    - assets/images/categories/Men/Others.jpg
+    - assets/images/categories/Men/pants.jpg
+    - assets/images/categories/Men/jacket.jpg
+    - assets/images/categories/Men/Activewear.jpg
+    # Shoes/Men
+    - assets/images/categories/Men/shoes/slippers.jpg
+    - assets/images/categories/Men/shoes/boots.jpg
+    - assets/images/categories/Men/shoes/athletic.jpg
+    # Jackets & Tops / Men
+    - assets/images/categories/Men/Jackets&tops/hoodie.jpg
+    - assets/images/categories/Men/Jackets&tops/polo.jpg
+    - assets/images/categories/Men/Jackets&tops/jackets.jpg
+    - assets/images/categories/Men/Jackets&tops/shirts.jpg
+    # Pants/Men
+    # - assets/images/categories/Men/pants/pants.jpg
+    # - assets/images/categories/Men/pants/shorts.jpg
   
     
     # Animations (Lottie files, etc.)

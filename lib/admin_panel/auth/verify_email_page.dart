@@ -1,0 +1,82 @@
+import 'package:flutter/material.dart';
+import 'auth_service.dart';
+
+class VerifyEmailPage extends StatefulWidget {
+  const VerifyEmailPage({super.key});
+
+  @override
+  State<VerifyEmailPage> createState() => _VerifyEmailPageState();
+}
+
+class _VerifyEmailPageState extends State<VerifyEmailPage> {
+  bool _sent = false;
+  bool _checking = false;
+  String? _msg;
+
+  Future<void> _send() async {
+    await AuthService.instance.sendEmailVerification();
+    setState(() {
+      _sent = true;
+      _msg = 'Verification email sent';
+    });
+  }
+
+  Future<void> _refresh() async {
+    setState(() => _checking = true);
+    await AuthService.instance.reloadUser();
+    setState(() => _checking = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Verify your email',
+                    style:
+                        TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                const Text(
+                    'We sent a verification link to your email address. Please confirm to continue.'),
+                if (_msg != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(_msg!,
+                        style: const TextStyle(color: Colors.green)),
+                  ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _sent ? null : _send,
+                  child: const Text('Resend email'),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: _checking ? null : _refresh,
+                  child: _checking
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('I have verified'),
+                ),
+                const SizedBox(height: 24),
+                TextButton(
+                  onPressed: () async {
+                    await AuthService.instance.signOut();
+                  },
+                  child: const Text('Sign out'),
+                )
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
