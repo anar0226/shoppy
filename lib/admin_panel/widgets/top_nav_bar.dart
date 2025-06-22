@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../auth/auth_service.dart';
+import '../auth/login_page.dart';
 
 class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -72,6 +73,12 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
               onSelected: (value) async {
                 if (value == 'signout') {
                   await AuthService.instance.signOut();
+                  if (context.mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const LoginPage()),
+                      (route) => false,
+                    );
+                  }
                 }
               },
               itemBuilder: (context) {

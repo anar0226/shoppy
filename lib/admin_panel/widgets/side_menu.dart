@@ -5,6 +5,7 @@ import '../pages/dashboard_page.dart';
 import '../pages/customers_page.dart';
 import '../pages/analytics_page.dart';
 import '../pages/discounts_page.dart';
+import '../pages/settings_page.dart';
 
 class SideMenu extends StatelessWidget {
   final String selected;
@@ -76,7 +77,13 @@ class SideMenu extends StatelessWidget {
           const Spacer(),
           const Divider(height: 1),
           _navItem(Icons.settings_outlined, 'Settings',
-              selected: selected == 'Settings'),
+              selected: selected == 'Settings', onTap: () {
+            if (selected != 'Settings') {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const SettingsPage()),
+              );
+            }
+          }),
           const SizedBox(height: 24),
         ],
       ),

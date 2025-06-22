@@ -1,11 +1,55 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/top_nav_bar.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/stat_card.dart';
-import '../widgets/top_nav_bar.dart';
 import '../widgets/simple_chart_placeholder.dart';
+import '../widgets/store_setup_dialog.dart';
+import '../auth/auth_service.dart';
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  @override
+  void initState() {
+    super.initState();
+    _checkStoreSetup();
+  }
+
+  Future<void> _checkStoreSetup() async {
+    final ownerId = AuthService.instance.currentUser?.uid;
+    if (ownerId == null) return;
+
+    final snap = await FirebaseFirestore.instance
+        .collection('stores')
+        .where('ownerId', isEqualTo: ownerId)
+        .limit(1)
+        .get();
+
+    if (snap.docs.isNotEmpty) {
+      final storeData = snap.docs.first.data();
+      final status = storeData['status'] ?? '';
+
+      if (status == 'setup_pending' && mounted) {
+        // Show setup dialog
+        final result = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => StoreSetupDialog(storeId: snap.docs.first.id),
+        );
+
+        // If setup was completed, refresh the page
+        if (result == true && mounted) {
+          setState(() {});
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

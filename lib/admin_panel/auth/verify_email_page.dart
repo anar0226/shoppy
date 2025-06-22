@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
+import '../pages/dashboard_page.dart';
 
 class VerifyEmailPage extends StatefulWidget {
   const VerifyEmailPage({super.key});
@@ -24,7 +25,19 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
   Future<void> _refresh() async {
     setState(() => _checking = true);
     await AuthService.instance.reloadUser();
-    setState(() => _checking = false);
+
+    // Check if email is now verified
+    final user = AuthService.instance.currentUser;
+    if (user != null && user.emailVerified) {
+      // Navigate to dashboard
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const DashboardPage()),
+        );
+      }
+    } else {
+      setState(() => _checking = false);
+    }
   }
 
   @override
