@@ -1,0 +1,54 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read and write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Stores rules
+    match /stores/{storeId} {
+      allow read: if true; // Public read access
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && 
+        resource.data.ownerId == request.auth.uid;
+    }
+    
+    // Products rules
+    match /products/{productId} {
+      allow read: if true; // Public read access
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && 
+        resource.data.ownerId == request.auth.uid;
+    }
+    
+    // Product reviews - nested under products
+    match /products/{productId}/reviews/{reviewId} {
+      allow read: if true; // Public read access
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // Orders rules
+    match /orders/{orderId} {
+      allow read: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || 
+         resource.data.ownerId == request.auth.uid);
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && 
+        resource.data.ownerId == request.auth.uid; // Only store owner can update order status
+    }
+    
+    // User orders subcollection
+    match /users/{userId}/orders/{orderId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Temporary: Allow all authenticated users full access (for debugging)
+    // Remove this once you confirm the specific rules work
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+} 

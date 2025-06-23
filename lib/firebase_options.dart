@@ -46,7 +46,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '110394685689',
     projectId: 'shoppy-6d81f',
     authDomain: 'shoppy-6d81f.firebaseapp.com',
-    storageBucket: 'shoppy-6d81f.firebasestorage.app',
+    storageBucket: 'shoppy-6d81f.appspot.com',
     measurementId: 'G-BCGNM9C9ED',
   );
 
@@ -55,7 +55,7 @@ class DefaultFirebaseOptions {
     appId: '1:110394685689:android:8848cbe8fc068acf42ca28',
     messagingSenderId: '110394685689',
     projectId: 'shoppy-6d81f',
-    storageBucket: 'shoppy-6d81f.firebasestorage.app',
+    storageBucket: 'shoppy-6d81f.appspot.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -63,7 +63,7 @@ class DefaultFirebaseOptions {
     appId: '1:110394685689:ios:be2eb9a923aac7e342ca28',
     messagingSenderId: '110394685689',
     projectId: 'shoppy-6d81f',
-    storageBucket: 'shoppy-6d81f.firebasestorage.app',
+    storageBucket: 'shoppy-6d81f.appspot.com',
     iosBundleId: 'com.example.shoppy',
   );
 
@@ -72,7 +72,7 @@ class DefaultFirebaseOptions {
     appId: '1:110394685689:ios:be2eb9a923aac7e342ca28',
     messagingSenderId: '110394685689',
     projectId: 'shoppy-6d81f',
-    storageBucket: 'shoppy-6d81f.firebasestorage.app',
+    storageBucket: 'shoppy-6d81f.appspot.com',
     iosBundleId: 'com.example.shoppy',
   );
 
@@ -82,7 +82,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '110394685689',
     projectId: 'shoppy-6d81f',
     authDomain: 'shoppy-6d81f.firebaseapp.com',
-    storageBucket: 'shoppy-6d81f.firebasestorage.app',
+    storageBucket: 'shoppy-6d81f.appspot.com',
     measurementId: 'G-KE94PVC1ZW',
   );
 }
