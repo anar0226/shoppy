@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../auth/auth_service.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 
 class AddProductDialog extends StatefulWidget {
   const AddProductDialog({super.key});
@@ -87,39 +88,57 @@ class _AddProductDialogState extends State<AddProductDialog> {
       final docRef = FirebaseFirestore.instance.collection('products').doc();
 
       // Upload product image to Firebase Storage – keep images organised per-store.
+      final bytes = await _imageFile!.readAsBytes();
+      // Determine file extension so we can set proper content-type and path.
       final fileName = _imageFile!.name;
-      final ext = fileName.contains('.') ? fileName.split('.').last : 'png';
+      final ext = fileName.contains('.')
+          ? fileName.split('.').last.toLowerCase()
+          : 'png';
+      final meta = SettableMetadata(contentType: 'image/$ext');
       final storageRef = FirebaseStorage.instance
           .ref()
           .child('stores/$storeId/products/${docRef.id}.$ext');
-      await storageRef.putData(await _imageFile!.readAsBytes());
+
+      // ─── A. upload image ─────────────────────────────────────────
+      try {
+        await storageRef.putData(bytes, meta);
+      } on FirebaseException catch (e) {
+        debugPrint('STORAGE-UPLOAD-ERROR  code=${e.code}  msg=${e.message}');
+        rethrow; // bubble up to the outer catch so the snackbar still shows
+      }
+
       final imageUrl = await storageRef.getDownloadURL();
 
-      // Persist the product using the unified schema expected by the storefront.
-      await docRef.set({
-        'name': _nameCtrl.text.trim(),
-        'description': _descCtrl.text.trim(),
-        'price': _priceCtrl.text.trim(),
-        'stock': inventory, // unified field name used across the app
-        'inventory': inventory, // kept for backward compatibility
-        'images': [imageUrl],
-        'category': _category,
-        'subcategory': _subcategory,
-        'isActive': _status == 'Active',
-        'status': _status, // original status field (legacy)
-        'storeId': storeId,
-        'ownerId': ownerId,
-        'createdAt': Timestamp.now(),
-        'updatedAt': Timestamp.now(),
-        'discount': {
-          'isDiscounted': _isDiscounted,
-          'percent': double.tryParse(_discountCtrl.text) ?? 0,
-        },
-        'review': {
-          'numberOfReviews': 0,
-          'stars': 0,
-        },
-      });
+      // ─── B. write product document ──────────────────────────────
+      try {
+        await docRef.set({
+          'name': _nameCtrl.text.trim(),
+          'description': _descCtrl.text.trim(),
+          'price': _priceCtrl.text.trim(),
+          'stock': inventory,
+          'inventory': inventory,
+          'images': [imageUrl],
+          'category': _category,
+          'subcategory': _subcategory,
+          'isActive': _status == 'Active',
+          'status': _status,
+          'storeId': storeId,
+          'ownerId': ownerId,
+          'createdAt': Timestamp.now(),
+          'updatedAt': Timestamp.now(),
+          'discount': {
+            'isDiscounted': _isDiscounted,
+            'percent': double.tryParse(_discountCtrl.text) ?? 0,
+          },
+          'review': {
+            'numberOfReviews': 0,
+            'stars': 0,
+          },
+        });
+      } on FirebaseException catch (e) {
+        debugPrint('FIRESTORE-WRITE-ERROR  code=${e.code}  msg=${e.message}');
+        rethrow;
+      }
 
       if (mounted) {
         Navigator.of(context).pop();
