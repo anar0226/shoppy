@@ -1,36 +1,11 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow authenticated users to upload files to their own folders
-    match /users/{userId}/profile.jpg {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Allow store owners to upload store-related files
-    match /stores/{storeId}/{allPaths=**} {
-      allow read: if true; // Public read access for store images
-      allow write: if request.auth != null && 
-        // Check if the user owns this store
-        resource == null && // Allow creation
-        request.auth.uid != null;
-    }
-    
-    // Stricter rule for existing files - only owner can modify
-    match /stores/{storeId}/{allPaths=**} {
-      allow write: if request.auth != null && 
-        exists(/databases/$(database)/documents/stores/$(storeId)) &&
-        get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
-    }
-    
-    // Temporary: Allow all authenticated users to write (for debugging)
-    // Remove this once you confirm the specific rules work
+    // ULTRA-SIMPLE RULES FOR TESTING
+    // Allow any authenticated user to read/write anything
     match /{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
   }
 } 

@@ -38,16 +38,33 @@ class UploadDebugService {
 
       // 3. Test Storage upload
       try {
+        debugPrint('🧪 Testing tiny file upload...');
         final testData = Uint8List.fromList([1, 2, 3, 4, 5]); // 5 bytes test
         final ref = FirebaseStorage.instance
             .ref()
             .child('test/${user.uid}/diagnostic.bin');
-        await ref.putData(testData);
-        final url = await ref.getDownloadURL();
+
+        debugPrint('🧪 Created test reference: ${ref.fullPath}');
+        debugPrint('🧪 Starting putData...');
+
+        final snapshot = await ref.putData(testData).timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            throw Exception('Test upload timed out');
+          },
+        );
+
+        debugPrint('🧪 Upload completed, getting URL...');
+        final url = await snapshot.ref.getDownloadURL();
+        debugPrint('🧪 Got URL: $url');
+
+        debugPrint('🧪 Cleaning up...');
         await ref.delete(); // Cleanup
+
         results['storage'] = 'OK - Upload/Download successful';
         results['testUrl'] = url;
       } catch (e) {
+        debugPrint('🧪 Storage test failed: $e');
         results['storage'] = 'ERROR: $e';
       }
 

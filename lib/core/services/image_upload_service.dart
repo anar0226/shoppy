@@ -20,14 +20,21 @@ class ImageUploadService {
       final Uint8List imageBytes = await imageFile.readAsBytes();
       debugPrint('Image bytes read: ${imageBytes.length}');
 
-      final String fileName = _generateFileName(imageFile.name);
+      final String fileName = generateFileName(imageFile.name);
       final Reference storageRef =
           _storage.ref().child('stores/$storeId/products/$productId/$fileName');
 
       debugPrint('Storage ref created: ${storageRef.fullPath}');
 
       // Simple upload without progress tracking
-      final TaskSnapshot snapshot = await storageRef.putData(imageBytes);
+      debugPrint('Starting putData operation...');
+      final TaskSnapshot snapshot =
+          await storageRef.putData(imageBytes).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('putData operation timed out after 30 seconds');
+        },
+      );
 
       debugPrint('Upload completed, getting download URL...');
       final String downloadUrl = await snapshot.ref.getDownloadURL();
@@ -52,7 +59,7 @@ class ImageUploadService {
       final Uint8List imageBytes = await _getOptimizedImageBytes(imageFile);
 
       // Create storage reference
-      final String fileName = _generateFileName(imageFile.name);
+      final String fileName = generateFileName(imageFile.name);
       final Reference storageRef =
           _storage.ref().child('stores/$storeId/products/$productId/$fileName');
 
@@ -197,7 +204,7 @@ class ImageUploadService {
   }
 
   /// Generate a unique filename
-  static String _generateFileName(String originalName) {
+  static String generateFileName(String originalName) {
     final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
     final String extension = _getFileExtension(originalName);
     return 'image_${timestamp}.$extension';

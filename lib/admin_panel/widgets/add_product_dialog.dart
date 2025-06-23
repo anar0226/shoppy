@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/services/image_upload_service.dart';
 import '../../core/services/upload_debug_service.dart';
+import '../../core/services/direct_upload_service.dart';
 
 class AddProductDialog extends StatefulWidget {
   const AddProductDialog({super.key});
@@ -72,9 +73,14 @@ class _AddProductDialogState extends State<AddProductDialog> {
     try {
       debugPrint('ADD-PRODUCT: started');
 
-      // 1. Get current user
+      // 1. Get current user and verify permissions
       final uid = AuthService.instance.currentUser?.uid;
       if (uid == null) throw Exception('Not signed in');
+
+      final user = FirebaseAuth.instance.currentUser;
+      debugPrint('STEP 1a: User email: ${user?.email}');
+      debugPrint('STEP 1b: Email verified: ${user?.emailVerified}');
+      debugPrint('STEP 1c: User UID: $uid');
 
       // 2. Fetch active store for this owner
       final storeSnap = await FirebaseFirestore.instance
@@ -94,44 +100,53 @@ class _AddProductDialogState extends State<AddProductDialog> {
       final docRef = FirebaseFirestore.instance.collection('products').doc();
       debugPrint('STEP 2: productId=${docRef.id}');
 
-      // 4. Run diagnostics first
+      // 4. Run quick diagnostics (with timeout)
       debugPrint('STEP 3: Running Firebase diagnostics...');
-      final diagnostics = await UploadDebugService.runDiagnostics();
-      UploadDebugService.printDiagnostics(diagnostics);
-
-      // Check if there are any critical issues
-      if (diagnostics.containsKey('error')) {
-        throw Exception('Firebase diagnostics failed: ${diagnostics['error']}');
-      }
-
-      // 5. Upload image with progress tracking (try advanced method first)
-      String imageUrl;
       try {
-        debugPrint('STEP 4: Trying upload with progress tracking...');
-        imageUrl = await ImageUploadService.uploadProductImage(
-          imageFile: _imageFile!,
-          storeId: storeId,
-          productId: docRef.id,
-          onProgress: (progress) {
-            if (mounted) {
-              setState(() => _uploadProgress = progress);
-              debugPrint(
-                  'Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
-            }
+        final diagnostics = await UploadDebugService.runDiagnostics().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint(
+                '⚠️ Diagnostics timed out, proceeding with upload anyway');
+            return <String, dynamic>{'timeout': true};
           },
         );
-        debugPrint('STEP 4a: Advanced upload successful - $imageUrl');
-      } catch (e) {
-        debugPrint('STEP 4a: Advanced upload failed: $e');
-        debugPrint('STEP 4b: Trying simple upload fallback...');
 
-        // Fallback to simple upload
-        imageUrl = await ImageUploadService.uploadProductImageSimple(
-          imageFile: _imageFile!,
+        if (diagnostics.containsKey('timeout')) {
+          debugPrint('STEP 3a: Diagnostics skipped due to timeout');
+        } else {
+          UploadDebugService.printDiagnostics(diagnostics);
+          debugPrint('STEP 3a: Diagnostics completed');
+        }
+      } catch (e) {
+        debugPrint('STEP 3a: Diagnostics failed: $e (proceeding anyway)');
+      }
+
+      // 5. Upload image - Skip broken Firebase SDK, use direct HTTP
+      String imageUrl;
+      debugPrint('STEP 4: Starting image upload (direct HTTP method)...');
+
+      try {
+        final imageBytes = await _imageFile!.readAsBytes();
+        final fileName = ImageUploadService.generateFileName(_imageFile!.name);
+
+        debugPrint(
+            'STEP 4a: Using direct HTTP upload (bypassing Firebase SDK)...');
+        imageUrl = await DirectUploadService.uploadImageDirect(
+          imageBytes: imageBytes,
           storeId: storeId,
           productId: docRef.id,
+          fileName: fileName,
         );
-        debugPrint('STEP 4b: Simple upload successful - $imageUrl');
+        debugPrint('STEP 4a: Direct upload successful - $imageUrl');
+
+        // Update progress to 100% since upload completed
+        if (mounted) {
+          setState(() => _uploadProgress = 1.0);
+        }
+      } catch (e) {
+        debugPrint('STEP 4a: Direct upload failed: $e');
+        throw Exception('Direct HTTP upload failed: $e');
       }
 
       // 6. Build product data
@@ -162,8 +177,42 @@ class _AddProductDialogState extends State<AddProductDialog> {
       };
 
       // 7. Save product to Firestore
-      await docRef.set(data);
-      debugPrint('STEP 5: product saved to Firestore');
+      debugPrint('STEP 5: Attempting to save product to Firestore...');
+      debugPrint('STEP 5a: User UID: $uid');
+      debugPrint('STEP 5b: Product data: $data');
+      debugPrint('STEP 5c: Document path: ${docRef.path}');
+
+      try {
+        await docRef.set(data);
+        debugPrint('STEP 5d: product saved to Firestore successfully');
+      } catch (firestoreError) {
+        debugPrint('STEP 5d: Firestore save failed: $firestoreError');
+
+        // Try to get current user token info
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final token = await user.getIdToken();
+          debugPrint('STEP 5e: User token length: ${token?.length ?? 0}');
+          debugPrint('STEP 5f: User email verified: ${user.emailVerified}');
+
+          // Try a simple test write to see if auth works at all
+          try {
+            await FirebaseFirestore.instance
+                .collection('test')
+                .doc('auth-test')
+                .set({
+              'timestamp': Timestamp.now(),
+              'uid': uid,
+              'test': 'permission test'
+            });
+            debugPrint('STEP 5g: Test write succeeded - rules are working');
+          } catch (testError) {
+            debugPrint('STEP 5g: Test write also failed: $testError');
+          }
+        }
+
+        rethrow;
+      }
 
       if (mounted) {
         Navigator.of(context).pop();
@@ -271,6 +320,105 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                        ],
+                      ),
+
+                      // DEBUG: Temporary test buttons
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                if (_imageFile == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content:
+                                            Text('Choose an image first!')),
+                                  );
+                                  return;
+                                }
+
+                                debugPrint('🚀 TESTING DIRECT HTTP UPLOAD...');
+                                try {
+                                  final uid =
+                                      AuthService.instance.currentUser?.uid;
+                                  if (uid == null)
+                                    throw Exception('Not signed in');
+
+                                  final imageBytes =
+                                      await _imageFile!.readAsBytes();
+                                  final fileName =
+                                      ImageUploadService.generateFileName(
+                                          _imageFile!.name);
+
+                                  final url = await DirectUploadService
+                                      .uploadImageDirect(
+                                    imageBytes: imageBytes,
+                                    storeId: 'test',
+                                    productId: 'test-product',
+                                    fileName: fileName,
+                                  );
+
+                                  debugPrint('🚀 TEST UPLOAD SUCCESSFUL: $url');
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            '✅ Direct upload works! Check console')),
+                                  );
+                                } catch (e) {
+                                  debugPrint('🚀 TEST UPLOAD FAILED: $e');
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text('❌ Test failed: $e')),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.upload, size: 16),
+                              label: const Text('Test Direct Upload'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade100,
+                                foregroundColor: Colors.green.shade800,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                debugPrint(
+                                    '🔍 MANUAL DIAGNOSTICS TEST STARTED');
+                                try {
+                                  final results =
+                                      await UploadDebugService.runDiagnostics();
+                                  UploadDebugService.printDiagnostics(results);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'Check console for diagnostics results')),
+                                  );
+                                } catch (e) {
+                                  debugPrint(
+                                      '🔍 MANUAL DIAGNOSTICS FAILED: $e');
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content:
+                                            Text('Diagnostics failed: $e')),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.bug_report, size: 16),
+                              label: const Text('Test Connection'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue.shade100,
+                                foregroundColor: Colors.blue.shade800,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
