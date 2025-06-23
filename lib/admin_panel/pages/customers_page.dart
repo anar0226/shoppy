@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/top_nav_bar.dart';
 
-class CustomersPage extends StatelessWidget {
+class CustomersPage extends StatefulWidget {
   const CustomersPage({super.key});
 
+  @override
+  State<CustomersPage> createState() => _CustomersPageState();
+}
+
+class _CustomersPageState extends State<CustomersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(

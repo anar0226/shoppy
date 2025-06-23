@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../auth/auth_service.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class AddProductDialog extends StatefulWidget {
   const AddProductDialog({super.key});
@@ -15,6 +16,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
   final _priceCtrl = TextEditingController(text: '0.00');
   final _invCtrl = TextEditingController(text: '0');
   String _status = 'Active';
@@ -22,6 +24,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
   final _picker = ImagePicker();
   String? _category;
   String? _subcategory;
+
+  bool _isDiscounted = false;
+  final _discountCtrl = TextEditingController(text: '0');
 
   final _catMap = const {
     'Men': ['Shoes', 'Jackets & Tops', 'Pants', 'Accessories'],
@@ -37,8 +42,10 @@ class _AddProductDialogState extends State<AddProductDialog> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _descCtrl.dispose();
     _priceCtrl.dispose();
     _invCtrl.dispose();
+    _discountCtrl.dispose();
     super.dispose();
   }
 
@@ -53,48 +60,83 @@ class _AddProductDialogState extends State<AddProductDialog> {
       return;
     }
 
-    // Determine the store that belongs to the current admin (owner).
-    String? ownerId = AuthService.instance.currentUser?.uid;
-    String storeId = '';
-    if (ownerId != null) {
-      final storeSnap = await FirebaseFirestore.instance
-          .collection('stores')
-          .where('ownerId', isEqualTo: ownerId)
-          .limit(1)
-          .get();
-      if (storeSnap.docs.isNotEmpty) {
-        storeId = storeSnap.docs.first.id;
+    try {
+      // Determine the store that belongs to the current admin (owner).
+      String? ownerId = AuthService.instance.currentUser?.uid;
+      String storeId = '';
+      if (ownerId != null) {
+        final storeSnap = await FirebaseFirestore.instance
+            .collection('stores')
+            .where('ownerId', isEqualTo: ownerId)
+            .limit(1)
+            .get();
+        if (storeSnap.docs.isNotEmpty) {
+          storeId = storeSnap.docs.first.id;
+        }
+      }
+
+      if (storeId.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Store not found. Please complete store setup.')));
+        }
+        return;
+      }
+
+      // Create a new product document now so we can use its id for the image path.
+      final docRef = FirebaseFirestore.instance.collection('products').doc();
+
+      // Upload product image to Firebase Storage – keep images organised per-store.
+      final fileName = _imageFile!.name;
+      final ext = fileName.contains('.') ? fileName.split('.').last : 'png';
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('stores/$storeId/products/${docRef.id}.$ext');
+      await storageRef.putData(await _imageFile!.readAsBytes());
+      final imageUrl = await storageRef.getDownloadURL();
+
+      // Persist the product using the unified schema expected by the storefront.
+      await docRef.set({
+        'name': _nameCtrl.text.trim(),
+        'description': _descCtrl.text.trim(),
+        'price': _priceCtrl.text.trim(),
+        'stock': inventory, // unified field name used across the app
+        'inventory': inventory, // kept for backward compatibility
+        'images': [imageUrl],
+        'category': _category,
+        'subcategory': _subcategory,
+        'isActive': _status == 'Active',
+        'status': _status, // original status field (legacy)
+        'storeId': storeId,
+        'ownerId': ownerId,
+        'createdAt': Timestamp.now(),
+        'updatedAt': Timestamp.now(),
+        'discount': {
+          'isDiscounted': _isDiscounted,
+          'percent': double.tryParse(_discountCtrl.text) ?? 0,
+        },
+        'review': {
+          'numberOfReviews': 0,
+          'stars': 0,
+        },
+      });
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Product added successfully')));
+      }
+    } on FirebaseException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${e.message ?? e.code}')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
-
-    // Create a new product document now so we can use its id for the image path.
-    final docRef = FirebaseFirestore.instance.collection('products').doc();
-
-    // Upload product image to Firebase Storage – keep images organised per-store.
-    final storageRef = FirebaseStorage.instance.ref().child(storeId.isNotEmpty
-        ? 'stores/$storeId/products/${docRef.id}.${_imageFile!.path.split('.').last}'
-        : 'products/${docRef.id}.${_imageFile!.path.split('.').last}');
-    await storageRef.putData(await _imageFile!.readAsBytes());
-    final imageUrl = await storageRef.getDownloadURL();
-
-    // Persist the product using the unified schema expected by the storefront.
-    await docRef.set({
-      'name': _nameCtrl.text.trim(),
-      'description': '', // Placeholder until a description editor is added
-      'price': price,
-      'stock': inventory, // unified field name used across the app
-      'inventory': inventory, // kept for backward compatibility
-      'images': [imageUrl],
-      'category': _category,
-      'subcategory': _subcategory,
-      'isActive': _status == 'Active',
-      'status': _status, // original status field (legacy)
-      'storeId': storeId,
-      'ownerId': ownerId,
-      'createdAt': Timestamp.now(),
-      'updatedAt': Timestamp.now(),
-    });
-    if (mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -171,12 +213,59 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         ],
                       ),
                       const SizedBox(height: 16),
+                      _label('Description'),
+                      TextFormField(
+                        controller: _descCtrl,
+                        decoration: const InputDecoration(
+                            hintText: 'Enter product description'),
+                        maxLines: 3,
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
                       _label('Price'),
                       TextFormField(
                         controller: _priceCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
                         decoration: const InputDecoration(hintText: '0.00'),
+                        validator: (v) {
+                          final p = double.tryParse(v ?? '');
+                          if (p == null || p <= 0) return 'Enter valid price';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _label('Discount'),
+                      Row(
+                        children: [
+                          Checkbox(
+                              value: _isDiscounted,
+                              onChanged: (val) => setState(() {
+                                    _isDiscounted = val ?? false;
+                                  })),
+                          const Text('Apply Discount'),
+                          const SizedBox(width: 16),
+                          if (_isDiscounted)
+                            Expanded(
+                              child: TextFormField(
+                                controller: _discountCtrl,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                decoration: const InputDecoration(
+                                    hintText: 'Percent e.g. 10'),
+                                validator: (v) {
+                                  if (!_isDiscounted) return null;
+                                  final p = double.tryParse(v ?? '');
+                                  if (p == null || p <= 0) {
+                                    return 'Enter %';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       _label('Inventory'),
@@ -184,6 +273,11 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         controller: _invCtrl,
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(hintText: '0'),
+                        validator: (v) {
+                          final n = int.tryParse(v ?? '');
+                          if (n == null || n < 0) return 'Enter inventory';
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
                       _label('Status'),
@@ -209,7 +303,6 @@ class _AddProductDialogState extends State<AddProductDialog> {
                           _category = v;
                           _subcategory = null;
                         }),
-                        validator: (v) => v == null ? 'Required' : null,
                       ),
                       const SizedBox(height: 16),
                       _label('Sub-category'),
@@ -224,7 +317,6 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         onChanged: _category == null
                             ? null
                             : (v) => setState(() => _subcategory = v),
-                        validator: (v) => v == null ? 'Required' : null,
                       ),
                     ],
                   ),

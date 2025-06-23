@@ -67,6 +67,17 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
               ],
             ),
             const SizedBox(width: 8),
+            // Display user name if available
+            Builder(builder: (_) {
+              final user = FirebaseAuth.instance.currentUser;
+              final name = user?.displayName ?? user?.email ?? 'User';
+              return Padding(
+                padding: const EdgeInsets.only(right: 12.0),
+                child: Text(name,
+                    style: theme.textTheme.bodyMedium!
+                        .copyWith(fontWeight: FontWeight.w600)),
+              );
+            }),
             PopupMenuButton<String>(
               offset: const Offset(0, 40),
               tooltip: 'Account',
@@ -82,12 +93,12 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
                 }
               },
               itemBuilder: (context) {
-                final user = FirebaseAuth.instance.currentUser;
                 return [
                   PopupMenuItem<String>(
                     value: 'email',
                     enabled: false,
-                    child: Text(user?.email ?? 'No email'),
+                    child: Text(
+                        FirebaseAuth.instance.currentUser?.email ?? 'No email'),
                   ),
                   const PopupMenuDivider(),
                   const PopupMenuItem<String>(
@@ -96,11 +107,22 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 ];
               },
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.grey.shade300,
-                child: const Icon(Icons.person, color: Colors.black),
-              ),
+              child: Builder(builder: (_) {
+                final user = FirebaseAuth.instance.currentUser;
+                final photoUrl = user?.photoURL;
+                return CircleAvatar(
+                  radius: 18,
+                  backgroundColor: photoUrl == null || photoUrl.isEmpty
+                      ? Colors.grey.shade300
+                      : Colors.transparent,
+                  backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                      ? NetworkImage(photoUrl)
+                      : null,
+                  child: (photoUrl == null || photoUrl.isEmpty)
+                      ? const Icon(Icons.person, color: Colors.black)
+                      : null,
+                );
+              }),
             ),
           ],
         ),

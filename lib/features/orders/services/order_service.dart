@@ -26,7 +26,7 @@ class OrderService {
             })
         .toList();
 
-    await _db.collection('users').doc(user.uid).collection('orders').add({
+    final orderData = {
       'status': 'placed',
       'createdAt': FieldValue.serverTimestamp(),
       'subtotal': subtotal,
@@ -36,6 +36,15 @@ class OrderService {
       'items': items,
       'storeId': store.id,
       'storeName': store.name,
-    });
+      'userId': user.uid,
+      'userEmail': user.email ?? '',
+    };
+
+    await _db
+        .collection('users')
+        .doc(user.uid)
+        .collection('orders')
+        .add(orderData);
+    await _db.collection('orders').add(orderData);
   }
 }

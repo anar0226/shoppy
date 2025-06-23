@@ -62,8 +62,21 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
 
       if (mounted) Navigator.of(context).pop(true);
     } on FirebaseException catch (e) {
-      // Show Firebase-specific error message for easier debugging
-      setState(() => _error = e.message ?? 'Firebase error: ${e.code}');
+      // Provide more descriptive messages based on error code
+      String friendlyMsg;
+      switch (e.code) {
+        case 'permission-denied':
+          friendlyMsg =
+              'Permission denied: you are not allowed to perform this action.\nPlease ensure your account has the necessary store permissions.';
+          break;
+        case 'unauthenticated':
+          friendlyMsg =
+              'You are not signed in. Please sign-in again and retry.';
+          break;
+        default:
+          friendlyMsg = 'Error (${e.code}): ${e.message ?? 'Unknown error.'}';
+      }
+      setState(() => _error = friendlyMsg);
     } catch (e) {
       // Fallback for any other error types
       setState(() => _error = 'Failed to setup store: $e');

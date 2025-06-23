@@ -87,8 +87,8 @@ class _ProductsPageState extends State<ProductsPage> {
         double inventoryValue = 0;
         for (var d in docs) {
           final data = d.data();
-          final price = (data['price'] ?? 0).toDouble();
-          final stock = (data['stock'] ?? data['inventory'] ?? 0) as num;
+          final price = _toDouble(data['price']);
+          final stock = _toNum(data['stock'] ?? data['inventory']);
           inventoryValue += price * stock;
         }
 
@@ -200,8 +200,8 @@ class _ProductsPageState extends State<ProductsPage> {
         rows: docs.map((doc) {
           final data = doc.data();
           final name = data['name'] ?? '';
-          final price = (data['price'] ?? 0).toDouble();
-          final stock = (data['stock'] ?? data['inventory'] ?? 0).toString();
+          final price = _toDouble(data['price']);
+          final stock = (_toNum(data['stock'] ?? data['inventory'])).toString();
           final isActive = data['isActive'] ?? true;
           return DataRow(cells: [
             DataCell(Row(children: [
@@ -258,5 +258,19 @@ class _ProductsPageState extends State<ProductsPage> {
       return '${dt.month}/${dt.day}/${dt.year}';
     }
     return '';
+  }
+
+  double _toDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v) ?? 0.0;
+    return 0.0;
+  }
+
+  num _toNum(dynamic v) {
+    if (v == null) return 0;
+    if (v is num) return v;
+    if (v is String) return num.tryParse(v) ?? 0;
+    return 0;
   }
 }
