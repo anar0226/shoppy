@@ -2,10 +2,51 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // ULTRA-SIMPLE RULES FOR TESTING
-    // Allow any authenticated user to read/write anything
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isValidImageSize() {
+      return request.resource.size < 10 * 1024 * 1024; // 10MB limit
+    }
+    
+    function isValidImageType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isStoreOwner(storeId) {
+      return isAuthenticated() && 
+        exists(/databases/(default)/documents/stores/$(storeId)) &&
+        get(/databases/(default)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
+    }
+    
+    // User profile images - users can only manage their own
+    match /users/{userId}/profile.jpg {
+      allow read: if true; // Public read access
+      allow write: if isAuthenticated() && 
+        request.auth.uid == userId &&
+        isValidImageSize() &&
+        isValidImageType();
+    }
+    
+    // Store-related files - only store owners can upload
+    match /stores/{storeId}/{allPaths=**} {
+      allow read: if true; // Public read access for store content
+      allow write: if isStoreOwner(storeId) &&
+        isValidImageSize() &&
+        isValidImageType();
+    }
+    
+    // Test files - temporary, should be cleaned up
+    match /test/{allPaths=**} {
+      allow read, write: if isAuthenticated() &&
+        isValidImageSize();
+    }
+    
+    // Deny all other access
     match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 } 

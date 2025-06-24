@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../widgets/top_nav_bar.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/add_product_dialog.dart';
+import '../widgets/edit_product_dialog.dart';
+import '../widgets/delete_confirmation_dialog.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../auth/auth_service.dart';
 
@@ -196,6 +198,7 @@ class _ProductsPageState extends State<ProductsPage> {
           DataColumn(label: Text('Price')),
           DataColumn(label: Text('Inventory')),
           DataColumn(label: Text('Status')),
+          DataColumn(label: Text('Actions')),
         ],
         rows: docs.map((doc) {
           final data = doc.data();
@@ -241,6 +244,23 @@ class _ProductsPageState extends State<ProductsPage> {
               child: Text(isActive ? 'active' : 'inactive',
                   style: const TextStyle(fontSize: 12, color: Colors.black87)),
             )),
+            DataCell(
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.blue),
+                    onPressed: () => _editProduct(doc.id, data),
+                    tooltip: 'Edit Product',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _deleteProduct(doc.id, name),
+                    tooltip: 'Delete Product',
+                  ),
+                ],
+              ),
+            ),
           ]);
         }).toList(),
       ),
@@ -272,5 +292,48 @@ class _ProductsPageState extends State<ProductsPage> {
     if (v is num) return v;
     if (v is String) return num.tryParse(v) ?? 0;
     return 0;
+  }
+
+  void _editProduct(String productId, Map<String, dynamic> productData) {
+    showDialog(
+      context: context,
+      builder: (_) => EditProductDialog(
+        productId: productId,
+        productData: productData,
+      ),
+    );
+  }
+
+  void _deleteProduct(String productId, String productName) {
+    showDialog(
+      context: context,
+      builder: (_) => DeleteConfirmationDialog(
+        productName: productName,
+        onConfirm: () => _confirmDeleteProduct(productId, productName),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteProduct(
+      String productId, String productName) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('products')
+          .doc(productId)
+          .delete();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Product "$productName" deleted successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting product: $e')),
+        );
+      }
+    }
   }
 }

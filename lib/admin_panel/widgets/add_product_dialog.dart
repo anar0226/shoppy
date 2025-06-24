@@ -6,8 +6,8 @@ import '../auth/auth_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:typed_data';
 import '../../core/services/image_upload_service.dart';
-import '../../core/services/upload_debug_service.dart';
 import '../../core/services/direct_upload_service.dart';
 
 class AddProductDialog extends StatefulWidget {
@@ -73,14 +73,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
     try {
       debugPrint('ADD-PRODUCT: started');
 
-      // 1. Get current user and verify permissions
+      // 1. Get current user
       final uid = AuthService.instance.currentUser?.uid;
       if (uid == null) throw Exception('Not signed in');
-
-      final user = FirebaseAuth.instance.currentUser;
-      debugPrint('STEP 1a: User email: ${user?.email}');
-      debugPrint('STEP 1b: Email verified: ${user?.emailVerified}');
-      debugPrint('STEP 1c: User UID: $uid');
 
       // 2. Fetch active store for this owner
       final storeSnap = await FirebaseFirestore.instance
@@ -94,62 +89,31 @@ class _AddProductDialogState extends State<AddProductDialog> {
         throw Exception('Active store not found. Complete store setup first.');
       }
       final storeId = storeSnap.docs.first.id;
-      debugPrint('STEP 1: storeId=$storeId');
 
       // 3. Create product document reference
       final docRef = FirebaseFirestore.instance.collection('products').doc();
-      debugPrint('STEP 2: productId=${docRef.id}');
 
-      // 4. Run quick diagnostics (with timeout)
-      debugPrint('STEP 3: Running Firebase diagnostics...');
-      try {
-        final diagnostics = await UploadDebugService.runDiagnostics().timeout(
-          const Duration(seconds: 10),
-          onTimeout: () {
-            debugPrint(
-                '⚠️ Diagnostics timed out, proceeding with upload anyway');
-            return <String, dynamic>{'timeout': true};
-          },
-        );
+      // 4. Upload image
 
-        if (diagnostics.containsKey('timeout')) {
-          debugPrint('STEP 3a: Diagnostics skipped due to timeout');
-        } else {
-          UploadDebugService.printDiagnostics(diagnostics);
-          debugPrint('STEP 3a: Diagnostics completed');
-        }
-      } catch (e) {
-        debugPrint('STEP 3a: Diagnostics failed: $e (proceeding anyway)');
-      }
-
-      // 5. Upload image - Skip broken Firebase SDK, use direct HTTP
+      // 4. Upload image
       String imageUrl;
-      debugPrint('STEP 4: Starting image upload (direct HTTP method)...');
 
-      try {
-        final imageBytes = await _imageFile!.readAsBytes();
-        final fileName = ImageUploadService.generateFileName(_imageFile!.name);
+      final imageBytes = await _imageFile!.readAsBytes();
+      final fileName = ImageUploadService.generateFileName(_imageFile!.name);
 
-        debugPrint(
-            'STEP 4a: Using direct HTTP upload (bypassing Firebase SDK)...');
-        imageUrl = await DirectUploadService.uploadImageDirect(
-          imageBytes: imageBytes,
-          storeId: storeId,
-          productId: docRef.id,
-          fileName: fileName,
-        );
-        debugPrint('STEP 4a: Direct upload successful - $imageUrl');
+      imageUrl = await DirectUploadService.uploadImageDirect(
+        imageBytes: imageBytes,
+        storeId: storeId,
+        productId: docRef.id,
+        fileName: fileName,
+      );
 
-        // Update progress to 100% since upload completed
-        if (mounted) {
-          setState(() => _uploadProgress = 1.0);
-        }
-      } catch (e) {
-        debugPrint('STEP 4a: Direct upload failed: $e');
-        throw Exception('Direct HTTP upload failed: $e');
+      // Update progress to 100% since upload completed
+      if (mounted) {
+        setState(() => _uploadProgress = 1.0);
       }
 
-      // 6. Build product data
+      // 5. Build product data
       final price = double.tryParse(_priceCtrl.text.trim()) ?? 0;
       final inventory = int.tryParse(_invCtrl.text.trim()) ?? 0;
 
@@ -176,43 +140,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
         },
       };
 
-      // 7. Save product to Firestore
-      debugPrint('STEP 5: Attempting to save product to Firestore...');
-      debugPrint('STEP 5a: User UID: $uid');
-      debugPrint('STEP 5b: Product data: $data');
-      debugPrint('STEP 5c: Document path: ${docRef.path}');
-
-      try {
-        await docRef.set(data);
-        debugPrint('STEP 5d: product saved to Firestore successfully');
-      } catch (firestoreError) {
-        debugPrint('STEP 5d: Firestore save failed: $firestoreError');
-
-        // Try to get current user token info
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          final token = await user.getIdToken();
-          debugPrint('STEP 5e: User token length: ${token?.length ?? 0}');
-          debugPrint('STEP 5f: User email verified: ${user.emailVerified}');
-
-          // Try a simple test write to see if auth works at all
-          try {
-            await FirebaseFirestore.instance
-                .collection('test')
-                .doc('auth-test')
-                .set({
-              'timestamp': Timestamp.now(),
-              'uid': uid,
-              'test': 'permission test'
-            });
-            debugPrint('STEP 5g: Test write succeeded - rules are working');
-          } catch (testError) {
-            debugPrint('STEP 5g: Test write also failed: $testError');
-          }
-        }
-
-        rethrow;
-      }
+      // 6. Save product to Firestore
+      await docRef.set(data);
+      debugPrint('Product saved to Firestore successfully');
 
       if (mounted) {
         Navigator.of(context).pop();
@@ -292,133 +222,137 @@ class _AddProductDialogState extends State<AddProductDialog> {
                       const SizedBox(height: 16),
                       _label('Product Image'),
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              final picked = await _picker.pickImage(
-                                  source: ImageSource.gallery,
-                                  imageQuality: 85);
-                              if (picked != null) {
-                                setState(() => _imageFile = picked);
-                              }
-                            },
-                            icon: const Icon(Icons.attach_file_outlined,
-                                size: 18),
-                            label: const Text('Choose Image'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.grey.shade200,
-                              foregroundColor: Colors.black87,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6)),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          if (_imageFile != null)
-                            Expanded(
-                              child: Text(
-                                _imageFile!.name,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                      ),
-
-                      // DEBUG: Temporary test buttons
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
+                          // Image picker button and file name
                           Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                if (_imageFile == null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content:
-                                            Text('Choose an image first!')),
-                                  );
-                                  return;
-                                }
-
-                                debugPrint('🚀 TESTING DIRECT HTTP UPLOAD...');
-                                try {
-                                  final uid =
-                                      AuthService.instance.currentUser?.uid;
-                                  if (uid == null)
-                                    throw Exception('Not signed in');
-
-                                  final imageBytes =
-                                      await _imageFile!.readAsBytes();
-                                  final fileName =
-                                      ImageUploadService.generateFileName(
-                                          _imageFile!.name);
-
-                                  final url = await DirectUploadService
-                                      .uploadImageDirect(
-                                    imageBytes: imageBytes,
-                                    storeId: 'test',
-                                    productId: 'test-product',
-                                    fileName: fileName,
-                                  );
-
-                                  debugPrint('🚀 TEST UPLOAD SUCCESSFUL: $url');
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text(
-                                            '✅ Direct upload works! Check console')),
-                                  );
-                                } catch (e) {
-                                  debugPrint('🚀 TEST UPLOAD FAILED: $e');
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text('❌ Test failed: $e')),
-                                  );
-                                }
-                              },
-                              icon: const Icon(Icons.upload, size: 16),
-                              label: const Text('Test Direct Upload'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green.shade100,
-                                foregroundColor: Colors.green.shade800,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: () async {
+                                    final picked = await _picker.pickImage(
+                                        source: ImageSource.gallery,
+                                        imageQuality: 85);
+                                    if (picked != null) {
+                                      setState(() => _imageFile = picked);
+                                    }
+                                  },
+                                  icon: const Icon(Icons.attach_file_outlined,
+                                      size: 18),
+                                  label: const Text('Choose Image'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.grey.shade200,
+                                    foregroundColor: Colors.black87,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(6)),
+                                  ),
+                                ),
+                                if (_imageFile != null) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _imageFile!.name,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                debugPrint(
-                                    '🔍 MANUAL DIAGNOSTICS TEST STARTED');
-                                try {
-                                  final results =
-                                      await UploadDebugService.runDiagnostics();
-                                  UploadDebugService.printDiagnostics(results);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text(
-                                            'Check console for diagnostics results')),
-                                  );
-                                } catch (e) {
-                                  debugPrint(
-                                      '🔍 MANUAL DIAGNOSTICS FAILED: $e');
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content:
-                                            Text('Diagnostics failed: $e')),
-                                  );
-                                }
-                              },
-                              icon: const Icon(Icons.bug_report, size: 16),
-                              label: const Text('Test Connection'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue.shade100,
-                                foregroundColor: Colors.blue.shade800,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
-                              ),
+
+                          // Image preview
+                          if (_imageFile != null) ...[
+                            const SizedBox(width: 16),
+                            Stack(
+                              children: [
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    border:
+                                        Border.all(color: Colors.grey.shade300),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(7),
+                                    child: kIsWeb
+                                        ? Image.network(
+                                            _imageFile!.path,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              return Container(
+                                                color: Colors.grey.shade100,
+                                                child: const Icon(
+                                                  Icons.image,
+                                                  color: Colors.grey,
+                                                  size: 32,
+                                                ),
+                                              );
+                                            },
+                                          )
+                                        : FutureBuilder<Uint8List>(
+                                            future: _imageFile!.readAsBytes(),
+                                            builder: (context, snapshot) {
+                                              if (snapshot.hasData) {
+                                                return Image.memory(
+                                                  snapshot.data!,
+                                                  fit: BoxFit.cover,
+                                                );
+                                              }
+                                              return Container(
+                                                color: Colors.grey.shade100,
+                                                child: const Center(
+                                                  child: SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                  ),
+                                ),
+                                // Remove button
+                                Positioned(
+                                  top: -4,
+                                  right: -4,
+                                  child: GestureDetector(
+                                    onTap: () =>
+                                        setState(() => _imageFile = null),
+                                    child: Container(
+                                      width: 24,
+                                      height: 24,
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.2),
+                                            blurRadius: 2,
+                                            offset: const Offset(0, 1),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.close,
+                                        size: 16,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 16),
