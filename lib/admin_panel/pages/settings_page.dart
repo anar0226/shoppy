@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/top_nav_bar.dart';
 import '../widgets/side_menu.dart';
+import '../../features/settings/themes/app_themes.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -35,7 +36,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
         children: [
           const SideMenu(selected: 'Settings'),

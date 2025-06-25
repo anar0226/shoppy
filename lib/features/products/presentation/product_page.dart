@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shoppy/features/products/models/product_model.dart';
-import 'package:shoppy/features/home/presentation/main_scaffold.dart';
 import 'package:provider/provider.dart';
 import 'package:shoppy/features/cart/providers/cart_provider.dart';
 import 'package:shoppy/features/cart/models/cart_item.dart';
@@ -15,11 +14,13 @@ import 'package:shoppy/features/addresses/presentation/manage_addresses_page.dar
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'dart:async';
 import 'package:shoppy/features/stores/models/store_model.dart';
+import 'package:shoppy/features/stores/presentation/store_screen.dart';
+import 'package:shoppy/features/home/presentation/main_scaffold.dart';
 
 class ProductPage extends StatefulWidget {
   final ProductModel product;
   final String storeName;
-  final String storeLogoUrl; // Can be empty if you want a placeholder avatar.
+  final String storeLogoUrl;
   final double storeRating;
   final int storeRatingCount;
 
@@ -37,36 +38,36 @@ class ProductPage extends StatefulWidget {
 }
 
 class _ProductPageState extends State<ProductPage> {
-  String? _selectedSize;
-  bool _isFavorite = false;
+  // State variables
+  String _selectedSize = '';
   int _quantity = 1;
-
+  bool _isFavorite = false;
+  String _storeName = '';
+  String _storeLogoUrl = '';
+  List<Map<String, dynamic>> _reviews = [];
+  int _reviewCount = 0;
+  double _avgRating = 0;
+  StreamSubscription<QuerySnapshot>? _reviewSub;
   final GlobalKey _imageKey = GlobalKey();
 
-  // Runtime store info (may be loaded from Firestore if missing).
-  late String _storeName;
-  late String _storeLogoUrl;
-
-  // Reviews data
-  double _avgRating = 0;
-  int _reviewCount = 0;
-  List<Map<String, dynamic>> _reviews = [];
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _reviewSub;
+  // Dynamic variant data
+  List<Map<String, dynamic>> _availableVariants = [];
+  String _variantType = '';
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize store info with provided values.
     _storeName = widget.storeName;
     _storeLogoUrl = widget.storeLogoUrl;
 
-    // If missing, attempt to load from Firestore using product.storeId.
+    // Extract variant information from product
+    _extractVariantInfo();
+
     if (_storeName.isEmpty || _storeLogoUrl.isEmpty) {
       _fetchStoreInfo();
     }
 
-    // add to recently viewed provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final recent =
           Provider.of<RecentlyViewedProvider>(context, listen: false);
@@ -87,7 +88,7 @@ class _ProductPageState extends State<ProductPage> {
       });
     }
 
-    // Listen to reviews for this product
+    // Listen to reviews
     _reviewSub = FirebaseFirestore.instance
         .collection('products')
         .doc(widget.product.id)
@@ -106,7 +107,6 @@ class _ProductPageState extends State<ProductPage> {
       }
       if (mounted) setState(() {});
     }, onError: (e) {
-      // Permission denied or other errors – just hide reviews section.
       if (mounted) {
         setState(() {
           _reviews = [];
@@ -137,6 +137,81 @@ class _ProductPageState extends State<ProductPage> {
     } catch (_) {}
   }
 
+  void _extractVariantInfo() {
+    _availableVariants.clear();
+    _variantType = '';
+
+    if (widget.product.variants.isEmpty) {
+      return; // No variants configured for this product
+    }
+
+    // Get variant type and options from product variants
+    // The admin panel stores variants differently, so we need to handle both structures
+    for (final variant in widget.product.variants) {
+      if (variant.name.isNotEmpty && variant.options.isNotEmpty) {
+        // This is the complex ProductVariant structure from the model
+        _variantType = variant.name; // "Size", "Color", etc.
+        for (final option in variant.options) {
+          _availableVariants.add({
+            'size': option,
+            'inventory':
+                10, // Default inventory since complex variants don't track individual inventory
+            'available': true,
+          });
+        }
+        break; // Take the first variant type for now
+      }
+    }
+
+    // Also check for simplified admin-style variants in the product data
+    // This handles the case where variants are stored as simple name/inventory pairs
+    if (_availableVariants.isEmpty) {
+      // Try to get variants from the raw Firestore data structure used by admin panel
+      // We'll need to fetch this from Firestore since the ProductModel might not include it
+      _loadVariantsFromFirestore();
+    }
+  }
+
+  Future<void> _loadVariantsFromFirestore() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('products')
+          .doc(widget.product.id)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final hasVariants = data['hasVariants'] ?? false;
+
+        if (hasVariants) {
+          _variantType = data['variantType'] ?? 'Size';
+          final variants = data['variants'] as List<dynamic>? ?? [];
+
+          for (final variant in variants) {
+            if (variant is Map<String, dynamic>) {
+              final name = variant['name'] ?? '';
+              final inventory = variant['inventory'] ?? 0;
+
+              if (name.isNotEmpty) {
+                _availableVariants.add({
+                  'size': name,
+                  'inventory': inventory,
+                  'available': inventory > 0,
+                });
+              }
+            }
+          }
+        }
+
+        if (mounted) {
+          setState(() {});
+        }
+      }
+    } catch (e) {
+      // Handle error silently, product will just show without variants
+    }
+  }
+
   @override
   void dispose() {
     _reviewSub?.cancel();
@@ -146,39 +221,57 @@ class _ProductPageState extends State<ProductPage> {
   @override
   Widget build(BuildContext context) {
     return MainScaffold(
-      currentIndex: 0,
+      currentIndex: -1, // Not on main navigation pages
       showBackButton: true,
-      onBack: () => Navigator.of(context).maybePop(),
       child: Scaffold(
         backgroundColor: Colors.white,
-        appBar: _buildAppBar(context),
-        body: SingleChildScrollView(
+        body: SafeArea(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildProductImage(),
-              _buildProductInfoSection(),
-              const SizedBox(height: 12),
-              _buildCouponBanner(),
-              const SizedBox(height: 12),
-              _buildShippingInfo(),
-              const SizedBox(height: 12),
-              _buildSizeSelector(),
-              const SizedBox(height: 12),
-              _buildQuantitySelector(),
-              const SizedBox(height: 12),
-              _buildActionButtons(),
-              const SizedBox(height: 24),
-              _buildDescriptionSection(),
-              const SizedBox(height: 16),
-              _buildPolicyButtons(),
-              const SizedBox(height: 16),
-              _buildVisitStore(),
-              const SizedBox(height: 24),
-              _buildRatingsSection(),
-              const SizedBox(height: 16),
-              _buildReviewsList(),
-              const SizedBox(height: 100),
+              // Custom top bar with back button
+              _buildTopBar(),
+
+              // Scrollable content
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Product image
+                      _buildProductImage(),
+
+                      // Product info with action buttons below image
+                      _buildProductInfoWithActions(),
+
+                      // Price section
+                      _buildPriceSection(),
+
+                      // Coupon banner
+                      _buildCouponBanner(),
+
+                      // Shipping info
+                      _buildShippingInfo(),
+
+                      // Size selector
+                      _buildSizeSelector(),
+
+                      // Quantity selector
+                      _buildQuantitySection(),
+
+                      // Purchase buttons
+                      _buildPurchaseButtons(),
+
+                      const SizedBox(height: 24),
+                      _buildDescriptionSection(),
+                      const SizedBox(height: 16),
+                      _buildRatingsSection(),
+                      const SizedBox(height: 16),
+                      _buildReviewsList(),
+                      const SizedBox(height: 100),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -186,105 +279,118 @@ class _ProductPageState extends State<ProductPage> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.black),
-        onPressed: () => Navigator.of(context).maybePop(),
-      ),
-      titleSpacing: 0,
-      title: Row(
+  Widget _buildTopBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
         children: [
-          _buildStoreAvatar(),
-          const SizedBox(width: 8),
-          _buildStoreTitle(),
-        ],
-      ),
-      actions: [
-        IconButton(
-          icon: Icon(
-            _isFavorite ? Icons.favorite : Icons.favorite_border,
-            color: _isFavorite ? Colors.red : Colors.black,
-          ),
-          onPressed: () async {
-            final auth = context.read<AuthProvider>();
-            if (auth.user == null) return;
-            final uid = auth.user!.uid;
-            final doc = FirebaseFirestore.instance.collection('users').doc(uid);
-            await doc.update({
-              'savedProductIds': _isFavorite
-                  ? FieldValue.arrayRemove([widget.product.id])
-                  : FieldValue.arrayUnion([widget.product.id])
-            });
-            if (mounted) {
-              setState(() => _isFavorite = !_isFavorite);
-            }
-          },
-        ),
-        IconButton(
-          icon: const Icon(Icons.more_horiz, color: Colors.black),
-          onPressed: () {},
-        ),
-      ],
-    );
-  }
+          // Store info in top left corner
+          GestureDetector(
+            onTap: () => _navigateToStore(),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Store avatar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: _storeLogoUrl.isNotEmpty
+                      ? Image.network(
+                          _storeLogoUrl,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          width: 32,
+                          height: 32,
+                          color: Colors.black,
+                          alignment: Alignment.center,
+                          child: Text(
+                            _storeName.isNotEmpty ? _storeName[0] : '?',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                ),
 
-  Widget _buildStoreAvatar() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: _storeLogoUrl.isNotEmpty
-          ? Image.network(_storeLogoUrl,
-              width: 32, height: 32, fit: BoxFit.cover)
-          : Container(
-              width: 32,
-              height: 32,
-              color: Colors.grey.shade300,
-              alignment: Alignment.center,
-              child: Text(
-                _storeName.isNotEmpty ? _storeName[0] : '?',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                const SizedBox(width: 8),
+
+                // Store name and rating
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _storeName.toUpperCase(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Colors.black,
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.storeRating.toStringAsFixed(1),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        const Icon(Icons.star, size: 12, color: Colors.black),
+                        const SizedBox(width: 4),
+                        Text(
+                          '(${_formatCount(widget.storeRatingCount)})',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const Spacer(),
+
+          // More options button
+          GestureDetector(
+            onTap: () {
+              // More options
+            },
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.more_horiz,
+                color: Colors.black,
+                size: 20,
               ),
             ),
-    );
-  }
-
-  Widget _buildStoreTitle() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          _storeName,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: Colors.black,
           ),
-        ),
-        const SizedBox(height: 2),
-        Row(
-          children: [
-            const Icon(Icons.star, size: 12, color: Colors.black),
-            const SizedBox(width: 4),
-            Text(
-              widget.storeRating.toStringAsFixed(1),
-              style: const TextStyle(fontSize: 12, color: Colors.black),
-            ),
-            Text(
-              '  (${_formatCount(widget.storeRatingCount)})',
-              style: const TextStyle(fontSize: 12, color: Colors.black54),
-            ),
-          ],
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildProductImage() {
-    return AspectRatio(
+    return Container(
       key: _imageKey,
-      aspectRatio: 1,
+      width: double.infinity,
+      height: MediaQuery.of(context).size.height * 0.5,
+      color: Colors.grey.shade50,
       child: widget.product.images.isNotEmpty
           ? (widget.product.images.first.startsWith('http')
               ? Image.network(
@@ -302,52 +408,171 @@ class _ProductPageState extends State<ProductPage> {
     );
   }
 
-  Widget _buildProductInfoSection() {
+  Widget _buildProductInfoWithActions() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-      child: Column(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            widget.product.name,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _buildStarRating(widget.product.reviewStars.round()),
-              const SizedBox(width: 6),
-              Text(
-                '${widget.product.reviewCount} ratings',
-                style: const TextStyle(fontSize: 14, color: Colors.black54),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Text(
-                '\$${widget.product.price.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (widget.product.isDiscounted)
+          // Product name and ratings on the left
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  _originalPriceFormatted(),
+                  widget.product.name,
                   style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.black45,
-                    decoration: TextDecoration.lineThrough,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
                   ),
                 ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    _buildStarRating(widget.product.reviewStars.round()),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$_reviewCount ratings',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // Action buttons on the right
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Heart button
+              GestureDetector(
+                onTap: () async {
+                  final auth = context.read<AuthProvider>();
+                  if (auth.user == null) return;
+                  final uid = auth.user!.uid;
+                  final doc =
+                      FirebaseFirestore.instance.collection('users').doc(uid);
+                  await doc.update({
+                    'savedProductIds': _isFavorite
+                        ? FieldValue.arrayRemove([widget.product.id])
+                        : FieldValue.arrayUnion([widget.product.id])
+                  });
+                  if (mounted) {
+                    setState(() => _isFavorite = !_isFavorite);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    _isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: _isFavorite ? Colors.red : Colors.black,
+                    size: 24,
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              // Share button - non-functioning
+              GestureDetector(
+                onTap: () {
+                  // Share functionality disabled for now
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Share feature coming soon!'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.share_outlined,
+                    color: Colors.black,
+                    size: 24,
+                  ),
+                ),
+              ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStarRating(int roundedStars) {
+    if (widget.product.reviewStars == 0) {
+      return Row(
+        children: List.generate(
+          5,
+          (_) => const Icon(Icons.star_border, size: 16, color: Colors.black),
+        ),
+      );
+    }
+
+    return Row(
+      children: List.generate(5, (i) {
+        if (i < roundedStars) {
+          return const Icon(Icons.star, size: 16, color: Colors.black);
+        }
+        return const Icon(Icons.star_border, size: 16, color: Colors.black);
+      }),
+    );
+  }
+
+  Widget _buildPriceSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: Row(
+        children: [
+          Text(
+            '\$${widget.product.price.toStringAsFixed(2)}',
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(width: 12),
+          if (widget.product.isDiscounted)
+            Text(
+              _originalPriceFormatted(),
+              style: const TextStyle(
+                fontSize: 20,
+                color: Colors.black45,
+                decoration: TextDecoration.lineThrough,
+              ),
+            ),
         ],
       ),
     );
@@ -356,33 +581,45 @@ class _ProductPageState extends State<ProductPage> {
   Widget _buildCouponBanner() {
     if (widget.product.discountPercent <= 0) return const SizedBox.shrink();
 
-    final original = _originalPriceFormatted();
-
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.purple.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.purple,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              '-${widget.product.discountPercent.toStringAsFixed(0)}%',
+              'Save \$${(widget.product.price * widget.product.discountPercent / 100).toStringAsFixed(0)}',
               style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold),
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
-                'From $original to \$${widget.product.price.toStringAsFixed(2)}!'),
+              'on orders over \$45',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.purple,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const Icon(
+            Icons.keyboard_arrow_down,
+            color: Colors.purple,
+            size: 20,
           ),
         ],
       ),
@@ -390,22 +627,59 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   Widget _buildShippingInfo() {
+    final addressProvider = Provider.of<AddressProvider>(context);
+    final defaultAddress = addressProvider.defaultAddress;
+
+    String shippingText = 'Enter your address';
+    if (defaultAddress != null) {
+      // Use the actual address line instead of the formatted string that starts with name
+      String addressLine = defaultAddress.line1;
+      if (defaultAddress.apartment.isNotEmpty) {
+        addressLine += ', ${defaultAddress.apartment}';
+      }
+      shippingText = 'Ship to $addressLine';
+    }
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: const [
-              Text('Ship to 84111'),
-              SizedBox(width: 4),
-              Icon(Icons.keyboard_arrow_down, size: 16),
-            ],
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ManageAddressesPage()),
+              );
+            },
+            child: Row(
+              children: [
+                Text(
+                  shippingText,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: defaultAddress != null ? Colors.black : Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 20,
+                  color: defaultAddress != null ? Colors.black : Colors.blue,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Estimated delivery Thu, Jun 19',
-            style: TextStyle(color: Colors.black54),
+          Text(
+            defaultAddress != null
+                ? 'Estimated delivery Thu, Jul 3'
+                : 'Add an address to see delivery estimates',
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black54,
+            ),
           ),
         ],
       ),
@@ -413,161 +687,221 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   Widget _buildSizeSelector() {
-    // Try to find a variant named 'size' (case-insensitive). Fallback to first variant.
-    ProductVariant? sizeVariant;
-    sizeVariant ??= widget.product.variants.isNotEmpty
-        ? widget.product.variants.first
-        : ProductVariant(name: 'Size', options: [], priceAdjustments: {});
-
-    // Flatten options; split by comma if only one string
-    final List<String> sizes = [];
-    for (final opt in sizeVariant.options) {
-      if (opt.contains(',')) {
-        sizes.addAll(opt.split(',').map((s) => s.trim()));
-      } else {
-        sizes.add(opt.trim());
-      }
+    // Don't show size selector if no variants are configured
+    if (_availableVariants.isEmpty) {
+      return const SizedBox.shrink();
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Size',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          Text(
+            _variantType.isNotEmpty ? _variantType : 'Size',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.black,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 12,
-            children: sizes.map((size) => _buildSizeChip(size)).toList(),
+            runSpacing: 8,
+            children: _availableVariants
+                .map((variant) => _buildSizeChip(variant))
+                .toList(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSizeChip(String size) {
-    final isSelected = _selectedSize == size;
+  Widget _buildSizeChip(Map<String, dynamic> variant) {
+    final variantName = variant['size'] as String;
+    final isSelected = _selectedSize == variantName;
+    final isAvailable = variant['available'] as bool? ?? false;
+    final inventory = variant['inventory'] as int? ?? 0;
 
-    return ChoiceChip(
-      label: Text(size),
-      selected: isSelected,
-      onSelected: (_) {
-        setState(() {
-          _selectedSize = size;
-        });
-      },
-      selectedColor: Colors.black,
-      backgroundColor: Colors.grey.shade100,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : Colors.black,
-        fontWeight: FontWeight.w600,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
-    );
-  }
-
-  Widget _buildStarRating(int roundedStars) {
-    // If no rating yet, show 5 outlined stars
-    if (widget.product.reviewStars == 0) {
-      return Row(
-        children: List.generate(
-          5,
-          (_) => const Icon(Icons.star_border, size: 14, color: Colors.black),
-        ),
-      );
-    }
-
-    return Row(
-      children: List.generate(5, (i) {
-        if (i < roundedStars) {
-          return const Icon(Icons.star, size: 14, color: Colors.black);
-        }
-        return const Icon(Icons.star_border, size: 14, color: Colors.black);
-      }),
-    );
-  }
-
-  Widget _buildQuantitySelector() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Row(
-        children: [
-          _quantityButton(Icons.remove, () {
-            if (_quantity > 1) {
-              setState(() => _quantity--);
+    return GestureDetector(
+      onTap: isAvailable
+          ? () {
+              setState(() {
+                _selectedSize = variantName;
+              });
             }
-          }),
-          SizedBox(
-            width: 40,
-            child: Center(
+          : null,
+      child: Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.black : Colors.white,
+          border: Border.all(
+            color: isAvailable ? Colors.black : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Stack(
+          children: [
+            Center(
               child: Text(
-                '$_quantity',
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                variantName,
+                style: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : isAvailable
+                          ? Colors.black
+                          : Colors.grey.shade400,
+                  fontWeight: FontWeight.w600,
+                  fontSize: variantName.length > 3
+                      ? 12
+                      : 16, // Smaller font for longer text
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
+            // Cross out unavailable sizes
+            if (!isAvailable)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _CrossOutPainter(),
+                ),
+              ),
+            // Show inventory count for available variants
+            if (isAvailable && inventory <= 5 && inventory > 0)
+              Positioned(
+                bottom: 2,
+                right: 2,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$inventory',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuantitySection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Quantity',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.black,
+            ),
           ),
-          _quantityButton(Icons.add, () {
-            setState(() => _quantity++);
-          }),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _quantityButton(Icons.remove, () {
+                if (_quantity > 1) {
+                  setState(() => _quantity--);
+                }
+              }),
+              Container(
+                width: 60,
+                height: 48,
+                alignment: Alignment.center,
+                child: Text(
+                  '$_quantity',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              _quantityButton(Icons.add, () {
+                setState(() => _quantity++);
+              }),
+            ],
+          ),
         ],
       ),
     );
   }
 
   Widget _quantityButton(IconData icon, VoidCallback onPressed) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: IconButton(
-        icon: Icon(icon),
-        onPressed: onPressed,
-        splashRadius: 20,
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Icon(icon, color: Colors.black),
       ),
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildPurchaseButtons() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         children: [
           SizedBox(
             width: double.infinity,
+            height: 52,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromARGB(255, 22, 14, 179),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               onPressed: _addToCart,
-              child: const Text('Сагсанд нэмэx'),
+              child: const Text(
+                'Add to Cart',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
+            height: 52,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               onPressed: _buyNow,
-              child: const Text('Шууд аваx'),
+              child: const Text(
+                'Buy Now',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
         ],
@@ -585,7 +919,7 @@ class _ProductPageState extends State<ProductPage> {
         : [widget.product.description.trim()];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -593,72 +927,23 @@ class _ProductPageState extends State<ProductPage> {
             'Description',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           ...bulletDescription.asMap().entries.map((entry) {
             if (bulletDescription.length == 1) {
-              return Text(entry.value);
+              return Text(
+                entry.value,
+                style: const TextStyle(fontSize: 14, height: 1.5),
+              );
             }
-            return Text('— ${entry.value}');
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                '— ${entry.value}',
+                style: const TextStyle(fontSize: 14, height: 1.5),
+              ),
+            );
           }),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPolicyButtons() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Row(
-        children: [
-          _policyButton('Refund policy'),
-          const SizedBox(width: 8),
-          _policyButton('Shipping policy'),
-        ],
-      ),
-    );
-  }
-
-  Widget _policyButton(String text) {
-    return Expanded(
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          side: BorderSide(color: Colors.grey.shade300),
-          backgroundColor: Colors.grey.shade100,
-        ),
-        onPressed: () {},
-        child: Text(text, style: const TextStyle(color: Colors.black)),
-      ),
-    );
-  }
-
-  Widget _buildVisitStore() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: InkWell(
-        onTap: () async {
-          final uri = Uri.tryParse(_storeLogoUrl) ?? Uri();
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          }
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.link),
-              const SizedBox(width: 8),
-              Text('Visit ${_storeName.toUpperCase()}'),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -668,7 +953,6 @@ class _ProductPageState extends State<ProductPage> {
       return const SizedBox.shrink();
     }
 
-    // compute distribution (index0=>5stars)
     final dist = List<int>.filled(5, 0);
     for (final r in _reviews) {
       final rating = (r['rating'] ?? 0) as int;
@@ -678,28 +962,32 @@ class _ProductPageState extends State<ProductPage> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Ratings and reviews',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
+          const Text(
+            'Ratings and reviews',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_avgRating.toStringAsFixed(1),
-                  style: const TextStyle(
-                      fontSize: 48, fontWeight: FontWeight.bold)),
-              const SizedBox(width: 4),
+              Text(
+                _avgRating.toStringAsFixed(1),
+                style:
+                    const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 8),
               const Icon(Icons.star, size: 32),
               Padding(
-                padding: const EdgeInsets.only(top: 14.0),
+                padding: const EdgeInsets.only(top: 16),
                 child: Text('$_reviewCount ratings'),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           ...List.generate(5, (i) {
             final stars = 5 - i;
             return _starDistributionRow(stars, dist[i]);
@@ -715,7 +1003,7 @@ class _ProductPageState extends State<ProductPage> {
         _reviewCount == 0 ? 0.0 : (count / _reviewCount) * maxBarWidth;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
           Text(stars.toString()),
@@ -749,7 +1037,7 @@ class _ProductPageState extends State<ProductPage> {
       child: ListView.separated(
         physics: const BouncingScrollPhysics(),
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         itemBuilder: (context, i) => _reviewCard(_reviews[i]),
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemCount: _reviews.length,
@@ -782,7 +1070,6 @@ class _ProductPageState extends State<ProductPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header row: avatar + name
           Row(
             children: [
               CircleAvatar(
@@ -797,16 +1084,17 @@ class _ProductPageState extends State<ProductPage> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(name.isNotEmpty ? name : 'Anonymous',
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                child: Text(
+                  name.isNotEmpty ? name : 'Anonymous',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          // Comment box
           Container(
             width: double.infinity,
-            height: 116, // fixed height so card size stays consistent
+            height: 116,
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.grey.shade300,
@@ -818,18 +1106,20 @@ class _ProductPageState extends State<ProductPage> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          const Spacer(), // pushes stars/date row to bottom
-          // Stars + date row
+          const Spacer(),
           Row(
             children: [
               Row(
-                  children: List.generate(
-                      rating,
-                      (_) => const Icon(Icons.star,
-                          size: 16, color: Colors.black))),
+                children: List.generate(
+                  rating,
+                  (_) => const Icon(Icons.star, size: 16, color: Colors.black),
+                ),
+              ),
               const Spacer(),
-              Text(dateStr,
-                  style: const TextStyle(fontSize: 12, color: Colors.black54)),
+              Text(
+                dateStr,
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
             ],
           ),
         ],
@@ -854,10 +1144,21 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   void _addToCart() {
+    // Check if variant selection is required but not made
+    if (_availableVariants.isNotEmpty && _selectedSize.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select a ${_variantType.toLowerCase()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final cart = Provider.of<CartProvider>(context, listen: false);
     cart.addItem(CartItem(
       product: widget.product,
-      variant: _selectedSize,
+      variant: _selectedSize.isNotEmpty ? _selectedSize : null,
       quantity: _quantity,
     ));
 
@@ -869,27 +1170,40 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   void _buyNow() {
-    final addrProvider = Provider.of<AddressProvider>(context, listen: false);
-
-    if (addrProvider.addresses.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Please add a shipping address before checkout')));
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const ManageAddressesPage()),
+    // Check if variant selection is required but not made
+    if (_availableVariants.isNotEmpty && _selectedSize.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select a ${_variantType.toLowerCase()}'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
-    final shippingAddr =
-        addrProvider.defaultAddress ?? addrProvider.addresses.first;
+    final addrProvider = Provider.of<AddressProvider>(context, listen: false);
+
+    // Allow proceeding to checkout even without addresses
+    // The checkout page will handle address collection
+    String fullAddress = 'Address to be added';
+    if (addrProvider.addresses.isNotEmpty) {
+      final shippingAddr =
+          addrProvider.defaultAddress ?? addrProvider.addresses.first;
+      fullAddress = shippingAddr.formatted();
+    }
+
+    // Determine variant text for display
+    String variantText = 'Standard';
+    if (_availableVariants.isNotEmpty && _selectedSize.isNotEmpty) {
+      variantText = _selectedSize;
+    }
 
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => CheckoutPage(
           email: '${fb_auth.FirebaseAuth.instance.currentUser?.email ?? ''}',
-          fullAddress: shippingAddr.formatted(),
+          fullAddress: fullAddress,
           subtotal: widget.product.price * _quantity,
           shippingCost: 0,
           tax: (widget.product.price * _quantity) * 0.0825,
@@ -898,7 +1212,7 @@ class _ProductPageState extends State<ProductPage> {
                 ? widget.product.images.first
                 : '',
             name: widget.product.name,
-            variant: _selectedSize ?? 'One size',
+            variant: variantText,
             price: widget.product.price,
           ),
         ),
@@ -932,6 +1246,155 @@ class _ProductPageState extends State<ProductPage> {
     Future.delayed(
         const Duration(milliseconds: 800), () => overlayEntry.remove());
   }
+
+  void _navigateToStore() async {
+    try {
+      // Show loading indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Loading store...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+
+      final db = FirebaseFirestore.instance;
+      final storeDoc =
+          await db.collection('stores').doc(widget.product.storeId).get();
+
+      if (!storeDoc.exists) {
+        throw Exception('Store not found');
+      }
+
+      final storeModel = StoreModel.fromFirestore(storeDoc);
+
+      // Fetch products (up to 20)
+      List<ProductModel> products = [];
+      final lowerSnap = await db
+          .collection('products')
+          .where('storeId', isEqualTo: storeModel.id)
+          .limit(20)
+          .get();
+      if (lowerSnap.docs.isNotEmpty) {
+        products =
+            lowerSnap.docs.map((d) => ProductModel.fromFirestore(d)).toList();
+      } else {
+        final upperSnap = await db
+            .collection('products')
+            .where('StoreId', isEqualTo: storeModel.id)
+            .limit(20)
+            .get();
+        products =
+            upperSnap.docs.map((d) => ProductModel.fromFirestore(d)).toList();
+      }
+
+      // Load collections for this store
+      final collectionsSnapshot = await db
+          .collection('collections')
+          .where('storeId', isEqualTo: storeModel.id)
+          .where('isActive', isEqualTo: true)
+          .get();
+
+      final collections = collectionsSnapshot.docs
+          .map((doc) => StoreCollection(
+                id: doc.id,
+                name: doc.data()['name'] ?? '',
+                imageUrl: doc.data()['backgroundImage'] ?? '',
+              ))
+          .toList();
+
+      // Load managed categories for this store
+      final categoriesSnapshot = await db
+          .collection('store_categories')
+          .where('storeId', isEqualTo: storeModel.id)
+          .where('isActive', isEqualTo: true)
+          .orderBy('sortOrder', descending: false)
+          .orderBy('createdAt', descending: false)
+          .get();
+
+      final categoryNames = <String>['All'];
+      categoryNames.addAll(
+        categoriesSnapshot.docs
+            .map((doc) => doc.data()['name'] as String? ?? '')
+            .where((name) => name.isNotEmpty),
+      );
+
+      // Build StoreData for StoreScreen
+      final storeData = StoreData(
+        id: storeModel.id,
+        name: storeModel.name,
+        displayName: storeModel.name.toUpperCase(),
+        heroImageUrl:
+            storeModel.banner.isNotEmpty ? storeModel.banner : storeModel.logo,
+        backgroundColor: const Color(0xFF01BCE7),
+        rating: 4.9,
+        reviewCount: '25',
+        collections: collections,
+        categories: categoryNames,
+        productCount: products.length,
+        products: products
+            .map((p) => StoreProduct(
+                  id: p.id,
+                  name: p.name,
+                  imageUrl: p.images.isNotEmpty ? p.images.first : '',
+                  price: p.price,
+                  category: _getProductCategory(p.id, categoriesSnapshot.docs),
+                ))
+            .toList(),
+        showFollowButton: true,
+        hasNotification: false,
+      );
+
+      // Navigate to store
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => StoreScreen(storeData: storeData),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to load store: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  String _getProductCategory(
+      String productId, List<QueryDocumentSnapshot> categoryDocs) {
+    for (final doc in categoryDocs) {
+      final data = doc.data() as Map<String, dynamic>?;
+      final productIds = List<String>.from(data?['productIds'] ?? []);
+      if (productIds.contains(productId)) {
+        return data?['name'] as String? ?? '';
+      }
+    }
+    return ''; // Product not in any category
+  }
+}
+
+class _CrossOutPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.grey.shade400
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(size.width * 0.2, size.height * 0.8),
+      Offset(size.width * 0.8, size.height * 0.2),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _FlyingImage extends StatefulWidget {
@@ -955,8 +1418,9 @@ class __FlyingImageState extends State<_FlyingImage>
   void initState() {
     super.initState();
     _controller = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 800))
-      ..forward();
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..forward();
     _position = Tween<Offset>(begin: widget.start, end: widget.end)
         .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
     _scale = Tween<double>(begin: 1.0, end: 0.1)

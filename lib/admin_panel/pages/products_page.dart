@@ -6,6 +6,8 @@ import '../widgets/edit_product_dialog.dart';
 import '../widgets/delete_confirmation_dialog.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../auth/auth_service.dart';
+import '../../features/products/models/product_model.dart';
+import '../../features/settings/themes/app_themes.dart';
 
 class ProductsPage extends StatefulWidget {
   const ProductsPage({super.key});
@@ -46,7 +48,7 @@ class _ProductsPageState extends State<ProductsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
         children: [
           const SideMenu(selected: 'Products'),
@@ -181,17 +183,18 @@ class _ProductsPageState extends State<ProductsPage> {
   Widget _productTable(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppThemes.getCardColor(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: AppThemes.getBorderColor(context)),
       ),
       width: double.infinity,
       child: DataTable(
         columnSpacing: 24,
         headingRowHeight: 56,
         dataRowHeight: 64,
-        headingTextStyle:
-            const TextStyle(fontWeight: FontWeight.w600, color: Colors.black54),
+        headingTextStyle: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: AppThemes.getSecondaryTextColor(context)),
         columns: const [
           DataColumn(label: Text('Product')),
           DataColumn(label: Text('SKU')),
@@ -227,8 +230,9 @@ class _ProductsPageState extends State<ProductsPage> {
                   Text(name,
                       style: const TextStyle(fontWeight: FontWeight.w600)),
                   Text('Created ${_formatDate(data['createdAt'])}',
-                      style:
-                          const TextStyle(color: Colors.black54, fontSize: 12)),
+                      style: TextStyle(
+                          color: AppThemes.getSecondaryTextColor(context),
+                          fontSize: 12)),
                 ],
               )
             ])),
@@ -242,7 +246,8 @@ class _ProductsPageState extends State<ProductsPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(isActive ? 'active' : 'inactive',
-                  style: const TextStyle(fontSize: 12, color: Colors.black87)),
+                  style: TextStyle(
+                      fontSize: 12, color: AppThemes.getTextColor(context))),
             )),
             DataCell(
               Row(

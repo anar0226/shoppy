@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../auth/auth_service.dart';
 import '../../features/discounts/models/discount_model.dart';
 import '../../features/discounts/services/discount_service.dart';
+import '../../features/settings/themes/app_themes.dart';
 
 class DiscountsPage extends StatefulWidget {
   const DiscountsPage({super.key});
@@ -49,7 +50,7 @@ class _DiscountsPageState extends State<DiscountsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
         children: [
           const SideMenu(selected: 'Discounts'),
@@ -222,24 +223,46 @@ class _DiscountsPageState extends State<DiscountsPage> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppThemes.getCardColor(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: AppThemes.getBorderColor(context)),
       ),
       child: DataTable(
         columnSpacing: 24,
         headingRowHeight: 56,
         dataRowHeight: 64,
-        headingTextStyle:
-            const TextStyle(fontWeight: FontWeight.w600, color: Colors.black54),
-        columns: const [
-          DataColumn(label: Text('Discount')),
-          DataColumn(label: Text('Code')),
-          DataColumn(label: Text('Type')),
-          DataColumn(label: Text('Value')),
-          DataColumn(label: Text('Uses')),
-          DataColumn(label: Text('Status')),
-          DataColumn(label: Text('Actions')),
+        headingTextStyle: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: AppThemes.getSecondaryTextColor(context)),
+        columns: [
+          DataColumn(
+              label: Text('Discount',
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context)))),
+          DataColumn(
+              label: Text('Code',
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context)))),
+          DataColumn(
+              label: Text('Type',
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context)))),
+          DataColumn(
+              label: Text('Value',
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context)))),
+          DataColumn(
+              label: Text('Uses',
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context)))),
+          DataColumn(
+              label: Text('Status',
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context)))),
+          DataColumn(
+              label: Text('Actions',
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context)))),
         ],
         rows: discounts.map((discount) {
           return DataRow(cells: [
@@ -260,10 +283,13 @@ class _DiscountsPageState extends State<DiscountsPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(discount.name,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppThemes.getTextColor(context))),
                   Text('Created ${_formatDate(discount.createdAt)}',
-                      style:
-                          const TextStyle(color: Colors.black54, fontSize: 12)),
+                      style: TextStyle(
+                          color: AppThemes.getSecondaryTextColor(context),
+                          fontSize: 12)),
                 ],
               ),
             ])),
@@ -271,20 +297,28 @@ class _DiscountsPageState extends State<DiscountsPage> {
             DataCell(Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.grey.shade200,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppThemes.darkSurfaceVariant
+                    : Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(discount.code,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppThemes.getTextColor(context))),
             )),
             // Type cell
-            DataCell(Text(discount.typeDisplayName)),
+            DataCell(Text(discount.typeDisplayName,
+                style: TextStyle(color: AppThemes.getTextColor(context)))),
             // Value cell
             DataCell(Text(discount.valueDisplayText,
-                style: const TextStyle(fontWeight: FontWeight.w600))),
+                style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppThemes.getTextColor(context)))),
             // Uses cell
-            DataCell(
-                Text('${discount.currentUseCount} / ${discount.maxUseCount}')),
+            DataCell(Text(
+                '${discount.currentUseCount} / ${discount.maxUseCount}',
+                style: TextStyle(color: AppThemes.getTextColor(context)))),
             // Status cell
             DataCell(Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -295,7 +329,8 @@ class _DiscountsPageState extends State<DiscountsPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(discount.isActive ? 'active' : 'inactive',
-                  style: const TextStyle(fontSize: 12, color: Colors.black87)),
+                  style: TextStyle(
+                      fontSize: 12, color: AppThemes.getTextColor(context))),
             )),
             // Actions cell
             DataCell(

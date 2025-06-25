@@ -1,0 +1,258 @@
+{
+  "@@locale": "en",
+  
+  "appTitle": "Shoppy Admin",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+  
+  "home": "Home",
+  "@home": {
+    "description": "Home navigation item"
+  },
+  
+  "analytics": "Analytics",
+  "@analytics": {
+    "description": "Analytics navigation item"
+  },
+  
+  "orders": "Orders",
+  "@orders": {
+    "description": "Orders navigation item"
+  },
+  
+  "products": "Products",
+  "@products": {
+    "description": "Products navigation item"
+  },
+  
+  "customers": "Customers",
+  "@customers": {
+    "description": "Customers navigation item"
+  },
+  
+  "discounts": "Discounts",
+  "@discounts": {
+    "description": "Discounts navigation item"
+  },
+  
+  "settings": "Settings",
+  "@settings": {
+    "description": "Settings navigation item"
+  },
+  
+  "search": "Search",
+  "@search": {
+    "description": "Search placeholder text"
+  },
+  
+  "notifications": "Notifications",
+  "@notifications": {
+    "description": "Notifications title"
+  },
+  
+  "markAllRead": "Mark all read",
+  "@markAllRead": {
+    "description": "Mark all notifications as read"
+  },
+  
+  "noNotifications": "No notifications yet",
+  "@noNotifications": {
+    "description": "Message when there are no notifications"
+  },
+  
+  "totalSales": "Total sales",
+  "@totalSales": {
+    "description": "Total sales card title"
+  },
+  
+  "storeSessions": "Store sessions",
+  "@storeSessions": {
+    "description": "Store sessions card title"
+  },
+  
+  "last30Days": "Last 30 days",
+  "@last30Days": {
+    "description": "Time period label"
+  },
+  
+  "vsPreviousPeriod": "vs previous period",
+  "@vsPreviousPeriod": {
+    "description": "Comparison label"
+  },
+  
+  "salesOverTime": "Sales over time",
+  "@salesOverTime": {
+    "description": "Sales chart title"
+  },
+  
+  "topProductsByUnits": "Top products by units sold",
+  "@topProductsByUnits": {
+    "description": "Top products section title"
+  },
+  
+  "viewAll": "View all",
+  "@viewAll": {
+    "description": "View all button text"
+  },
+  
+  "noProductData": "No product data available",
+  "@noProductData": {
+    "description": "Message when no product data is available"
+  },
+  
+  "recentOrders": "Recent orders",
+  "@recentOrders": {
+    "description": "Recent orders section title"
+  },
+  
+  "viewAllOrders": "View all orders",
+  "@viewAllOrders": {
+    "description": "View all orders button text"
+  },
+  
+  "recentActivity": "Recent activity",
+  "@recentActivity": {
+    "description": "Recent activity section title"
+  },
+  
+  "noRecentOrders": "No recent orders",
+  "@noRecentOrders": {
+    "description": "Message when there are no recent orders"
+  },
+  
+  "noRecentActivity": "No recent activity",
+  "@noRecentActivity": {
+    "description": "Message when there is no recent activity"
+  },
+  
+  "order": "Order",
+  "@order": {
+    "description": "Order table header"
+  },
+  
+  "customer": "Customer",
+  "@customer": {
+    "description": "Customer table header"
+  },
+  
+  "total": "Total",
+  "@total": {
+    "description": "Total table header"
+  },
+  
+  "status": "Status",
+  "@status": {
+    "description": "Status table header"
+  },
+  
+  "paid": "Paid",
+  "@paid": {
+    "description": "Order status - paid"
+  },
+  
+  "pending": "Pending",
+  "@pending": {
+    "description": "Order status - pending"
+  },
+  
+  "shipped": "Shipped",
+  "@shipped": {
+    "description": "Order status - shipped"
+  },
+  
+  "delivered": "Delivered",
+  "@delivered": {
+    "description": "Order status - delivered"
+  },
+  
+  "canceled": "Canceled",
+  "@canceled": {
+    "description": "Order status - canceled"
+  },
+  
+  "errorLoadingDashboard": "Error Loading Dashboard",
+  "@errorLoadingDashboard": {
+    "description": "Dashboard error title"
+  },
+  
+  "retry": "Retry",
+  "@retry": {
+    "description": "Retry button text"
+  },
+  
+  "sold": "sold",
+  "@sold": {
+    "description": "Units sold suffix"
+  },
+  
+  "signOut": "Sign out",
+  "@signOut": {
+    "description": "Sign out menu item"
+  },
+  
+  "newOrderReceived": "New Order Received",
+  "@newOrderReceived": {
+    "description": "New order notification title"
+  },
+  
+  "lowStockAlert": "Low Stock Alert",
+  "@lowStockAlert": {
+    "description": "Low stock notification title"
+  },
+  
+  "newCustomer": "New Customer",
+  "@newCustomer": {
+    "description": "New customer notification title"
+  },
+  
+  "systemUpdate": "System Update",
+  "@systemUpdate": {
+    "description": "System update notification title"
+  },
+  
+  "darkMode": "Dark Mode",
+  "@darkMode": {
+    "description": "Dark mode setting"
+  },
+  
+  "lightMode": "Light Mode",
+  "@lightMode": {
+    "description": "Light mode setting"
+  },
+  
+  "language": "Language",
+  "@language": {
+    "description": "Language setting"
+  },
+  
+  "english": "English",
+  "@english": {
+    "description": "English language option"
+  },
+  
+  "mongolian": "Mongolian",
+  "@mongolian": {
+    "description": "Mongolian language option"
+  },
+  
+  "theme": "Theme",
+  "@theme": {
+    "description": "Theme setting"
+  },
+  
+  "trackYourStorePerformance": "Track your store performance and insights",
+  "@trackYourStorePerformance": {
+    "description": "Analytics page subtitle"
+  },
+  
+  "export": "Export",
+  "@export": {
+    "description": "Export button text"
+  },
+  
+  "averageOrderValue": "Avg Order Value",
+  "@averageOrderValue": {
+    "description": "Average order value metric"
+  }
+} 

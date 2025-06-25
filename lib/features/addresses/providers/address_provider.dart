@@ -16,9 +16,21 @@ class AddressProvider extends ChangeNotifier {
 
   String? _defaultAddressId;
   String? get defaultAddressId => _defaultAddressId;
-  AddressModel get defaultAddress =>
-      _addresses.firstWhere((a) => a.id == _defaultAddressId,
-          orElse: () => _addresses.first);
+
+  AddressModel? get defaultAddress {
+    if (_addresses.isEmpty) return null;
+
+    if (_defaultAddressId != null) {
+      try {
+        return _addresses.firstWhere((a) => a.id == _defaultAddressId);
+      } catch (e) {
+        // If default address ID doesn't exist, return first address
+        return _addresses.first;
+      }
+    }
+
+    return _addresses.first;
+  }
 
   AddressProvider() {
     _init();

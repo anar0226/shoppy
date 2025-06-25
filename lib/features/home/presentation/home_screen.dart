@@ -61,7 +61,44 @@ class _HomeScreenState extends State<HomeScreen> {
     final List<SellerData> result = [];
     for (final doc in storeSnap.docs) {
       final storeModel = StoreModel.fromFirestore(doc);
-      final products = await _fetchProducts(storeModel.id);
+
+      // Load seller card settings
+      final sellerCardDoc =
+          await _db.collection('seller_cards').doc(storeModel.id).get();
+
+      List<String> featuredProductIds = [];
+      String? customBackgroundUrl;
+
+      if (sellerCardDoc.exists) {
+        final cardData = sellerCardDoc.data()!;
+        featuredProductIds =
+            List<String>.from(cardData['featuredProductIds'] ?? []);
+        customBackgroundUrl = cardData['backgroundImageUrl'];
+      }
+
+      // Load products - either featured products or default products
+      List<ProductModel> products;
+
+      if (featuredProductIds.isNotEmpty) {
+        // Load the specific featured products
+        products = [];
+        for (final productId in featuredProductIds.take(4)) {
+          try {
+            final productDoc =
+                await _db.collection('products').doc(productId).get();
+            if (productDoc.exists) {
+              products.add(ProductModel.fromFirestore(productDoc));
+            }
+          } catch (e) {
+            print('Error loading featured product $productId: $e');
+          }
+        }
+      } else {
+        // Load default products if no featured products are set
+        products = await _fetchProducts(storeModel.id);
+      }
+
+      if (products.isEmpty) continue;
 
       final sellerProducts = products
           .map((p) => SellerProduct(
@@ -76,10 +113,10 @@ class _HomeScreenState extends State<HomeScreen> {
         storeId: storeModel.id,
         profileLetter:
             storeModel.name.isNotEmpty ? storeModel.name[0].toUpperCase() : '?',
-        rating: 4.9,
-        reviews: 25,
+        rating: 4.8,
+        reviews: 125,
         products: sellerProducts,
-        backgroundImageUrl: storeModel.banner,
+        backgroundImageUrl: customBackgroundUrl ?? storeModel.banner,
         isAssetBg: false,
       ));
     }
@@ -823,6 +860,37 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final products = await _fetchProducts(storeModel.id, limit: 20);
 
+    // Load collections for this store
+    final collectionsSnapshot = await FirebaseFirestore.instance
+        .collection('collections')
+        .where('storeId', isEqualTo: storeModel.id)
+        .where('isActive', isEqualTo: true)
+        .get();
+
+    final collections = collectionsSnapshot.docs
+        .map((doc) => StoreCollection(
+              id: doc.id,
+              name: doc.data()['name'] ?? '',
+              imageUrl: doc.data()['backgroundImage'] ?? '',
+            ))
+        .toList();
+
+    // Load managed categories for this store
+    final categoriesSnapshot = await FirebaseFirestore.instance
+        .collection('store_categories')
+        .where('storeId', isEqualTo: storeModel.id)
+        .where('isActive', isEqualTo: true)
+        .orderBy('sortOrder', descending: false)
+        .orderBy('createdAt', descending: false)
+        .get();
+
+    final categoryNames = <String>['All'];
+    categoryNames.addAll(
+      categoriesSnapshot.docs
+          .map((doc) => doc.data()['name'] as String? ?? '')
+          .where((name) => name.isNotEmpty),
+    );
+
     // Build StoreData for legacy StoreScreen
     final storeData = StoreData(
       id: storeModel.id,
@@ -833,8 +901,8 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: const Color(0xFF01BCE7),
       rating: 4.9,
       reviewCount: '25',
-      collections: const [],
-      categories: const ['All'],
+      collections: collections,
+      categories: categoryNames,
       productCount: products.length,
       products: products
           .map((p) => StoreProduct(
@@ -842,18 +910,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 name: p.name,
                 imageUrl: p.images.isNotEmpty ? p.images.first : '',
                 price: p.price,
+                category: _getProductCategory(p.id, categoriesSnapshot.docs),
               ))
           .toList(),
       showFollowButton: true,
       hasNotification: false,
     );
 
+    // Use Hours template for all stores (or add logic to choose template)
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => StoreScreen(storeData: storeData),
       ),
     );
+  }
+
+  String _getProductCategory(
+      String productId, List<QueryDocumentSnapshot> categoryDocs) {
+    for (final doc in categoryDocs) {
+      final data = doc.data() as Map<String, dynamic>?;
+      final productIds = List<String>.from(data?['productIds'] ?? []);
+      if (productIds.contains(productId)) {
+        return data?['name'] as String? ?? '';
+      }
+    }
+    return ''; // Product not in any category
   }
 }
 

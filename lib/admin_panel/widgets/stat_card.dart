@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../features/settings/themes/app_themes.dart';
 
 class StatCard extends StatelessWidget {
   final String title;
@@ -26,9 +27,9 @@ class StatCard extends StatelessWidget {
       width: 280,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppThemes.getCardColor(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: AppThemes.getBorderColor(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,21 +37,32 @@ class StatCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w600)),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppThemes.getSecondaryTextColor(context),
+                ),
+              ),
               Text(periodLabel,
-                  style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: AppThemes.getSecondaryTextColor(context))),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Text(value,
-                    style: const TextStyle(
-                        fontSize: 28, fontWeight: FontWeight.w700)),
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: AppThemes.getTextColor(context),
+                  ),
+                ),
               ),
               Container(
                 width: 72,
@@ -63,21 +75,43 @@ class StatCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Row(
             children: [
-              Icon(deltaUp ? Icons.arrow_upward : Icons.arrow_downward,
-                  size: 14, color: deltaUp ? Colors.green : Colors.red),
+              Icon(
+                deltaUp ? Icons.trending_up : Icons.trending_down,
+                size: 16,
+                color: deltaUp ? Colors.green : Colors.red,
+              ),
               const SizedBox(width: 4),
-              Text(delta,
-                  style: TextStyle(
-                      fontSize: 14,
-                      color: deltaUp ? Colors.green : Colors.red)),
+              Text(
+                delta,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: deltaUp ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(width: 4),
-              Text(comparisonLabel,
-                  style: const TextStyle(fontSize: 14, color: Colors.black54)),
+              Text(
+                comparisonLabel ?? 'vs last period',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppThemes.getSecondaryTextColor(context),
+                ),
+              ),
             ],
           ),
+          if (periodLabel != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              periodLabel!,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppThemes.getSecondaryTextColor(context),
+              ),
+            ),
+          ],
         ],
       ),
     );

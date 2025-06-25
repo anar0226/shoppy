@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/top_nav_bar.dart';
+import '../../features/settings/themes/app_themes.dart';
 
 class CustomersPage extends StatefulWidget {
   const CustomersPage({super.key});
@@ -13,7 +14,7 @@ class _CustomersPageState extends State<CustomersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
         children: [
           const SideMenu(selected: 'Customers'),
@@ -33,13 +34,18 @@ class _CustomersPageState extends State<CustomersPage> {
                           children: [
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
+                              children: [
                                 Text('Customers',
                                     style: TextStyle(
                                         fontSize: 28,
-                                        fontWeight: FontWeight.bold)),
-                                SizedBox(height: 4),
-                                Text('Manage your customer relationships'),
+                                        fontWeight: FontWeight.bold,
+                                        color:
+                                            AppThemes.getTextColor(context))),
+                                const SizedBox(height: 4),
+                                Text('Manage your customer relationships',
+                                    style: TextStyle(
+                                        color: AppThemes.getSecondaryTextColor(
+                                            context))),
                               ],
                             ),
                             ElevatedButton.icon(
@@ -63,11 +69,28 @@ class _CustomersPageState extends State<CustomersPage> {
                             SizedBox(
                               width: 260,
                               child: TextField(
+                                style: TextStyle(
+                                    color: AppThemes.getTextColor(context)),
                                 decoration: InputDecoration(
                                   hintText: 'Search customers...',
-                                  prefixIcon: const Icon(Icons.search),
+                                  hintStyle: TextStyle(
+                                      color: AppThemes.getSecondaryTextColor(
+                                          context)),
+                                  prefixIcon: Icon(Icons.search,
+                                      color: AppThemes.getSecondaryTextColor(
+                                          context)),
                                   border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8)),
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(
+                                          color: AppThemes.getBorderColor(
+                                              context))),
+                                  enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(
+                                          color: AppThemes.getBorderColor(
+                                              context))),
+                                  fillColor: AppThemes.getCardColor(context),
+                                  filled: true,
                                   isDense: true,
                                 ),
                               ),
@@ -92,26 +115,46 @@ class _CustomersPageState extends State<CustomersPage> {
                             ),
                             const Spacer(),
                             Row(
-                              children: const [
-                                Icon(Icons.person_outline, size: 16),
-                                SizedBox(width: 4),
-                                Text('4 customers'),
-                                SizedBox(width: 16),
-                                Icon(Icons.attach_money, size: 16),
-                                SizedBox(width: 4),
-                                Text('\$4,863.95 revenue'),
-                                SizedBox(width: 16),
-                                Icon(Icons.shopping_cart_outlined, size: 16),
-                                SizedBox(width: 4),
-                                Text('18 orders'),
+                              children: [
+                                Icon(Icons.person_outline,
+                                    size: 16,
+                                    color: AppThemes.getSecondaryTextColor(
+                                        context)),
+                                const SizedBox(width: 4),
+                                Text('4 customers',
+                                    style: TextStyle(
+                                        color:
+                                            AppThemes.getTextColor(context))),
+                                const SizedBox(width: 16),
+                                Icon(Icons.attach_money,
+                                    size: 16,
+                                    color: AppThemes.getSecondaryTextColor(
+                                        context)),
+                                const SizedBox(width: 4),
+                                Text('\$4,863.95 revenue',
+                                    style: TextStyle(
+                                        color:
+                                            AppThemes.getTextColor(context))),
+                                const SizedBox(width: 16),
+                                Icon(Icons.shopping_cart_outlined,
+                                    size: 16,
+                                    color: AppThemes.getSecondaryTextColor(
+                                        context)),
+                                const SizedBox(width: 4),
+                                Text('18 orders',
+                                    style: TextStyle(
+                                        color:
+                                            AppThemes.getTextColor(context))),
                               ],
                             ),
                           ],
                         ),
                         const SizedBox(height: 24),
-                        const Text('Customer Database',
+                        Text('Customer Database',
                             style: TextStyle(
-                                fontSize: 22, fontWeight: FontWeight.w700)),
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: AppThemes.getTextColor(context))),
                         const SizedBox(height: 12),
                         _customerTable(),
                       ],
@@ -130,23 +173,42 @@ class _CustomersPageState extends State<CustomersPage> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppThemes.getCardColor(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: AppThemes.getBorderColor(context)),
       ),
       child: DataTable(
         columnSpacing: 24,
         headingRowHeight: 56,
         dataRowHeight: 64,
-        headingTextStyle:
-            const TextStyle(fontWeight: FontWeight.w600, color: Colors.black54),
-        columns: const [
-          DataColumn(label: Text('Customer')),
-          DataColumn(label: Text('Location')),
-          DataColumn(label: Text('Orders')),
-          DataColumn(label: Text('Total Spent')),
-          DataColumn(label: Text('Status')),
-          DataColumn(label: Text('Actions')),
+        headingTextStyle: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: AppThemes.getSecondaryTextColor(context)),
+        columns: [
+          DataColumn(
+              label: Text('Customer',
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context)))),
+          DataColumn(
+              label: Text('Location',
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context)))),
+          DataColumn(
+              label: Text('Orders',
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context)))),
+          DataColumn(
+              label: Text('Total Spent',
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context)))),
+          DataColumn(
+              label: Text('Status',
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context)))),
+          DataColumn(
+              label: Text('Actions',
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context)))),
         ],
         rows: _rows(),
       ),
@@ -221,9 +283,14 @@ class _CustomersPageState extends State<CustomersPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(name,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppThemes.getTextColor(context))),
               Text(email,
-                  style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context),
+                      fontSize: 12)),
             ],
           )
         ])),
@@ -232,15 +299,20 @@ class _CustomersPageState extends State<CustomersPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(city),
+            Text(city,
+                style: TextStyle(color: AppThemes.getTextColor(context))),
             Text(country,
-                style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                style: TextStyle(
+                    color: AppThemes.getSecondaryTextColor(context),
+                    fontSize: 12)),
           ],
         )),
         // Orders
-        DataCell(Text(orders.toString())),
+        DataCell(Text(orders.toString(),
+            style: TextStyle(color: AppThemes.getTextColor(context)))),
         // Total Spent
-        DataCell(Text('\$${spent.toStringAsFixed(2)}')),
+        DataCell(Text('\$${spent.toStringAsFixed(2)}',
+            style: TextStyle(color: AppThemes.getTextColor(context)))),
         // Status
         DataCell(Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -249,12 +321,13 @@ class _CustomersPageState extends State<CustomersPage> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(status,
-              style: const TextStyle(fontSize: 12, color: Colors.black87)),
+              style: TextStyle(
+                  fontSize: 12, color: AppThemes.getTextColor(context))),
         )),
         // Actions
-        DataCell(Row(children: const [
-          Icon(Icons.edit, size: 18),
-          SizedBox(width: 16),
+        DataCell(Row(children: [
+          Icon(Icons.edit, size: 18, color: AppThemes.getTextColor(context)),
+          const SizedBox(width: 16),
           Icon(Icons.delete_outline, size: 18, color: Colors.red),
         ])),
       ]);

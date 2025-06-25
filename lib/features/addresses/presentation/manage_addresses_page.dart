@@ -17,40 +17,143 @@ class ManageAddressesPage extends StatelessWidget {
       body: Consumer<AddressProvider>(
         builder: (_, provider, __) {
           if (provider.addresses.isEmpty) {
-            // redirect to add
-            Future.microtask(() => Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (_) => AddEditAddressPage())));
-            return const SizedBox.shrink();
+            // Show empty state instead of redirecting
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 80,
+                      color: Colors.grey.shade400,
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'No addresses yet',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Add your first shipping address to continue with your orders.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade600,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => AddEditAddressPage()),
+                      ),
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      label: const Text(
+                        'Add your first address',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemBuilder: (_, i) {
               final addr = provider.addresses[i];
-              return ListTile(
-                title: Text('${addr.firstName} ${addr.lastName}'),
-                subtitle:
-                    Text('${addr.line1} ${addr.apartment}\n${addr.phone}'),
-                isThreeLine: true,
-                leading: Radio<String>(
-                  value: addr.id,
-                  groupValue: provider.defaultAddressId,
-                  onChanged: (val) {
-                    if (val != null) {
-                      provider.setDefaultAddress(val);
-                    }
+              return Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  title: Text(
+                    '${addr.firstName} ${addr.lastName}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      '${addr.line1}${addr.apartment.isNotEmpty ? ', ${addr.apartment}' : ''}\n${addr.phone}',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                  isThreeLine: true,
+                  leading: Radio<String>(
+                    value: addr.id,
+                    groupValue: provider.defaultAddressId,
+                    activeColor: Colors.blue,
+                    onChanged: (val) {
+                      if (val != null) {
+                        provider.setDefaultAddress(val);
+                      }
+                    },
+                  ),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (action) {
+                      if (action == 'edit') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AddEditAddressPage(address: addr),
+                          ),
+                        );
+                      } else if (action == 'delete') {
+                        _showDeleteDialog(context, provider, addr);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Text('Edit'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Delete'),
+                      ),
+                    ],
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AddEditAddressPage(address: addr),
+                      ),
+                    );
                   },
                 ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AddEditAddressPage(address: addr),
-                    ),
-                  );
-                },
               );
             },
-            separatorBuilder: (_, __) => const Divider(),
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemCount: provider.addresses.length,
           );
         },
@@ -63,6 +166,32 @@ class ManageAddressesPage extends StatelessWidget {
           style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16)),
           child: const Text('Add new address'),
         ),
+      ),
+    );
+  }
+
+  void _showDeleteDialog(
+      BuildContext context, AddressProvider provider, AddressModel address) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Address'),
+        content: Text(
+            'Are you sure you want to delete the address for ${address.firstName} ${address.lastName}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              provider.delete(address.id);
+              Navigator.pop(context);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }

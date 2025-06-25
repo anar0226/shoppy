@@ -156,6 +156,89 @@ class ImageUploadService {
     return downloadUrls;
   }
 
+  /// Upload a general image file (for seller cards, banners, etc.)
+  static Future<String> uploadImageFile(
+    XFile imageFile,
+    String storagePath, {
+    Function(double)? onProgress,
+  }) async {
+    try {
+      // Get optimized image bytes
+      final Uint8List imageBytes = await _getOptimizedImageBytes(imageFile);
+
+      // Create storage reference
+      final String fileName = generateFileName(imageFile.name);
+      final Reference storageRef =
+          _storage.ref().child('$storagePath/$fileName');
+
+      // Set metadata
+      final SettableMetadata metadata = SettableMetadata(
+        contentType: _getContentType(imageFile.name),
+        customMetadata: {
+          'uploadedAt': DateTime.now().toIso8601String(),
+          'originalName': imageFile.name,
+        },
+      );
+
+      // Upload with progress tracking
+      final UploadTask uploadTask = storageRef.putData(imageBytes, metadata);
+
+      debugPrint('Upload task created, file size: ${imageBytes.length} bytes');
+
+      // Listen to progress if callback provided
+      if (onProgress != null) {
+        uploadTask.snapshotEvents.listen(
+          (TaskSnapshot snapshot) {
+            debugPrint(
+                'Upload snapshot: state=${snapshot.state}, bytes=${snapshot.bytesTransferred}/${snapshot.totalBytes}');
+            if (snapshot.totalBytes > 0) {
+              final double progress =
+                  snapshot.bytesTransferred / snapshot.totalBytes;
+              onProgress(progress);
+            } else {
+              debugPrint('Warning: totalBytes is 0, upload may be stuck');
+            }
+          },
+          onError: (error) {
+            debugPrint('Upload progress stream error: $error');
+          },
+          onDone: () {
+            debugPrint('Upload progress stream completed');
+          },
+        );
+      }
+
+      // Wait for completion with timeout
+      TaskSnapshot snapshot;
+      try {
+        snapshot = await uploadTask.timeout(
+          const Duration(minutes: 2),
+          onTimeout: () {
+            throw Exception('Upload timed out after 2 minutes');
+          },
+        );
+      } catch (e) {
+        debugPrint('Upload task failed: $e');
+        // Try to cancel the upload task
+        try {
+          await uploadTask.cancel();
+        } catch (cancelError) {
+          debugPrint('Failed to cancel upload: $cancelError');
+        }
+        rethrow;
+      }
+
+      // Get download URL
+      final String downloadUrl = await snapshot.ref.getDownloadURL();
+
+      debugPrint('Image uploaded successfully: $downloadUrl');
+      return downloadUrl;
+    } catch (e) {
+      debugPrint('Image upload failed: $e');
+      rethrow;
+    }
+  }
+
   /// Get optimized image bytes with compression
   static Future<Uint8List> _getOptimizedImageBytes(XFile imageFile) async {
     try {

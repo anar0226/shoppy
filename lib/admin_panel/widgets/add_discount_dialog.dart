@@ -137,10 +137,14 @@ class _AddDiscountDialogState extends State<AddDiscountDialog> {
     return Dialog(
       child: Container(
         width: 600,
-        height: 650,
+        constraints: const BoxConstraints(
+          maxHeight: 650,
+          minHeight: 400,
+        ),
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -155,7 +159,7 @@ class _AddDiscountDialogState extends State<AddDiscountDialog> {
               ],
             ),
             const SizedBox(height: 20),
-            Expanded(
+            Flexible(
               child: Form(
                 key: _formKey,
                 child: SingleChildScrollView(
@@ -277,12 +281,12 @@ class _AddDiscountDialogState extends State<AddDiscountDialog> {
                         ],
                         onChanged: (v) => setState(() => _status = v!),
                       ),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [

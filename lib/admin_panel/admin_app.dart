@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'pages/dashboard_page.dart';
 import 'auth/auth_service.dart';
 import 'auth/login_page.dart';
 import 'auth/verify_email_page.dart';
 import 'widgets/store_setup_dialog.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../features/settings/providers/app_settings_provider.dart';
+import '../features/settings/themes/app_themes.dart';
+// import '../l10n/generated/app_localizations.dart'; // Will be generated after build
 
 class AdminApp extends StatefulWidget {
   const AdminApp({super.key});
@@ -17,46 +22,62 @@ class AdminApp extends StatefulWidget {
 class _AdminAppState extends State<AdminApp> {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Shoppy Admin',
-      theme: ThemeData(
-        primarySwatch: Colors.indigo,
-        useMaterial3: true,
-      ),
-      debugShowCheckedModeBanner: false,
-      home: StreamBuilder<User?>(
-        stream: AuthService.instance.authStateChanges,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-                body: Center(child: CircularProgressIndicator()));
-          }
-          if (snapshot.hasData) {
-            final user = snapshot.data as User?;
-            if (user != null && user.emailVerified) {
-              return FutureBuilder<bool>(
-                future: _checkStoreSetup(user.uid),
-                builder: (context, storeSnapshot) {
-                  if (storeSnapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Scaffold(
-                        body: Center(child: CircularProgressIndicator()));
-                  }
+    return ChangeNotifierProvider(
+      create: (context) => AppSettingsProvider(),
+      child: Consumer<AppSettingsProvider>(
+        builder: (context, settings, child) {
+          return MaterialApp(
+            title: 'Shoppy Admin',
+            theme: AppThemes.lightTheme,
+            darkTheme: AppThemes.darkTheme,
+            themeMode: settings.themeMode,
+            debugShowCheckedModeBanner: false,
 
-                  final needsSetup = storeSnapshot.data ?? false;
-                  if (needsSetup) {
-                    return _StoreSetupWrapper(userId: user.uid);
-                  }
+            // Internationalization (temporarily disabled until generated)
+            locale: settings.locale,
+            localizationsDelegates: const [
+              // AppLocalizations.delegate, // Will be enabled after generation
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppSettingsProvider.supportedLocales,
+            home: StreamBuilder<User?>(
+              stream: AuthService.instance.authStateChanges,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                      body: Center(child: CircularProgressIndicator()));
+                }
+                if (snapshot.hasData) {
+                  final user = snapshot.data as User?;
+                  if (user != null && user.emailVerified) {
+                    return FutureBuilder<bool>(
+                      future: _checkStoreSetup(user.uid),
+                      builder: (context, storeSnapshot) {
+                        if (storeSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Scaffold(
+                              body: Center(child: CircularProgressIndicator()));
+                        }
 
-                  return const DashboardPage();
-                },
-              );
-            } else {
-              return const VerifyEmailPage();
-            }
-          } else {
-            return const LoginPage();
-          }
+                        final needsSetup = storeSnapshot.data ?? false;
+                        if (needsSetup) {
+                          return _StoreSetupWrapper(userId: user.uid);
+                        }
+
+                        return const DashboardPage();
+                      },
+                    );
+                  } else {
+                    return const VerifyEmailPage();
+                  }
+                } else {
+                  return const LoginPage();
+                }
+              },
+            ),
+          );
         },
       ),
     );

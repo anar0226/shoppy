@@ -9,6 +9,25 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:typed_data';
 import '../../core/services/image_upload_service.dart';
 import '../../core/services/direct_upload_service.dart';
+import '../../features/discounts/models/discount_model.dart';
+import '../../features/discounts/services/discount_service.dart';
+
+class ProductVariant {
+  final String name;
+  final int inventory;
+
+  ProductVariant({
+    required this.name,
+    required this.inventory,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'inventory': inventory,
+    };
+  }
+}
 
 class AddProductDialog extends StatefulWidget {
   const AddProductDialog({super.key});
@@ -22,29 +41,116 @@ class _AddProductDialogState extends State<AddProductDialog> {
 
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
-  final _priceCtrl = TextEditingController(text: '0.00');
+  final _priceCtrl = TextEditingController();
   final _invCtrl = TextEditingController(text: '0');
   String _status = 'Active';
   XFile? _imageFile;
   final _picker = ImagePicker();
   String? _category;
   String? _subcategory;
+  String? _leafCategory;
 
   bool _isDiscounted = false;
-  final _discountCtrl = TextEditingController(text: '0');
+  String? _selectedDiscountId;
+  List<DiscountModel> _availableDiscounts = [];
+  bool _discountsLoaded = false;
+  final _discountService = DiscountService();
+
+  // Variant management
+  bool _hasVariants = false;
+  String _variantType = 'Size'; // Size, Color, etc.
+  List<ProductVariant> _variants = [];
+  final _variantNameCtrl = TextEditingController();
+  final _variantInventoryCtrl = TextEditingController();
 
   bool _saving = false;
 
   final _catMap = const {
-    'Men': ['Shoes', 'Jackets & Tops', 'Pants', 'Accessories'],
-    'Women': ['Shoes', 'Intimates', 'Activewear', 'Dresses'],
-    'Beauty': ['Skincare', 'Makeup', 'Hair'],
-    'Electronics': ['Phones', 'Laptops', 'Accessories'],
-    'Home': ['Furniture', 'Decor', 'Kitchen'],
-    'Sports': ['Fitness', 'Outdoor', 'Teams'],
-    'Kids': ['Toys', 'Clothing'],
-    'Other': ['Misc'],
+    'Men': {
+      'Shoes': ['Sneakers', 'Boots', 'Dress Shoes', 'Sandals', 'Slippers'],
+      'Jackets & Tops': [
+        'Hoodies',
+        'Jackets',
+        'Polo Shirts',
+        'T-Shirts',
+        'Tank Tops'
+      ],
+      'Pants': ['Jeans', 'Chinos', 'Shorts', 'Sweatpants', 'Dress Pants'],
+      'Accessories': ['Watches', 'Belts', 'Hats', 'Bags', 'Sunglasses'],
+    },
+    'Women': {
+      'Shoes': ['Heels', 'Flats', 'Sneakers', 'Boots', 'Sandals'],
+      'Intimates': ['Bras', 'Lingerie', 'Shapewear', 'Underwear'],
+      'Activewear': ['Sports Bras', 'Leggings', 'Tank Tops', 'Hoodies'],
+      'Dresses': ['Casual', 'Formal', 'Cocktail', 'Maxi', 'Mini'],
+    },
+    'Beauty': {
+      'Skincare': ['Cleansers', 'Moisturizers', 'Serums', 'Sunscreen'],
+      'Makeup': ['Foundation', 'Lipstick', 'Eyeshadow', 'Mascara'],
+      'Hair': ['Shampoo', 'Conditioner', 'Styling', 'Tools'],
+    },
+    'Electronics': {
+      'Phones': ['Smartphones', 'Cases', 'Chargers', 'Screen Protectors'],
+      'Laptops': ['Gaming', 'Business', 'Ultrabooks', 'Accessories'],
+      'Accessories': ['Headphones', 'Speakers', 'Cables', 'Power Banks'],
+    },
+    'Home': {
+      'Furniture': ['Chairs', 'Tables', 'Sofas', 'Storage'],
+      'Decor': ['Wall Art', 'Candles', 'Plants', 'Mirrors'],
+      'Kitchen': ['Cookware', 'Appliances', 'Utensils', 'Storage'],
+    },
+    'Sports': {
+      'Fitness': ['Weights', 'Cardio', 'Yoga', 'Accessories'],
+      'Outdoor': ['Camping', 'HIking', 'Water Sports', 'Winter Sports'],
+      'Teams': ['Football', 'Basketball', 'Soccer', 'Baseball'],
+    },
+    'Kids': {
+      'Toys': ['Educational', 'Action Figures', 'Dolls', 'Games'],
+      'Clothing': ['Shirts', 'Pants', 'Dresses', 'Shoes'],
+    },
+    'Other': {
+      'Misc': ['General', 'Unique', 'Custom'],
+    },
   };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDiscounts();
+  }
+
+  Future<void> _loadDiscounts() async {
+    try {
+      final uid = AuthService.instance.currentUser?.uid;
+      if (uid == null) return;
+
+      final storeSnap = await FirebaseFirestore.instance
+          .collection('stores')
+          .where('ownerId', isEqualTo: uid)
+          .where('status', isEqualTo: 'active')
+          .limit(1)
+          .get();
+
+      if (storeSnap.docs.isEmpty) return;
+
+      final storeId = storeSnap.docs.first.id;
+
+      final discountsStream = _discountService.getStoreDiscounts(storeId);
+      discountsStream.listen((discounts) {
+        if (mounted) {
+          setState(() {
+            _availableDiscounts = discounts.where((d) => d.isActive).toList();
+            _discountsLoaded = true;
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint('Error loading discounts: $e');
+      if (mounted) {
+        setState(() => _discountsLoaded = true);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -52,11 +158,139 @@ class _AddProductDialogState extends State<AddProductDialog> {
     _descCtrl.dispose();
     _priceCtrl.dispose();
     _invCtrl.dispose();
-    _discountCtrl.dispose();
+    _variantNameCtrl.dispose();
+    _variantInventoryCtrl.dispose();
     super.dispose();
   }
 
   double _uploadProgress = 0.0;
+
+  void _addVariant() {
+    final name = _variantNameCtrl.text.trim();
+    final inventoryText = _variantInventoryCtrl.text.trim();
+
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter variant name')),
+      );
+      return;
+    }
+
+    final inventory = int.tryParse(inventoryText);
+    if (inventory == null || inventory < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter valid inventory count')),
+      );
+      return;
+    }
+
+    // Check for duplicate variant names
+    if (_variants.any((v) => v.name.toLowerCase() == name.toLowerCase())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Variant with this name already exists')),
+      );
+      return;
+    }
+
+    setState(() {
+      _variants.add(ProductVariant(name: name, inventory: inventory));
+      _variantNameCtrl.clear();
+      _variantInventoryCtrl.clear();
+    });
+  }
+
+  void _removeVariant(int index) {
+    setState(() {
+      _variants.removeAt(index);
+    });
+  }
+
+  void _editVariant(int index) {
+    final variant = _variants[index];
+    final nameController = TextEditingController(text: variant.name);
+    final inventoryController =
+        TextEditingController(text: variant.inventory.toString());
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Variant'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'Variant Name',
+                hintText: _variantType == 'Size' ? 'e.g., M' : 'e.g., Red',
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: inventoryController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Stock',
+                hintText: '0',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              final inventoryText = inventoryController.text.trim();
+
+              if (name.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter variant name')),
+                );
+                return;
+              }
+
+              final inventory = int.tryParse(inventoryText);
+              if (inventory == null || inventory < 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Please enter valid inventory count')),
+                );
+                return;
+              }
+
+              // Check for duplicate variant names (excluding current variant)
+              final existingNames = _variants
+                  .asMap()
+                  .entries
+                  .where((entry) => entry.key != index)
+                  .map((entry) => entry.value.name.toLowerCase())
+                  .toSet();
+
+              if (existingNames.contains(name.toLowerCase())) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Variant with this name already exists')),
+                );
+                return;
+              }
+
+              setState(() {
+                _variants[index] =
+                    ProductVariant(name: name, inventory: inventory);
+              });
+
+              Navigator.of(context).pop();
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _save() async {
     if (_saving) return; // prevent double-tap
@@ -65,6 +299,15 @@ class _AddProductDialogState extends State<AddProductDialog> {
     if (_imageFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please choose an image')));
+      return;
+    }
+
+    // Validate variants if product has variants
+    if (_hasVariants && _variants.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Please add at least one variant for this product')),
+      );
       return;
     }
 
@@ -117,22 +360,47 @@ class _AddProductDialogState extends State<AddProductDialog> {
       final price = double.tryParse(_priceCtrl.text.trim()) ?? 0;
       final inventory = int.tryParse(_invCtrl.text.trim()) ?? 0;
 
+      // Find selected discount details
+      DiscountModel? selectedDiscount;
+      if (_isDiscounted && _selectedDiscountId != null) {
+        selectedDiscount = _availableDiscounts.firstWhere(
+          (d) => d.id == _selectedDiscountId,
+          orElse: () => _availableDiscounts.first,
+        );
+      }
+
       final data = {
         'name': _nameCtrl.text.trim(),
         'description': _descCtrl.text.trim(),
         'price': price,
-        'stock': inventory,
+        'stock': _hasVariants
+            ? 0
+            : inventory, // Use 0 for variants, individual inventory for simple products
         'images': [imageUrl],
-        'category': _category,
-        'subcategory': _subcategory,
+        'category': _category, // Optional now
+        'subcategory': _subcategory, // Optional now
+        'leafCategory': _leafCategory, // Optional now
         'isActive': _status == 'Active',
         'storeId': storeId,
         'ownerId': uid,
         'createdAt': Timestamp.now(),
         'updatedAt': Timestamp.now(),
+        'hasVariants': _hasVariants,
+        'variantType': _hasVariants ? _variantType : null,
+        'variants':
+            _hasVariants ? _variants.map((v) => v.toMap()).toList() : null,
+        'totalStock': _hasVariants
+            ? _variants.fold<int>(0, (sum, variant) => sum + variant.inventory)
+            : inventory,
         'discount': {
           'isDiscounted': _isDiscounted,
-          'percent': double.tryParse(_discountCtrl.text.trim()) ?? 0,
+          'discountId': _isDiscounted ? _selectedDiscountId : null,
+          'discountCode': _isDiscounted && selectedDiscount != null
+              ? selectedDiscount.code
+              : null,
+          'percent': _isDiscounted && selectedDiscount != null
+              ? selectedDiscount.value
+              : 0,
         },
         'review': {
           'numberOfReviews': 0,
@@ -371,7 +639,8 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         controller: _priceCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
-                        decoration: const InputDecoration(hintText: '0.00'),
+                        decoration:
+                            const InputDecoration(hintText: 'Enter price'),
                         validator: (v) {
                           final p = double.tryParse(v ?? '');
                           if (p == null || p <= 0) return 'Enter valid price';
@@ -386,41 +655,256 @@ class _AddProductDialogState extends State<AddProductDialog> {
                               value: _isDiscounted,
                               onChanged: (val) => setState(() {
                                     _isDiscounted = val ?? false;
+                                    if (!_isDiscounted) {
+                                      _selectedDiscountId = null;
+                                    }
                                   })),
                           const Text('Apply Discount'),
                           const SizedBox(width: 16),
-                          if (_isDiscounted)
+                          if (_isDiscounted) ...[
                             Expanded(
-                              child: TextFormField(
-                                controller: _discountCtrl,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                decoration: const InputDecoration(
-                                    hintText: 'Percent e.g. 10'),
-                                validator: (v) {
-                                  if (!_isDiscounted) return null;
-                                  final p = double.tryParse(v ?? '');
-                                  if (p == null || p <= 0) {
-                                    return 'Enter %';
-                                  }
-                                  return null;
-                                },
-                              ),
+                              child: _discountsLoaded
+                                  ? _availableDiscounts.isEmpty
+                                      ? const Text(
+                                          'No active discounts available',
+                                          style: TextStyle(
+                                            color: Colors.orange,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        )
+                                      : DropdownButtonFormField<String>(
+                                          value: _selectedDiscountId,
+                                          hint: const Text('Select a discount'),
+                                          items: _availableDiscounts
+                                              .map((discount) {
+                                            return DropdownMenuItem<String>(
+                                              value: discount.id,
+                                              child: Row(
+                                                children: [
+                                                  Icon(discount.iconData,
+                                                      size: 16),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Text(
+                                                          discount.name,
+                                                          style: const TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600),
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        ),
+                                                        Text(
+                                                          '${discount.code} - ${discount.valueDisplayText}',
+                                                          style:
+                                                              const TextStyle(
+                                                            fontSize: 12,
+                                                            color: Colors.grey,
+                                                          ),
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          }).toList(),
+                                          onChanged: (value) => setState(() =>
+                                              _selectedDiscountId = value),
+                                          validator: (v) {
+                                            if (_isDiscounted && v == null) {
+                                              return 'Please select a discount';
+                                            }
+                                            return null;
+                                          },
+                                          isExpanded: true,
+                                        )
+                                  : const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    ),
                             ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 16),
                       _label('Inventory'),
-                      TextFormField(
-                        controller: _invCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(hintText: '0'),
-                        validator: (v) {
-                          final n = int.tryParse(v ?? '');
-                          if (n == null || n < 0) return 'Enter inventory';
-                          return null;
-                        },
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Checkbox(
+                                value: _hasVariants,
+                                onChanged: (val) => setState(() {
+                                  _hasVariants = val ?? false;
+                                  if (!_hasVariants) {
+                                    _variants.clear();
+                                  }
+                                }),
+                              ),
+                              const Text(
+                                  'This product has variants (sizes, colors, etc.)'),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          if (_hasVariants) ...[
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 2,
+                                  child: DropdownButtonFormField<String>(
+                                    value: _variantType,
+                                    items: const [
+                                      DropdownMenuItem(
+                                          value: 'Size', child: Text('Size')),
+                                      DropdownMenuItem(
+                                          value: 'Color', child: Text('Color')),
+                                      DropdownMenuItem(
+                                          value: 'Material',
+                                          child: Text('Material')),
+                                      DropdownMenuItem(
+                                          value: 'Style', child: Text('Style')),
+                                      DropdownMenuItem(
+                                          value: 'Other', child: Text('Other')),
+                                    ],
+                                    onChanged: (v) =>
+                                        setState(() => _variantType = v!),
+                                    decoration: const InputDecoration(
+                                      labelText: 'Variant Type',
+                                      isDense: true,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 2,
+                                  child: TextFormField(
+                                    controller: _variantNameCtrl,
+                                    decoration: InputDecoration(
+                                      labelText: 'Variant Name',
+                                      hintText: _variantType == 'Size'
+                                          ? 'e.g., M'
+                                          : 'e.g., Red',
+                                      isDense: true,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _variantInventoryCtrl,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Stock',
+                                      hintText: '0',
+                                      isDense: true,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ElevatedButton(
+                                  onPressed: _addVariant,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue,
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size(60, 36),
+                                  ),
+                                  child: const Text('Add'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            if (_variants.isNotEmpty) ...[
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  border:
+                                      Border.all(color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Variants (${_variants.length})',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ..._variants.asMap().entries.map((entry) {
+                                      final index = entry.key;
+                                      final variant = entry.value;
+                                      return Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 4),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                '${variant.name} (${variant.inventory} in stock)',
+                                                style: const TextStyle(
+                                                    fontSize: 14),
+                                              ),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.edit,
+                                                  color: Colors.blue, size: 18),
+                                              onPressed: () =>
+                                                  _editVariant(index),
+                                              tooltip: 'Edit variant',
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.delete,
+                                                  color: Colors.red, size: 18),
+                                              onPressed: () =>
+                                                  _removeVariant(index),
+                                              tooltip: 'Remove variant',
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                    const Divider(),
+                                    Text(
+                                      'Total Stock: ${_variants.fold<int>(0, (sum, v) => sum + v.inventory)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ] else ...[
+                            TextFormField(
+                              controller: _invCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                  hintText: 'Enter inventory count'),
+                              validator: (v) {
+                                if (!_hasVariants) {
+                                  final n = int.tryParse(v ?? '');
+                                  if (n == null || n < 0)
+                                    return 'Enter valid inventory';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 16),
                       _label('Status'),
@@ -435,7 +919,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         onChanged: (v) => setState(() => _status = v!),
                       ),
                       const SizedBox(height: 16),
-                      _label('Category'),
+                      _label('Category (Optional)'),
                       DropdownButtonFormField<String>(
                         value: _category,
                         items: _catMap.keys
@@ -445,21 +929,49 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         onChanged: (v) => setState(() {
                           _category = v;
                           _subcategory = null;
+                          _leafCategory = null;
                         }),
+                        decoration: const InputDecoration(
+                          hintText: 'Select a category (optional)',
+                        ),
                       ),
                       const SizedBox(height: 16),
-                      _label('Sub-category'),
+                      _label('Sub-category (Optional)'),
                       DropdownButtonFormField<String>(
                         value: _subcategory,
                         items: (_category != null)
                             ? _catMap[_category]!
+                                .keys
                                 .map((s) =>
                                     DropdownMenuItem(value: s, child: Text(s)))
                                 .toList()
                             : const [],
                         onChanged: _category == null
                             ? null
-                            : (v) => setState(() => _subcategory = v),
+                            : (v) => setState(() {
+                                  _subcategory = v;
+                                  _leafCategory = null;
+                                }),
+                        decoration: const InputDecoration(
+                          hintText: 'Select a sub-category (optional)',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _label('Product Type (Optional)'),
+                      DropdownButtonFormField<String>(
+                        value: _leafCategory,
+                        items: (_category != null && _subcategory != null)
+                            ? _catMap[_category]![_subcategory]!
+                                .map((leaf) => DropdownMenuItem(
+                                    value: leaf, child: Text(leaf)))
+                                .toList()
+                            : const [],
+                        onChanged: (_category == null || _subcategory == null)
+                            ? null
+                            : (v) => setState(() => _leafCategory = v),
+                        decoration: const InputDecoration(
+                          hintText: 'Select a product type (optional)',
+                        ),
                       ),
                     ],
                   ),

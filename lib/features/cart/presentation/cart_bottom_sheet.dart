@@ -53,7 +53,7 @@ class CartBottomSheet extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
+                    backgroundColor: const Color.fromARGB(255, 22, 14, 179),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -94,7 +94,7 @@ class CartBottomSheet extends StatelessWidget {
                                 ? first.product.images.first
                                 : '',
                             name: first.product.name,
-                            variant: 'S',
+                            variant: first.variant ?? 'Standard',
                             price: first.product.price,
                           ),
                         ),
@@ -136,6 +136,14 @@ class CartBottomSheet extends StatelessWidget {
   Widget _CartItemTile(
       {required BuildContext context, required CartItem item}) {
     final cart = Provider.of<CartProvider>(context, listen: false);
+
+    // Calculate original price if product is discounted
+    double? originalPrice;
+    if (item.product.isDiscounted && item.product.discountPercent > 0) {
+      originalPrice =
+          item.product.price / (1 - item.product.discountPercent / 100);
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
@@ -161,23 +169,30 @@ class CartBottomSheet extends StatelessWidget {
                     style: const TextStyle(
                         color: Colors.white, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('S',
-                    style: const TextStyle(
-                        color: Colors.white70)), // placeholder size
+                Text(item.variant ?? 'Standard',
+                    style: const TextStyle(color: Colors.white70)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    // delete
+                    // delete - just red icon
                     IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.white70),
+                      icon:
+                          const Icon(Icons.delete, color: Colors.red, size: 20),
                       onPressed: () => cart.removeItem(item.product.id),
+                      padding: const EdgeInsets.all(4),
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
                     ),
+                    const SizedBox(width: 8),
                     _qtyButton(
                         '-', () => cart.changeQuantity(item.product.id, -1)),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
                       child: Text('${item.quantity}',
-                          style: const TextStyle(color: Colors.white)),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold)),
                     ),
                     _qtyButton(
                         '+', () => cart.changeQuantity(item.product.id, 1)),
@@ -190,12 +205,18 @@ class CartBottomSheet extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text('\$${item.product.price.toStringAsFixed(2)}',
-                  style: const TextStyle(color: Colors.white)),
-              const SizedBox(height: 4),
-              Text('\$100.00', // original price placeholder
                   style: const TextStyle(
-                      color: Colors.white38,
-                      decoration: TextDecoration.lineThrough)),
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold)),
+              if (originalPrice != null) ...[
+                const SizedBox(height: 4),
+                Text('\$${originalPrice.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                        color: Colors.white54,
+                        decoration: TextDecoration.lineThrough,
+                        fontSize: 14)),
+              ],
             ],
           ),
         ],
@@ -207,14 +228,19 @@ class CartBottomSheet extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 28,
-        height: 28,
+        width: 32,
+        height: 32,
         decoration: BoxDecoration(
-          color: Colors.white12,
+          color: Colors.white.withOpacity(0.2),
           borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.white.withOpacity(0.3)),
         ),
         alignment: Alignment.center,
-        child: Text(label, style: const TextStyle(color: Colors.white)),
+        child: Text(label,
+            style: const TextStyle(
+                color: Colors.black,
+                fontSize: 18,
+                fontWeight: FontWeight.bold)),
       ),
     );
   }

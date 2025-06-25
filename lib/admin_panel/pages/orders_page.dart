@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/top_nav_bar.dart';
 import '../widgets/side_menu.dart';
+import '../../features/settings/themes/app_themes.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../auth/auth_service.dart';
 
@@ -10,7 +11,7 @@ class OrdersPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
         children: [
           const SideMenu(selected: 'Orders'),
@@ -198,7 +199,9 @@ class OrdersPage extends StatelessWidget {
               children: [
                 Text(customer),
                 Text(email,
-                    style: TextStyle(color: Colors.black54, fontSize: 12)),
+                    style: TextStyle(
+                        color: AppThemes.getSecondaryTextColor(context),
+                        fontSize: 12)),
               ],
             )),
             DataCell(Text('${date.month}/${date.day}/${date.year}')),
@@ -210,7 +213,8 @@ class OrdersPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(status,
-                  style: const TextStyle(fontSize: 12, color: Colors.black87)),
+                  style: TextStyle(
+                      fontSize: 12, color: AppThemes.getTextColor(context))),
             )),
             DataCell(Row(children: const [
               Icon(Icons.edit, size: 18),
@@ -223,16 +227,17 @@ class OrdersPage extends StatelessWidget {
         return Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppThemes.getCardColor(context),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
+            border: Border.all(color: AppThemes.getBorderColor(context)),
           ),
           child: DataTable(
             columnSpacing: 24,
             headingRowHeight: 56,
             dataRowHeight: 64,
-            headingTextStyle: const TextStyle(
-                fontWeight: FontWeight.w600, color: Colors.black54),
+            headingTextStyle: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppThemes.getSecondaryTextColor(context)),
             columns: const [
               DataColumn(label: Text('Order')),
               DataColumn(label: Text('Customer')),
