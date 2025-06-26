@@ -1,0 +1,207 @@
+name: 🔒 Security Scan
+
+on:
+  schedule:
+    - cron: '0 2 * * 1' # Weekly on Mondays at 2 AM
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  # =====================================
+  # DEPENDENCY VULNERABILITY SCAN
+  # =====================================
+  dependency-scan:
+    name: 🛡️ Dependency Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          cache: true
+
+      - name: 📦 Get Dependencies
+        run: flutter pub get
+
+      - name: 🔍 Dart Vulnerability Scan
+        run: |
+          dart pub audit --json > security-audit.json || true
+          cat security-audit.json
+
+      - name: 📊 Upload Security Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-audit-report
+          path: security-audit.json
+          retention-days: 30
+
+  # =====================================
+  # SECRET DETECTION
+  # =====================================
+  secret-scan:
+    name: 🔐 Secret Detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 Run Secret Detection
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  # =====================================
+  # CODE SECURITY ANALYSIS
+  # =====================================
+  code-security:
+    name: 🔍 Code Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🔍 Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: 'javascript'
+
+      - name: 🏗️ Build Project
+        run: |
+          cd functions
+          npm ci
+          npm run build
+
+      - name: 🔍 Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+
+  # =====================================
+  # FIREBASE SECURITY RULES VALIDATION
+  # =====================================
+  firebase-security:
+    name: 🔥 Firebase Rules Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: 📦 Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: 🔍 Validate Firestore Rules
+        run: |
+          firebase --version
+          echo "Validating Firestore Security Rules..."
+          if firebase firestore:rules:validate firestore.rules --project shoppy-6d81f; then
+            echo "✅ Firestore rules are valid"
+          else
+            echo "❌ Firestore rules validation failed"
+            exit 1
+          fi
+
+      - name: 🔍 Validate Storage Rules
+        run: |
+          echo "Validating Storage Security Rules..."
+          if firebase storage:rules:validate storage.rules --project shoppy-6d81f; then
+            echo "✅ Storage rules are valid"
+          else
+            echo "❌ Storage rules validation failed"
+            exit 1
+          fi
+
+  # =====================================
+  # SECURITY REPORT
+  # =====================================
+  security-report:
+    name: 📋 Security Report
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [dependency-scan, secret-scan, code-security, firebase-security]
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 📦 Download Security Reports
+        uses: actions/download-artifact@v3
+        with:
+          name: security-audit-report
+          path: ./reports/
+
+      - name: 📊 Generate Security Summary
+        run: |
+          echo "## 🔒 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check job statuses
+          if [ "${{ needs.dependency-scan.result }}" == "success" ]; then
+            echo "✅ **Dependency Scan**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Dependency Scan**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.secret-scan.result }}" == "success" ]; then
+            echo "✅ **Secret Detection**: No secrets found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Secret Detection**: Potential secrets detected" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.code-security.result }}" == "success" ]; then
+            echo "✅ **Code Security**: No vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Code Security**: Vulnerabilities detected" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.firebase-security.result }}" == "success" ]; then
+            echo "✅ **Firebase Rules**: Valid" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Firebase Rules**: Validation failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📅 **Scan Date**: $(date)" >> $GITHUB_STEP_SUMMARY
+
+      - name: 📧 Security Alert (Critical Issues)
+        if: ${{ failure() && github.ref == 'refs/heads/main' }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "🚨 SECURITY ALERT: Shoppy App Vulnerabilities Detected"
+          to: ${{ secrets.SECURITY_EMAIL }}
+          from: Security Scanner <${{ secrets.SMTP_FROM }}>
+          body: |
+            Critical security issues detected in Shoppy app.
+            
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            
+            Please review immediately: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            Security Dashboard: ${{ github.server_url }}/${{ github.repository }}/security 

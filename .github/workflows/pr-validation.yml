@@ -1,0 +1,129 @@
+name: 🔍 Pull Request Validation
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [opened, synchronize, reopened]
+
+env:
+  FLUTTER_VERSION: '3.16.0'
+
+jobs:
+  # =====================================
+  # FAST PR CHECKS
+  # =====================================
+  pr-validation:
+    name: 🚀 PR Quick Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Get Dependencies
+        run: flutter pub get
+
+      - name: 🔍 Static Analysis
+        run: flutter analyze --fatal-infos
+
+      - name: 🎨 Format Check
+        run: dart format --set-exit-if-changed .
+
+      - name: 🧪 Quick Tests
+        run: flutter test --reporter=compact
+
+  # =====================================
+  # BUILD VERIFICATION
+  # =====================================
+  build-verification:
+    name: 🏗️ Build Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: pr-validation
+    
+    strategy:
+      matrix:
+        platform: [android, web]
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java (Android)
+        if: matrix.platform == 'android'
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Get Dependencies
+        run: flutter pub get
+
+      - name: 🏗️ Build for Android
+        if: matrix.platform == 'android'
+        run: flutter build apk --debug
+
+      - name: 🏗️ Build for Web
+        if: matrix.platform == 'web'
+        run: flutter build web --debug
+
+  # =====================================
+  # PR FEEDBACK
+  # =====================================
+  pr-feedback:
+    name: 📝 PR Feedback
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [pr-validation, build-verification]
+    
+    steps:
+      - name: 📊 Comment on PR (Success)
+        if: ${{ success() }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ **PR Validation Passed!** 🎉\n\n' +
+                    '- ✅ Code analysis passed\n' +
+                    '- ✅ Formatting is correct\n' +
+                    '- ✅ Tests are passing\n' +
+                    '- ✅ Builds successfully\n\n' +
+                    'Ready for review! 🚀'
+            })
+
+      - name: 📊 Comment on PR (Failure)
+        if: ${{ failure() }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ **PR Validation Failed!** 🔥\n\n' +
+                    'Please check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) ' +
+                    'and fix the issues before requesting a review.\n\n' +
+                    'Common issues:\n' +
+                    '- Code formatting (`dart format .`)\n' +
+                    '- Analysis issues (`flutter analyze`)\n' +
+                    '- Test failures (`flutter test`)\n' +
+                    '- Build errors'
+            }) 

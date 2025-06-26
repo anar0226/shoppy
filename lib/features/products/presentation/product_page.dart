@@ -362,11 +362,9 @@ class _ProductPageState extends State<ProductPage> {
 
           const Spacer(),
 
-          // More options button
+          // Contact store button
           GestureDetector(
-            onTap: () {
-              // More options
-            },
+            onTap: () => _showContactBottomSheet(),
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -374,7 +372,7 @@ class _ProductPageState extends State<ProductPage> {
                 shape: BoxShape.circle,
               ),
               child: const Icon(
-                Icons.more_horiz,
+                Icons.send,
                 color: Colors.black,
                 size: 20,
               ),
@@ -1245,6 +1243,259 @@ class _ProductPageState extends State<ProductPage> {
     overlay.insert(overlayEntry);
     Future.delayed(
         const Duration(milliseconds: 800), () => overlayEntry.remove());
+  }
+
+  void _showContactBottomSheet() async {
+    try {
+      // Fetch store information from Firestore
+      final storeDoc = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(widget.product.storeId)
+          .get();
+
+      if (!storeDoc.exists) {
+        _showNoContactInfoDialog();
+        return;
+      }
+
+      final storeData = storeDoc.data() as Map<String, dynamic>;
+      final settings = storeData['settings'] as Map<String, dynamic>? ?? {};
+
+      final instagram = settings['instagram'] as String? ?? '';
+      final facebook = settings['facebook'] as String? ?? '';
+
+      if (instagram.isEmpty && facebook.isEmpty) {
+        _showNoContactInfoDialog();
+        return;
+      }
+
+      _showContactDialog(instagram, facebook);
+    } catch (e) {
+      _showNoContactInfoDialog();
+    }
+  }
+
+  void _showContactDialog(String instagram, String facebook) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle bar
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Title
+            Text(
+              'Contact ${_storeName.toUpperCase()}',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Contact options
+            if (instagram.isNotEmpty) ...[
+              _buildContactOption(
+                icon: Icons.camera_alt,
+                label: 'Instagram',
+                value: instagram,
+                onTap: () {
+                  // Could implement URL launcher here
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Instagram: $instagram')),
+                  );
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            if (facebook.isNotEmpty) ...[
+              _buildContactOption(
+                icon: Icons.facebook,
+                label: 'Facebook',
+                value: facebook,
+                onTap: () {
+                  // Could implement URL launcher here
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Facebook: $facebook')),
+                  );
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContactOption({
+    required IconData icon,
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showNoContactInfoDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Title
+            Text(
+              'Contact ${_storeName.toUpperCase()}',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Sad emoji
+            const Text(
+              '😔',
+              style: TextStyle(fontSize: 48),
+            ),
+            const SizedBox(height: 16),
+
+            // No contact info message
+            const Text(
+              'Sorry, no contact information available :(',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+
+            // Close button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'Close',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
   }
 
   void _navigateToStore() async {

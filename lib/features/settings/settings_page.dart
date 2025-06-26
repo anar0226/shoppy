@@ -5,6 +5,7 @@ import 'package:shoppy/features/theme/theme_provider.dart';
 import 'package:shoppy/features/addresses/presentation/manage_addresses_page.dart';
 import 'package:shoppy/features/auth/providers/auth_provider.dart';
 import 'package:shoppy/features/auth/presentation/login_page.dart';
+import 'package:shoppy/features/settings/notifications_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -53,6 +54,12 @@ class SettingsPage extends StatelessWidget {
                               builder: (_) => const ManageAddressesPage(),
                             ),
                           );
+                        } else if (item.label == 'Notifications') {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const NotificationsPage(),
+                            ),
+                          );
                         }
                       },
                       child: Container(
@@ -90,17 +97,6 @@ class SettingsPage extends StatelessWidget {
                   }).toList(),
                 ),
                 const SizedBox(height: 40),
-                // Dark mode toggle
-                Consumer<ThemeProvider>(
-                  builder: (_, themeProv, __) => SwitchListTile(
-                    value: themeProv.mode == ThemeMode.dark,
-                    onChanged: (_) => themeProv.toggle(),
-                    title: const Text('Dark mode',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w500)),
-                  ),
-                ),
-                const SizedBox(height: 20),
                 Center(
                   child: TextButton.icon(
                     onPressed: () async {
@@ -129,7 +125,7 @@ class SettingsPage extends StatelessWidget {
                 const SizedBox(height: 16),
                 const Center(
                   child: Text(
-                    "Version 2.204.0-release.93253",
+                    "Version 1.0.0",
                     style: TextStyle(
                       color: Colors.black54,
                       fontSize: 13,

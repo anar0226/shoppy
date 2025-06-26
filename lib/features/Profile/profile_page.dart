@@ -328,8 +328,21 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _iconCard(BuildContext context,
       {required String title, required List<String> icons}) {
+    // Calculate how many icons can fit in the card width
+    // Card width is 185, with 12 padding on each side = 161 available width
+    // Each icon is 40 wide + 4 padding between = 44 per icon except last one
+    const cardWidth = 185.0;
+    const horizontalPadding = 24.0; // 12 on each side
+    const iconWidth = 40.0;
+    const iconSpacing = 4.0;
+
+    final availableWidth = cardWidth - horizontalPadding;
+    final maxIcons =
+        ((availableWidth + iconSpacing) / (iconWidth + iconSpacing)).floor();
+    final displayIcons = icons.take(maxIcons).toList();
+
     return SizedBox(
-      width: 185,
+      width: cardWidth,
       height: 108,
       child: Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -340,43 +353,82 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Expanded(
                 child: Row(
-                  children:
-                      (icons.isNotEmpty ? icons : ['']).take(4).map((url) {
-                    if (url.isEmpty) {
-                      return const SizedBox(width: 40, height: 40);
-                    }
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 4.0),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: url.isEmpty
-                            ? Container(
-                                color: Colors.grey.shade200,
-                                width: 40,
-                                height: 40)
-                            : (url.startsWith('http')
-                                ? FadeInImage.assetNetwork(
-                                    placeholder:
-                                        'assets/images/placeholders/1px.png',
-                                    image: url,
-                                    width: 40,
-                                    height: 40,
-                                    fit: BoxFit.cover,
-                                    imageCacheWidth: 80,
-                                    fadeInDuration:
-                                        const Duration(milliseconds: 200),
-                                    fadeInCurve: Curves.easeIn,
-                                  )
-                                : Image.asset(url,
-                                    width: 40, height: 40, fit: BoxFit.cover)),
-                      ),
-                    );
-                  }).toList(),
+                  children: displayIcons.isEmpty
+                      ? [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              title == 'Saved'
+                                  ? Icons.bookmark_border
+                                  : Icons.store_outlined,
+                              color: Colors.grey.shade400,
+                              size: 20,
+                            ),
+                          )
+                        ]
+                      : displayIcons.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final url = entry.value;
+
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              right: index < displayIcons.length - 1
+                                  ? iconSpacing
+                                  : 0,
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: url.isEmpty
+                                  ? Container(
+                                      color: Colors.grey.shade200,
+                                      width: iconWidth,
+                                      height: 40,
+                                    )
+                                  : (url.startsWith('http')
+                                      ? FadeInImage.assetNetwork(
+                                          placeholder:
+                                              'assets/images/placeholders/1px.png',
+                                          image: url,
+                                          width: iconWidth,
+                                          height: 40,
+                                          fit: BoxFit.cover,
+                                          imageCacheWidth: 80,
+                                          fadeInDuration:
+                                              const Duration(milliseconds: 200),
+                                          fadeInCurve: Curves.easeIn,
+                                        )
+                                      : Image.asset(url,
+                                          width: iconWidth,
+                                          height: 40,
+                                          fit: BoxFit.cover)),
+                            ),
+                          );
+                        }).toList(),
                 ),
               ),
-              Text(title,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  if (icons.length > maxIcons)
+                    Text(
+                      '+${icons.length - maxIcons}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         ),
