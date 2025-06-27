@@ -9,6 +9,8 @@ import '../../features/products/services/product_service.dart';
 import '../../features/products/models/product_model.dart';
 import '../../core/services/image_upload_service.dart';
 import '../auth/auth_service.dart';
+import '../../features/stores/presentation/store_screen.dart';
+import '../../features/home/presentation/home_screen.dart';
 
 class StorefrontPage extends StatefulWidget {
   const StorefrontPage({super.key});
@@ -26,6 +28,8 @@ class _StorefrontPageState extends State<StorefrontPage> {
   String? _backgroundImageUrl;
   bool _isUploadingImage = false;
   bool _isSaving = false;
+  double _storeRating = 0.0;
+  int _reviewCount = 0;
 
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -76,11 +80,38 @@ class _StorefrontPageState extends State<StorefrontPage> {
           backgroundImage = data['backgroundImageUrl'];
         }
 
+        // Load real ratings from reviews
+        double storeRating = 0.0;
+        int reviewCount = 0;
+
+        try {
+          final reviewsSnapshot = await FirebaseFirestore.instance
+              .collection('stores')
+              .doc(store.id)
+              .collection('reviews')
+              .where('status', isEqualTo: 'active')
+              .get();
+
+          if (reviewsSnapshot.docs.isNotEmpty) {
+            final reviews = reviewsSnapshot.docs;
+            final totalRating = reviews.fold<double>(0, (sum, doc) {
+              final data = doc.data();
+              return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+            });
+            storeRating = totalRating / reviews.length;
+            reviewCount = reviews.length;
+          }
+        } catch (reviewError) {
+          print('⚠️ Error loading reviews for admin preview: $reviewError');
+        }
+
         setState(() {
           _storeModel = store;
           _allProducts = products;
           _selectedProductIds = selectedProductIds;
           _backgroundImageUrl = backgroundImage;
+          _storeRating = storeRating;
+          _reviewCount = reviewCount;
           _isLoading = false;
         });
       } else {
@@ -182,6 +213,119 @@ class _StorefrontPageState extends State<StorefrontPage> {
     });
   }
 
+  Future<void> _previewStoreScreen() async {
+    if (_storeModel == null) return;
+
+    try {
+      // Load collections for this store
+      final collectionsSnapshot = await FirebaseFirestore.instance
+          .collection('collections')
+          .where('storeId', isEqualTo: _storeModel!.id)
+          .where('isActive', isEqualTo: true)
+          .get();
+
+      final collections = collectionsSnapshot.docs
+          .map((doc) => StoreCollection(
+                id: doc.id,
+                name: doc.data()['name'] ?? '',
+                imageUrl: doc.data()['backgroundImage'] ?? '',
+              ))
+          .toList();
+
+      // Load managed categories for this store
+      final categoriesSnapshot = await FirebaseFirestore.instance
+          .collection('store_categories')
+          .where('storeId', isEqualTo: _storeModel!.id)
+          .where('isActive', isEqualTo: true)
+          .orderBy('sortOrder', descending: false)
+          .orderBy('createdAt', descending: false)
+          .get();
+
+      final categoryNames = <String>['All'];
+      categoryNames.addAll(
+        categoriesSnapshot.docs
+            .map((doc) => doc.data()['name'] as String? ?? '')
+            .where((name) => name.isNotEmpty),
+      );
+
+      // Build StoreData for the preview
+      final storeData = StoreData(
+        id: _storeModel!.id,
+        name: _storeModel!.name,
+        displayName: _storeModel!.name.toUpperCase(),
+        heroImageUrl: _storeModel!.banner.isNotEmpty
+            ? _storeModel!.banner
+            : _storeModel!.logo,
+        backgroundColor: const Color(0xFF01BCE7),
+        rating: _storeRating > 0 ? _storeRating : 0.0,
+        reviewCount: _reviewCount > 0 ? _reviewCount.toString() : '0',
+        collections: collections,
+        categories: categoryNames,
+        productCount: _allProducts.length,
+        products: _allProducts
+            .map((p) => StoreProduct(
+                  id: p.id,
+                  name: p.name,
+                  imageUrl: p.images.isNotEmpty ? p.images.first : '',
+                  price: p.price,
+                  category: _getProductCategory(p.id, categoriesSnapshot.docs),
+                ))
+            .toList(),
+        showFollowButton: false, // Hide follow button in preview
+        hasNotification: false,
+      );
+
+      // Navigate to store screen preview
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => Scaffold(
+              appBar: AppBar(
+                title: Text('Store Preview - ${_storeModel!.name}'),
+                backgroundColor: AppThemes.primaryColor,
+                foregroundColor: Colors.white,
+                leading: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                actions: [
+                  TextButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.edit, color: Colors.white),
+                    label: const Text(
+                      'Back to Edit',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              body: StoreScreen(storeData: storeData),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading store preview: $e')),
+        );
+      }
+    }
+  }
+
+  String _getProductCategory(
+      String productId, List<QueryDocumentSnapshot> categoryDocs) {
+    for (final doc in categoryDocs) {
+      final data = doc.data() as Map<String, dynamic>?;
+      final productIds = List<String>.from(data?['productIds'] ?? []);
+      if (productIds.contains(productId)) {
+        return data?['name'] as String? ?? '';
+      }
+    }
+    return ''; // Product not in any category
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -214,30 +358,44 @@ class _StorefrontPageState extends State<StorefrontPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with save button
+          // Header with action buttons
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Seller Card Customization',
+                'Storefront Management',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
               ),
-              ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveSellerCardSettings,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save),
-                label: Text(_isSaving ? 'Saving...' : 'Save Changes'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppThemes.primaryColor,
-                  foregroundColor: Colors.white,
-                ),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _previewStoreScreen,
+                    icon: const Icon(Icons.preview),
+                    label: const Text('Preview Store'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppThemes.primaryColor,
+                      side: BorderSide(color: AppThemes.primaryColor),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: _isSaving ? null : _saveSellerCardSettings,
+                    icon: _isSaving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save),
+                    label: Text(_isSaving ? 'Saving...' : 'Save Changes'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppThemes.primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -246,20 +404,77 @@ class _StorefrontPageState extends State<StorefrontPage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Left side - Seller Card Preview
+              // Left side - Previews
               Expanded(
                 flex: 2,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Preview',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Seller Card Preview',
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                        ),
+                        Tooltip(
+                          message:
+                              'This is how your store appears on the home screen',
+                          child: Icon(
+                            Icons.info_outline,
+                            size: 20,
+                            color: Colors.grey.shade600,
                           ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     _buildSellerCardPreview(),
+                    const SizedBox(height: 24),
+                    Card(
+                      color: Colors.blue.shade50,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.preview,
+                              size: 48,
+                              color: AppThemes.primaryColor,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Full Store Preview',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'See how your complete store page looks to customers',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: _previewStoreScreen,
+                              icon: const Icon(Icons.launch),
+                              label: const Text('Open Store Preview'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppThemes.primaryColor,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -354,22 +569,24 @@ class _StorefrontPageState extends State<StorefrontPage> {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    const Row(
+                    Row(
                       children: [
                         Text(
-                          '4.8',
-                          style: TextStyle(
+                          _storeRating > 0
+                              ? _storeRating.toStringAsFixed(1)
+                              : '0.0',
+                          style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
                             color: Colors.black87,
                           ),
                         ),
-                        SizedBox(width: 4),
-                        Icon(Icons.star, color: Colors.black87, size: 14),
-                        SizedBox(width: 4),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.star, color: Colors.black87, size: 14),
+                        const SizedBox(width: 4),
                         Text(
-                          '(125)',
-                          style: TextStyle(
+                          '($_reviewCount)',
+                          style: const TextStyle(
                             color: Colors.black54,
                             fontSize: 12,
                           ),

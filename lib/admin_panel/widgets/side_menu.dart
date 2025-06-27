@@ -11,6 +11,7 @@ import '../pages/settings_page.dart';
 import '../pages/storefront_page.dart';
 import '../pages/categories_page.dart';
 import '../pages/categorization_page.dart';
+import '../pages/featured_products_page.dart';
 import '../../features/settings/themes/app_themes.dart';
 import '../auth/auth_service.dart';
 
@@ -138,6 +139,14 @@ class _SideMenuState extends State<SideMenu> {
             if (widget.selected != 'Storefront') {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const StorefrontPage()),
+              );
+            }
+          }),
+          _navItem(context, Icons.star_outline, 'Featured Products',
+              selected: widget.selected == 'Featured Products', onTap: () {
+            if (widget.selected != 'Featured Products') {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const FeaturedProductsPage()),
               );
             }
           }),

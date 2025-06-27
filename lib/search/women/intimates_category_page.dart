@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shoppy/features/categories/presentation/category_page.dart';
-import 'package:shoppy/features/categories/presentation/final_category_page.dart';
+import 'package:avii/features/categories/presentation/category_page.dart';
+import 'package:avii/features/categories/presentation/final_category_page.dart';
 
 class IntimatesCategoryPage extends StatelessWidget {
   const IntimatesCategoryPage({super.key});

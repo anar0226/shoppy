@@ -1,11 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="shoppy"
+        android:label="Avii"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-        <!-- Stripe publishable key for PaymentSheet -->
-        <meta-data android:name="com.stripe.publishableKey"
-                   android:value="pk_test_51R8IZ6PLGzeo2gGVz1b16SlSjNQQDkJdGZisxcPfZBZvwjwXR2mGoKr2Qtl8BMtKtTB1L6uR77c3WIeQqEClCguj00WxVX8EeP" />
+        <!-- QPay integration - no special meta-data required -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

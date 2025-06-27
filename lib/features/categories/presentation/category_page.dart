@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shoppy/features/stores/models/store_model.dart';
-import 'package:shoppy/features/stores/presentation/store_screen.dart'
+import 'package:avii/features/stores/models/store_model.dart';
+import 'package:avii/features/stores/presentation/store_screen.dart'
     show StoreScreen, StoreData, StoreCollection, StoreProduct;
-import 'package:shoppy/features/products/models/product_model.dart'
+import 'package:avii/features/products/models/product_model.dart'
     show ProductModel, ProductVariant;
-import 'package:shoppy/features/products/presentation/product_page.dart';
-import 'package:shoppy/features/home/presentation/main_scaffold.dart';
+import 'package:avii/features/products/presentation/product_page.dart';
+import 'package:avii/features/home/presentation/main_scaffold.dart';
 
 /// Model representing a tappable sub-category card.
 class SubCategory {
@@ -57,7 +57,7 @@ class CategoryPage extends StatefulWidget {
     required this.subCategories,
     required this.featuredStoreIds,
     required this.sections,
-  }) : assert(subCategories.length <= 6, 'Provide at most 6 sub-categories');
+  }) : assert(subCategories.length <= 6, '6-аас доош ангилал оруулна уу');
 
   @override
   State<CategoryPage> createState() => _CategoryPageState();
@@ -66,12 +66,14 @@ class CategoryPage extends StatefulWidget {
 class _CategoryPageState extends State<CategoryPage> {
   String? _placeholderImage;
   List<StoreData> _featuredStores = [];
+  Map<String, List<ProductModel>> _sectionProducts = {};
 
   @override
   void initState() {
     super.initState();
     _loadPlaceholder();
     _loadFeaturedStores();
+    _loadSectionProducts();
   }
 
   Future<void> _loadPlaceholder() async {
@@ -131,6 +133,59 @@ class _CategoryPageState extends State<CategoryPage> {
     }
 
     setState(() => _featuredStores = loaded);
+  }
+
+  Future<void> _loadSectionProducts() async {
+    final Map<String, List<ProductModel>> sectionProducts = {};
+
+    for (final section in widget.sections) {
+      try {
+        // Build path for super admin featured products
+        String featuredPath = '${widget.title}_$section';
+
+        // Load featured products configuration from super admin
+        final featuredDoc = await FirebaseFirestore.instance
+            .doc('featured_products/$featuredPath')
+            .get();
+
+        if (featuredDoc.exists) {
+          final data = featuredDoc.data() as Map<String, dynamic>;
+          final productIds = List<String>.from(data['productIds'] ?? []);
+
+          final products = <ProductModel>[];
+
+          // Load the actual products using collectionGroup query
+          for (final productId in productIds.take(4)) {
+            // Limit to 4 products per section
+            try {
+              final productQuery = await FirebaseFirestore.instance
+                  .collectionGroup('products')
+                  .where(FieldPath.documentId, isEqualTo: productId)
+                  .limit(1)
+                  .get();
+
+              if (productQuery.docs.isNotEmpty) {
+                products
+                    .add(ProductModel.fromFirestore(productQuery.docs.first));
+              }
+            } catch (e) {
+              print('Error loading featured product $productId: $e');
+            }
+          }
+
+          sectionProducts[section] = products;
+        } else {
+          sectionProducts[section] = [];
+        }
+      } catch (e) {
+        print('Error loading featured products for section $section: $e');
+        sectionProducts[section] = [];
+      }
+    }
+
+    setState(() {
+      _sectionProducts = sectionProducts;
+    });
   }
 
   @override
@@ -254,7 +309,7 @@ class _CategoryPageState extends State<CategoryPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Featured brands',
+        const Text('Онцлоx Дэлгүүрүүд',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
         GridView.count(
@@ -356,6 +411,8 @@ class _CategoryPageState extends State<CategoryPage> {
   }
 
   Widget _buildCategorySection(String title) {
+    final products = _sectionProducts[title] ?? [];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -372,9 +429,114 @@ class _CategoryPageState extends State<CategoryPage> {
             crossAxisSpacing: 12,
             childAspectRatio: 0.8,
           ),
-          itemBuilder: (context, index) => _productPlaceholder(),
+          itemBuilder: (context, index) {
+            if (index < products.length) {
+              return _productCard(products[index]);
+            } else {
+              return _productPlaceholder();
+            }
+          },
         ),
       ],
+    );
+  }
+
+  Widget _productCard(ProductModel product) {
+    return GestureDetector(
+      onTap: () async {
+        // Load store information for the product
+        try {
+          final storeDoc = await FirebaseFirestore.instance
+              .collection('stores')
+              .doc(product.storeId)
+              .get();
+
+          String storeName = '';
+          String storeLogoUrl = '';
+          double storeRating = 0.0;
+          int storeRatingCount = 0;
+
+          if (storeDoc.exists) {
+            final storeData = storeDoc.data()!;
+            storeName = storeData['name'] ?? '';
+            storeLogoUrl = storeData['logo'] ?? '';
+            storeRating = (storeData['rating'] ?? 0.0).toDouble();
+            storeRatingCount = storeData['ratingCount'] ?? 0;
+          }
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProductPage(
+                product: product,
+                storeName: storeName,
+                storeLogoUrl: storeLogoUrl,
+                storeRating: storeRating,
+                storeRatingCount: storeRatingCount,
+              ),
+            ),
+          );
+        } catch (e) {
+          print('Error loading store info: $e');
+          // Navigate anyway with empty store info
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProductPage(
+                product: product,
+                storeName: '',
+                storeLogoUrl: '',
+                storeRating: 0,
+                storeRatingCount: 0,
+              ),
+            ),
+          );
+        }
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: product.images.isNotEmpty
+                ? Image.network(
+                    product.images.first,
+                    width: double.infinity,
+                    height: 160,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: double.infinity,
+                      height: 160,
+                      color: Colors.grey.shade300,
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.broken_image, size: 40),
+                    ),
+                  )
+                : Container(
+                    width: double.infinity,
+                    height: 160,
+                    color: Colors.grey.shade300,
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.inventory_2, size: 40),
+                  ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            product.name,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '\$${product.price.toStringAsFixed(2)}',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -422,13 +584,13 @@ class _CategoryPageState extends State<CategoryPage> {
                     height: 160,
                     color: Colors.grey.shade300,
                     alignment: Alignment.center,
-                    child: const Text('Coming Soon',
+                    child: const Text('Уучлаарай, одоогоор хоосон байна. :(',
                         style: TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
           ),
           const SizedBox(height: 8),
-          const Text('Coming Soon',
+          const Text('Уучлаарай, одоогоор хоосон байна. :(',
               style: TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),

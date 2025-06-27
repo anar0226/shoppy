@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shoppy/features/categories/presentation/category_page.dart';
-import 'package:shoppy/features/categories/presentation/final_category_page.dart';
-import 'package:shoppy/search/men/men_shoes_category_page.dart';
-import 'package:shoppy/search/men/men_jackets_tops_category_page.dart';
+import 'package:avii/features/categories/presentation/category_page.dart';
+import 'package:avii/features/categories/presentation/final_category_page.dart';
+import 'package:avii/search/men/men_shoes_category_page.dart';
+import 'package:avii/search/men/men_jackets_tops_category_page.dart';
 
 class MenCategoryPage extends StatelessWidget {
   const MenCategoryPage({super.key});

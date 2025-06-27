@@ -39,6 +39,11 @@ class AppThemes {
         backgroundColor: lightBackground,
         foregroundColor: lightOnBackground,
         elevation: 0,
+        iconTheme: IconThemeData(color: lightOnBackground),
+      ),
+      iconTheme: const IconThemeData(
+        color: lightOnBackground,
+        size: 24,
       ),
       textTheme: const TextTheme(
         headlineSmall: TextStyle(
@@ -76,6 +81,11 @@ class AppThemes {
         backgroundColor: darkBackground,
         foregroundColor: darkOnBackground,
         elevation: 0,
+        iconTheme: IconThemeData(color: darkOnBackground),
+      ),
+      iconTheme: const IconThemeData(
+        color: darkOnBackground,
+        size: 24,
       ),
       textTheme: const TextTheme(
         headlineSmall: TextStyle(

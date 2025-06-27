@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../models/cart_item.dart';
-import 'package:shoppy/features/checkout/presentation/checkout_page.dart';
-import 'package:shoppy/features/checkout/models/checkout_item.dart';
-import 'package:shoppy/features/addresses/providers/address_provider.dart';
-import 'package:shoppy/features/addresses/presentation/manage_addresses_page.dart';
+import 'package:avii/features/checkout/presentation/checkout_page.dart';
+import 'package:avii/features/checkout/models/checkout_item.dart';
+import 'package:avii/features/addresses/providers/address_provider.dart';
+import 'package:avii/features/addresses/presentation/manage_addresses_page.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 
 class CartBottomSheet extends StatelessWidget {
@@ -66,8 +66,7 @@ class CartBottomSheet extends StatelessWidget {
 
                     if (addrProvider.addresses.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text(
-                              'Please add a shipping address before checkout')));
+                          content: Text('Хүргэлтийн хаяг оруулна уу')));
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -101,7 +100,7 @@ class CartBottomSheet extends StatelessWidget {
                       ),
                     );
                   },
-                  child: const Text('Continue to checkout'),
+                  child: const Text('checkout хийх'),
                 ),
               ),
               const Divider(height: 1),
@@ -110,7 +109,7 @@ class CartBottomSheet extends StatelessWidget {
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    child: const Text('Done'),
+                    child: const Text('Буцах'),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ),
@@ -126,7 +125,7 @@ class CartBottomSheet extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text('Subtotal', style: TextStyle(color: Colors.white)),
+        const Text('Нийт дүн', style: TextStyle(color: Colors.white)),
         Text('\$${subtotal.toStringAsFixed(2)}',
             style: const TextStyle(color: Colors.white)),
       ],
@@ -169,7 +168,7 @@ class CartBottomSheet extends StatelessWidget {
                     style: const TextStyle(
                         color: Colors.white, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text(item.variant ?? 'Standard',
+                Text(item.variant ?? 'стандарт',
                     style: const TextStyle(color: Colors.white70)),
                 const SizedBox(height: 8),
                 Row(

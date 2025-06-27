@@ -1,5 +1,5 @@
-name: shoppy
-description: "A new Flutter project."
+name: avii
+description: "Avii.mn - Mongolia's premier multi-vendor marketplace connecting you with local businesses. Discover products, manage orders, and support local entrepreneurs all in one place."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -49,11 +49,20 @@ dependencies:
   sign_in_with_apple: ^5.0.0
   flutter_facebook_auth: ^6.1.1
   shared_preferences: ^2.2.2
-  flutter_stripe: ^11.5.0
+  http: ^1.1.0
   cloud_functions: ^5.5.2
+  qr_flutter: ^4.1.0
   flutter_image_compress: ^2.3.0
   fl_chart: ^0.66.0
   share_plus: ^7.2.2
+  firebase_messaging: ^15.1.4
+  flutter_local_notifications: ^17.2.3
+  permission_handler: ^11.3.1
+  # QPay Integration
+  crypto: ^3.0.3
+  uuid: ^4.3.3
+  dio: ^5.4.0
+  flutter_rating_bar: ^4.0.1
 
 dev_dependencies:
   flutter_test:
@@ -98,6 +107,7 @@ flutter:
     - assets/images/categories/Women/WomenPants.jpg
     - assets/images/categories/Women/WomenLingerie.jpg
     - assets/images/categories/Women/WomenActivewear.jpg
+    - assets/images/categories/Women/women.jpg
     # Shoes/Women
     - assets/images/categories/Women/shoes/Heels.jpg
     - assets/images/categories/Women/shoes/Slippers.jpg
@@ -117,6 +127,7 @@ flutter:
     - assets/images/categories/Men/pants.jpg
     - assets/images/categories/Men/jacket.jpg
     - assets/images/categories/Men/Activewear.jpg
+    - assets/images/categories/Men/men.jpg
     # Shoes/Men
     - assets/images/categories/Men/shoes/slippers.jpg
     - assets/images/categories/Men/shoes/boots.jpg
@@ -130,6 +141,18 @@ flutter:
     # Pants/Men
     # - assets/images/categories/Men/pants/pants.jpg
     # - assets/images/categories/Men/pants/shorts.jpg
+    
+    # Accessories
+    - assets/images/categories/Accessories/
+    - assets/images/categories/Accessories/accessories.jpg
+    
+    # Electronics
+    - assets/images/categories/electronics/
+    - assets/images/categories/electronics/electronics.jpg
+    
+    # Toys & Games
+    - assets/images/categories/Toys&games/
+    - assets/images/categories/Toys&games/toys and games.jpg
   
     
     # Animations (Lottie files, etc.)

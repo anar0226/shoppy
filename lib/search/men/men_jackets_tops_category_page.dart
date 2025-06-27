@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shoppy/features/categories/presentation/category_page.dart';
-import 'package:shoppy/features/categories/presentation/final_category_page.dart';
+import 'package:avii/features/categories/presentation/category_page.dart';
+import 'package:avii/features/categories/presentation/final_category_page.dart';
 
 /// Jackets, hoodies, polos and shirts for men.
 class MenJacketsTopsCategoryPage extends StatelessWidget {

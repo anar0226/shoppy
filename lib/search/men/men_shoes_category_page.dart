@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shoppy/features/categories/presentation/category_page.dart';
-import 'package:shoppy/features/categories/presentation/final_category_page.dart';
+import 'package:avii/features/categories/presentation/category_page.dart';
+import 'package:avii/features/categories/presentation/final_category_page.dart';
 
 /// Displays male footwear sub-categories.
 class MenShoesCategoryPage extends StatelessWidget {
@@ -28,7 +28,11 @@ class MenShoesCategoryPage extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => const FinalCategoryPage(title: 'Sneakers'),
+              builder: (_) => const FinalCategoryPage(
+                title: 'Sneakers',
+                mainCategory: 'Men',
+                subCategory: 'Shoes',
+              ),
             ),
           ),
         ),
@@ -39,7 +43,11 @@ class MenShoesCategoryPage extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => const FinalCategoryPage(title: 'Slippers'),
+              builder: (_) => const FinalCategoryPage(
+                title: 'Slippers',
+                mainCategory: 'Men',
+                subCategory: 'Shoes',
+              ),
             ),
           ),
         ),
@@ -50,7 +58,11 @@ class MenShoesCategoryPage extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => const FinalCategoryPage(title: 'Boots'),
+              builder: (_) => const FinalCategoryPage(
+                title: 'Boots',
+                mainCategory: 'Men',
+                subCategory: 'Shoes',
+              ),
             ),
           ),
         ),
@@ -61,7 +73,11 @@ class MenShoesCategoryPage extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => const FinalCategoryPage(title: 'Athletic shoes'),
+              builder: (_) => const FinalCategoryPage(
+                title: 'Athletic shoes',
+                mainCategory: 'Men',
+                subCategory: 'Shoes',
+              ),
             ),
           ),
         ),

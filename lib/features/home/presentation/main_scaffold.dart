@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'floating_nav_bar.dart';
-import 'package:shoppy/features/cart/presentation/cart_button.dart';
+import 'package:avii/features/cart/presentation/cart_button.dart';
 
 class MainScaffold extends StatelessWidget {
   final Widget child;

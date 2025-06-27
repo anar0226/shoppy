@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'fcm_service.dart';
 
 class NotificationService {
   static const String _notificationsCollection = 'notifications';
@@ -118,7 +119,7 @@ class NotificationService {
     }
   }
 
-  // Create notification in Firestore
+  // Create notification in Firestore and send push notification
   static Future<void> _createNotification({
     required String userId,
     required String type,
@@ -127,6 +128,7 @@ class NotificationService {
     Map<String, dynamic>? data,
   }) async {
     try {
+      // Save to Firestore
       await FirebaseFirestore.instance
           .collection(_notificationsCollection)
           .add({
@@ -138,6 +140,17 @@ class NotificationService {
         'read': false,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      // Send push notification
+      await FCMService.sendPushNotification(
+        userId: userId,
+        title: title,
+        body: message,
+        data: {
+          'type': type,
+          ...?data,
+        },
+      );
     } catch (e) {
       print('Error creating notification: $e');
     }

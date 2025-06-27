@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../features/checkout/models/checkout_item.dart';
+import 'qpay_service.dart';
 
+/// Payment service using QPay for processing payments in Mongolia
 class PaymentService {
   static final _functions = FirebaseFunctions.instance;
 
-  /// Complete payment flow with order creation
+  /// Complete payment flow with QPay order creation
   static Future<PaymentResult> processPayment({
     required double amount,
     required String currency,
@@ -19,58 +20,16 @@ class PaymentService {
     required double tax,
   }) async {
     try {
-      // Step 1: Create order first
-      final orderId = await _createOrder(
-        items: [item],
-        total: amount,
-        subtotal: subtotal,
-        tax: tax,
-        shipping: shippingCost,
-        shippingAddress: fullAddress,
-        email: email,
-      );
-
-      // Step 2: Create payment intent
-      final paymentIntentResult = await _createPaymentIntent(
-        amountMinor: (amount * 100).round(), // Convert to cents
+      // Use QPay service for payment processing
+      return await QPayService.processPayment(
+        amount: amount,
         currency: currency,
-        orderId: orderId,
         email: email,
-      );
-
-      // Step 3: Initialize and present payment sheet
-      await Stripe.instance.initPaymentSheet(
-        paymentSheetParameters: SetupPaymentSheetParameters(
-          paymentIntentClientSecret: paymentIntentResult.clientSecret,
-          merchantDisplayName: 'Shoppy',
-          style: ThemeMode.light,
-          billingDetails: BillingDetails(
-            email: email,
-            address: Address(
-              line1: fullAddress,
-              line2: null,
-              city: 'Unknown', // Add required city field
-              state: null,
-              postalCode: null,
-              country: 'US', // You might want to extract this from address
-            ),
-          ),
-        ),
-      );
-
-      // Step 4: Present payment sheet
-      await Stripe.instance.presentPaymentSheet();
-
-      // Step 5: Return success result
-      return PaymentResult(
-        success: true,
-        orderId: orderId,
-        paymentIntentId: paymentIntentResult.paymentIntentId,
-      );
-    } on StripeException catch (e) {
-      return PaymentResult(
-        success: false,
-        error: _getStripeErrorMessage(e),
+        fullAddress: fullAddress,
+        item: item,
+        subtotal: subtotal,
+        shippingCost: shippingCost,
+        tax: tax,
       );
     } catch (e) {
       return PaymentResult(
@@ -80,29 +39,102 @@ class PaymentService {
     }
   }
 
-  /// Create payment intent via Cloud Function
-  static Future<PaymentIntentResult> _createPaymentIntent({
-    required int amountMinor,
-    required String currency,
-    required String orderId,
-    required String email,
-  }) async {
-    final callable = _functions.httpsCallable('createPaymentIntent');
-    final result = await callable.call(<String, dynamic>{
-      'amount': amountMinor,
-      'currency': currency,
-      'orderId': orderId,
-      'email': email,
-    });
-
-    return PaymentIntentResult(
-      clientSecret: result.data['clientSecret'],
-      paymentIntentId: result.data['paymentIntentId'],
-    );
+  /// Check payment status and complete order if paid
+  static Future<bool> checkAndCompletePayment(String orderId) async {
+    try {
+      await QPayService.checkAndCompletePayment(orderId);
+      return true;
+    } catch (e) {
+      print('Error completing payment: $e');
+      return false;
+    }
   }
 
-  /// Create order via Cloud Function
-  static Future<String> _createOrder({
+  /// Cancel a pending payment
+  static Future<bool> cancelPayment(String invoiceId) async {
+    try {
+      final qpay = QPayService();
+      return await qpay.cancelPayment(invoiceId);
+    } catch (e) {
+      print('Error canceling payment: $e');
+      return false;
+    }
+  }
+
+  /// Process refund through QPay
+  static Future<QPayRefundResult> processRefund({
+    required String paymentId,
+    required double amount,
+    String? reason,
+  }) async {
+    try {
+      final qpay = QPayService();
+      return await qpay.processRefund(
+        paymentId: paymentId,
+        amount: amount,
+        reason: reason,
+      );
+    } catch (e) {
+      return QPayRefundResult(
+        success: false,
+        error: 'Refund failed: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Get payment history from QPay
+  static Future<List<QPayPaymentResult>> getPaymentHistory({
+    String objectType = 'MERCHANT',
+    required String objectId,
+    int pageNumber = 1,
+    int pageLimit = 50,
+  }) async {
+    try {
+      final qpay = QPayService();
+      return await qpay.getPaymentList(
+        objectType: objectType,
+        objectId: objectId,
+        pageNumber: pageNumber,
+        pageLimit: pageLimit,
+      );
+    } catch (e) {
+      print('Error getting payment history: $e');
+      return [];
+    }
+  }
+
+  /// Convert MNT to other currencies (approximate)
+  static double convertFromMNT(double amountMNT, String targetCurrency) {
+    switch (targetCurrency.toUpperCase()) {
+      case 'USD':
+        return amountMNT / 3000; // Approximate conversion rate
+      case 'EUR':
+        return amountMNT / 3300; // Approximate conversion rate
+      case 'CNY':
+        return amountMNT / 430; // Approximate conversion rate
+      case 'MNT':
+      default:
+        return amountMNT;
+    }
+  }
+
+  /// Convert other currencies to MNT (approximate)
+  static double convertToMNT(double amount, String fromCurrency) {
+    switch (fromCurrency.toUpperCase()) {
+      case 'USD':
+        return amount * 3000; // Approximate conversion rate
+      case 'EUR':
+        return amount * 3300; // Approximate conversion rate
+      case 'CNY':
+        return amount * 430; // Approximate conversion rate
+      case 'MNT':
+      default:
+        return amount;
+    }
+  }
+
+  /// Create order via Cloud Function (for direct order creation)
+  static Future<String> createOrder({
     required List<CheckoutItem> items,
     required double total,
     required double subtotal,
@@ -110,6 +142,7 @@ class PaymentService {
     required double shipping,
     required String shippingAddress,
     required String email,
+    String? paymentId,
   }) async {
     final callable = _functions.httpsCallable('createOrder');
 
@@ -118,13 +151,10 @@ class PaymentService {
         .map((item) => {
               'name': item.name,
               'price': item.price,
-              'quantity':
-                  1, // Default quantity since CheckoutItem doesn't have this field
+              'quantity': 1, // Default quantity
               'variant': item.variant,
               'imageUrl': item.imageUrl,
-              'productId': DateTime.now()
-                  .millisecondsSinceEpoch
-                  .toString(), // Generate ID since CheckoutItem doesn't have id
+              // Note: storeId and category need to be passed separately or added to CheckoutItem model
             })
         .toList();
 
@@ -136,71 +166,9 @@ class PaymentService {
       'shipping': shipping,
       'shippingAddress': shippingAddress,
       'email': email,
+      if (paymentId != null) 'paymentId': paymentId,
     });
 
     return result.data['orderId'];
   }
-
-  /// Convert Stripe errors to user-friendly messages
-  static String _getStripeErrorMessage(StripeException e) {
-    switch (e.error.code) {
-      case FailureCode.Canceled:
-        return 'Payment was cancelled';
-      case FailureCode.Failed:
-        return 'Payment failed. Please try again.';
-      case FailureCode.Timeout:
-        return 'Payment timed out. Please try again.';
-      default:
-        return 'Payment failed: ${e.error.localizedMessage ?? 'Unknown error'}';
-    }
-  }
-
-  /// Legacy method for backwards compatibility
-  @deprecated
-  static Future<void> payWithCard(
-      {required int amountMinor, required String currency}) async {
-    final orderId = DateTime.now().millisecondsSinceEpoch.toString();
-    final result = await _createPaymentIntent(
-      amountMinor: amountMinor,
-      currency: currency,
-      orderId: orderId,
-      email: FirebaseAuth.instance.currentUser?.email ?? '',
-    );
-
-    await Stripe.instance.initPaymentSheet(
-      paymentSheetParameters: SetupPaymentSheetParameters(
-        paymentIntentClientSecret: result.clientSecret,
-        merchantDisplayName: 'Shoppy',
-        style: ThemeMode.light,
-      ),
-    );
-
-    await Stripe.instance.presentPaymentSheet();
-  }
-}
-
-/// Result of payment processing
-class PaymentResult {
-  final bool success;
-  final String? orderId;
-  final String? paymentIntentId;
-  final String? error;
-
-  PaymentResult({
-    required this.success,
-    this.orderId,
-    this.paymentIntentId,
-    this.error,
-  });
-}
-
-/// Result of payment intent creation
-class PaymentIntentResult {
-  final String clientSecret;
-  final String paymentIntentId;
-
-  PaymentIntentResult({
-    required this.clientSecret,
-    required this.paymentIntentId,
-  });
 }

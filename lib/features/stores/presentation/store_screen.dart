@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shoppy/features/products/models/product_model.dart';
-import 'package:shoppy/features/products/presentation/product_page.dart';
+import 'package:avii/features/products/models/product_model.dart';
+import 'package:avii/features/products/presentation/product_page.dart';
+import '../../following/services/following_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class StoreScreen extends StatefulWidget {
   final StoreData storeData;
@@ -14,8 +16,153 @@ class StoreScreen extends StatefulWidget {
   State<StoreScreen> createState() => _StoreScreenState();
 }
 
-class _StoreScreenState extends State<StoreScreen> {
+class _StoreScreenState extends State<StoreScreen>
+    with TickerProviderStateMixin {
   String _selectedCategory = 'All';
+  final FollowingService _followingService = FollowingService();
+  late AnimationController _followAnimationController;
+  late Animation<double> _followAnimation;
+  bool _isFollowing = false;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _followAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _followAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.2,
+    ).animate(CurvedAnimation(
+      parent: _followAnimationController,
+      curve: Curves.elasticInOut,
+    ));
+
+    _checkFollowStatus();
+  }
+
+  @override
+  void dispose() {
+    _followAnimationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkFollowStatus() async {
+    final isFollowing =
+        await _followingService.isFollowingStore(widget.storeData.id);
+    if (mounted) {
+      setState(() {
+        _isFollowing = isFollowing;
+      });
+    }
+  }
+
+  Future<void> _toggleFollow() async {
+    if (_isLoading) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to follow stores')),
+      );
+      return;
+    }
+
+    if (_isFollowing) {
+      _showUnfollowConfirmation();
+    } else {
+      await _followStore();
+    }
+  }
+
+  Future<void> _followStore() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final success = await _followingService.followStore(widget.storeData.id);
+
+    if (success && mounted) {
+      _followAnimationController.forward().then((_) {
+        _followAnimationController.reverse();
+      });
+
+      setState(() {
+        _isFollowing = true;
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Following ${widget.storeData.name}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to follow store')),
+      );
+    }
+  }
+
+  void _showUnfollowConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unfollow Store'),
+        content:
+            Text('Are you sure you want to unfollow ${widget.storeData.name}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _unfollowStore();
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Unfollow'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _unfollowStore() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final success = await _followingService.unfollowStore(widget.storeData.id);
+
+    if (success && mounted) {
+      setState(() {
+        _isFollowing = false;
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unfollowed ${widget.storeData.name}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to unfollow store')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -168,7 +315,7 @@ class _StoreScreenState extends State<StoreScreen> {
                 ),
                 Row(
                   children: [
-                    _buildActionIcon(Icons.notifications_none),
+                    _buildFollowButton(),
                     const SizedBox(width: 12),
                     _buildActionIcon(Icons.search),
                     const SizedBox(width: 12),
@@ -210,6 +357,70 @@ class _StoreScreenState extends State<StoreScreen> {
         icon,
         color: Colors.white,
         size: 18,
+      ),
+    );
+  }
+
+  Widget _buildFollowButton() {
+    if (_isLoading) {
+      return Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: _toggleFollow,
+      child: AnimatedBuilder(
+        animation: _followAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _followAnimation.value,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: _isFollowing
+                    ? Colors.white.withOpacity(0.25)
+                    : Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(18),
+                border: _isFollowing
+                    ? Border.all(color: Colors.white.withOpacity(0.3), width: 1)
+                    : null,
+              ),
+              child: _isFollowing
+                  ? const Icon(
+                      Icons.notifications,
+                      color: Colors.white,
+                      size: 18,
+                    )
+                  : const Center(
+                      child: Text(
+                        'дагах',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+            ),
+          );
+        },
       ),
     );
   }

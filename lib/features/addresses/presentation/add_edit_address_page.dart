@@ -35,7 +35,7 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
     final isEdit = widget.address != null;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Shipping Address'),
+        title: const Text('Хүргэлтийн хаягууд'),
         centerTitle: true,
       ),
       body: Padding(
@@ -44,23 +44,21 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
           key: _formKey,
           child: ListView(
             children: [
-              const Text(
-                  'Please enter the address that you want your product to get delivered to'),
+              const Text('Хүргэлтийн хаяг оруулна уу'),
               const SizedBox(height: 16),
-              _field('First name',
-                  initial: firstName, onSaved: (v) => firstName = v),
+              _field('Овог', initial: firstName, onSaved: (v) => firstName = v),
               const SizedBox(height: 12),
-              _field('Last name',
-                  initial: lastName, onSaved: (v) => lastName = v),
+              _field('Нэр', initial: lastName, onSaved: (v) => lastName = v),
               const SizedBox(height: 12),
-              _field('Address', initial: line1, onSaved: (v) => line1 = v),
+              _field('Xороо болон Дүүрэг',
+                  initial: line1, onSaved: (v) => line1 = v),
               const SizedBox(height: 12),
-              _field('Apartment, Suite, etc',
+              _field('Гэрийн хаяг',
                   initial: apartment,
                   onSaved: (v) => apartment = v,
                   required: false),
               const SizedBox(height: 12),
-              _field('Phone number',
+              _field('Утасны дугаар',
                   initial: phone,
                   onSaved: (v) => phone = v,
                   keyboard: TextInputType.phone),
@@ -69,7 +67,7 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
                 onPressed: _save,
                 style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16)),
-                child: const Text('Save address'),
+                child: const Text('Хүргэлтийн хаяг хадаглаx'),
               ),
             ],
           ),
@@ -87,8 +85,9 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
       initialValue: initial,
       decoration:
           InputDecoration(labelText: label, border: const OutlineInputBorder()),
-      validator:
-          required ? (v) => (v == null || v.isEmpty) ? 'Required' : null : null,
+      validator: required
+          ? (v) => (v == null || v.isEmpty) ? 'Заавал бөглөнө уу' : null
+          : null,
       keyboardType: keyboard,
       onSaved: (v) => onSaved(v ?? ''),
     );

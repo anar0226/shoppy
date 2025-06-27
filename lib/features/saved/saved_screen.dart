@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shoppy/features/auth/providers/auth_provider.dart';
-import 'package:shoppy/features/products/models/product_model.dart';
-import 'package:shoppy/features/products/presentation/product_page.dart';
-import 'package:shoppy/features/home/presentation/main_scaffold.dart';
+import 'package:avii/features/auth/providers/auth_provider.dart';
+import 'package:avii/features/products/models/product_model.dart';
+import 'package:avii/features/products/presentation/product_page.dart';
+import 'package:avii/features/home/presentation/main_scaffold.dart';
 
 class SavedScreen extends StatelessWidget {
   const SavedScreen({super.key});

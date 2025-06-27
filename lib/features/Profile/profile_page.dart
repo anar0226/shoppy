@@ -3,18 +3,18 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shoppy/features/home/presentation/main_scaffold.dart';
-import 'package:shoppy/features/settings/settings_page.dart';
-import 'package:shoppy/features/saved/saved_screen.dart';
-import 'package:shoppy/features/Profile/widgets/edit_profile_popup.dart';
-import 'package:shoppy/features/payment/add_card_page.dart';
-import 'package:shoppy/features/products/presentation/product_page.dart';
+import 'package:avii/features/home/presentation/main_scaffold.dart';
+import 'package:avii/features/settings/settings_page.dart';
+import 'package:avii/features/saved/saved_screen.dart';
+import 'package:avii/features/Profile/widgets/edit_profile_popup.dart';
+import 'package:avii/features/payment/add_card_page.dart';
+import 'package:avii/features/products/presentation/product_page.dart';
 import 'package:provider/provider.dart';
-import 'package:shoppy/features/profile/providers/recently_viewed_provider.dart';
-import 'package:shoppy/features/auth/providers/auth_provider.dart';
+import 'package:avii/features/profile/providers/recently_viewed_provider.dart';
+import 'package:avii/features/auth/providers/auth_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shoppy/features/stores/models/store_model.dart';
-import 'package:shoppy/features/following/following_screen.dart';
+import 'package:avii/features/stores/models/store_model.dart';
+import 'package:avii/features/following/following_screen.dart';
 
 class ProfilePage extends StatefulWidget {
   @override

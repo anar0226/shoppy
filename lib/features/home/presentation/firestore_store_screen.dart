@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shoppy/features/stores/models/store_model.dart';
-import 'package:shoppy/features/products/models/product_model.dart';
+import 'package:avii/features/stores/models/store_model.dart';
+import 'package:avii/features/products/models/product_model.dart';
 
 class FirestoreStoreScreen extends StatelessWidget {
   final String storeId;

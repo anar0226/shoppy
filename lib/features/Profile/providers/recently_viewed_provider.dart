@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shoppy/features/products/models/product_model.dart';
+import 'package:avii/features/products/models/product_model.dart';
 
 class RecentlyViewedProvider extends ChangeNotifier {
   final List<ProductModel> _items = [];

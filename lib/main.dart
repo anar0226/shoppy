@@ -3,38 +3,117 @@ import 'features/home/presentation/home_screen.dart' as front_home;
 import 'features/stores/presentation/store_screen.dart';
 import 'features/stores/data/sample_stores.dart';
 import 'features/home/presentation/main_scaffold.dart';
-import 'package:shoppy/features/Profile/profile_page.dart';
+import 'package:avii/features/Profile/profile_page.dart';
 import 'package:provider/provider.dart';
 import 'features/cart/providers/cart_provider.dart';
-import 'package:shoppy/features/profile/providers/recently_viewed_provider.dart';
-import 'package:shoppy/features/theme/theme_provider.dart';
-import 'package:shoppy/features/addresses/providers/address_provider.dart';
-import 'package:shoppy/features/auth/providers/auth_provider.dart';
-import 'package:shoppy/features/auth/presentation/splash_router.dart';
+import 'package:avii/features/profile/providers/recently_viewed_provider.dart';
+import 'package:avii/features/theme/theme_provider.dart';
+import 'package:avii/features/addresses/providers/address_provider.dart';
+import 'package:avii/features/auth/providers/auth_provider.dart';
+import 'package:avii/features/auth/presentation/splash_router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shoppy/features/products/models/product_model.dart';
-import 'package:shoppy/features/stores/models/store_model.dart';
+import 'package:avii/features/products/models/product_model.dart';
+import 'package:avii/features/stores/models/store_model.dart';
 import 'features/home/domain/models.dart';
 import 'features/home/presentation/widgets/seller_card.dart';
 import 'features/saved/saved_screen.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
 import 'features/orders/presentation/order_detail_page.dart';
 import 'search/women/women_category_page.dart';
 import 'search/men/men_category_page.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'features/notifications/fcm_service.dart';
+import 'features/products/presentation/product_page.dart';
+import 'core/utils/type_utils.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  Stripe.publishableKey =
-      'pk_test_51R8IZ6PLGzeo2gGVz1b16SlSjNQQDkJdGZisxcPfZBZvwjwXR2mGoKr2Qtl8BMtKtTB1L6uR77c3WIeQqEClCguj00WxVX8EeP';
-  await Stripe.instance.applySettings();
+
+  // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Register FCM background message handler
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+  // QPay will be initialized when needed (no global initialization required)
+
   runApp(const ShopUBApp());
 }
 
-class ShopUBApp extends StatelessWidget {
+class ShopUBApp extends StatefulWidget {
   const ShopUBApp({super.key});
+
+  @override
+  State<ShopUBApp> createState() => _ShopUBAppState();
+}
+
+class _ShopUBAppState extends State<ShopUBApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeFCM();
+  }
+
+  Future<void> _initializeFCM() async {
+    await FCMService().initialize(
+      onNotificationTap: _handleNotificationNavigation,
+    );
+  }
+
+  void _handleNotificationNavigation(
+      String route, Map<String, dynamic>? arguments) {
+    final context = _navigatorKey.currentContext;
+    if (context == null) return;
+
+    switch (route) {
+      case '/product':
+        final productId = arguments?['productId'] as String?;
+        if (productId != null) {
+          _navigateToProduct(context, productId);
+        }
+        break;
+      case '/orders':
+        Navigator.pushNamed(context, '/orders');
+        break;
+      case '/offers':
+        // Navigate to offers page when implemented
+        Navigator.pushNamed(context, '/home');
+        break;
+      default:
+        Navigator.pushNamed(context, '/home');
+    }
+  }
+
+  Future<void> _navigateToProduct(
+      BuildContext context, String productId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('products')
+          .doc(productId)
+          .get();
+
+      if (doc.exists) {
+        final product = ProductModel.fromFirestore(doc);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProductPage(
+              product: product,
+              storeName: 'Store',
+              storeLogoUrl: '',
+              storeRating: 5.0,
+              storeRatingCount: 0,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error navigating to product: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +127,7 @@ class ShopUBApp extends StatelessWidget {
       ],
       child: Consumer<ThemeProvider>(
         builder: (_, themeProvider, __) => MaterialApp(
+          navigatorKey: _navigatorKey,
           title: 'Shop UB',
           theme: ThemeData(
             primarySwatch: Colors.teal,
@@ -94,63 +174,58 @@ class _SearchScreenState extends State<SearchScreen> {
   // Category data matching the screenshot
   final List<CategoryItem> categories = [
     CategoryItem(
-      name: 'Women',
-      imageUrl:
-          'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=400',
+      name: 'Эмэгтэй',
+      imageUrl: 'assets/images/categories/Women/women.jpg',
       color: const Color(0xFF2D8A47),
     ),
     CategoryItem(
-      name: 'Men',
-      imageUrl:
-          'https://images.unsplash.com/photo-1621072156002-e2fccdc0b176?w=400',
+      name: 'Эрэгтэй',
+      imageUrl: 'assets/images/categories/Men/men.jpg',
       color: const Color(0xFFD97841),
     ),
     CategoryItem(
-      name: 'Beauty',
+      name: 'Гоо сайхан',
       imageUrl:
           'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400',
       color: const Color(0xFF8B4513),
     ),
     CategoryItem(
-      name: 'Food & drinks',
+      name: 'Хоол хүнс, ундаа',
       imageUrl:
           'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400',
       color: const Color(0xFFB8A082),
     ),
     CategoryItem(
-      name: 'Home',
+      name: 'Гэр аxуй',
       imageUrl:
           'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400',
       color: const Color(0xFF8B9B8A),
     ),
     CategoryItem(
-      name: 'Fitness & nutrition',
+      name: 'Фитнесс',
       imageUrl:
           'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400',
       color: const Color(0xFF6B9BD1),
     ),
     CategoryItem(
-      name: 'Accessories',
-      imageUrl:
-          'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=400',
+      name: 'Аксессуары',
+      imageUrl: 'assets/images/categories/Accessories/accessories.jpg',
       color: const Color(0xFF9ACD32),
     ),
     CategoryItem(
-      name: 'Pet supplies',
+      name: 'Амьтдын бүтээгдэхүүн',
       imageUrl:
           'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=400',
       color: const Color(0xFFD2B48C),
     ),
     CategoryItem(
-      name: 'Toys & games',
-      imageUrl:
-          'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400',
+      name: 'Тоглоомнууд',
+      imageUrl: 'assets/images/categories/Toys&games/toys and games.jpg',
       color: const Color(0xFF6A5ACD),
     ),
     CategoryItem(
-      name: 'Electronics',
-      imageUrl:
-          'https://images.unsplash.com/photo-1518655048521-f130df041f66?w=400',
+      name: 'Электроник бараа',
+      imageUrl: 'assets/images/categories/electronics/electronics.jpg',
       color: const Color(0xFF2F2F2F),
     ),
   ];
@@ -236,12 +311,14 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildCategoryCard(CategoryItem category) {
     return GestureDetector(
       onTap: () {
-        if (category.name == 'Women') {
+        if (category.name == 'Эмэгтэй') {
+          // Women in Mongolian
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const WomenCategoryPage()),
           );
-        } else if (category.name == 'Men') {
+        } else if (category.name == 'Эрэгтэй') {
+          // Men in Mongolian
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const MenCategoryPage()),
@@ -268,19 +345,33 @@ class _SearchScreenState extends State<SearchScreen> {
             // Background Image
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                category.imageUrl,
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: category.color,
-                    width: double.infinity,
-                    height: double.infinity,
-                  );
-                },
-              ),
+              child: category.imageUrl.startsWith('assets/')
+                  ? Image.asset(
+                      category.imageUrl,
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: category.color,
+                          width: double.infinity,
+                          height: double.infinity,
+                        );
+                      },
+                    )
+                  : Image.network(
+                      category.imageUrl,
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: category.color,
+                          width: double.infinity,
+                          height: double.infinity,
+                        );
+                      },
+                    ),
             ),
 
             // Overlay
@@ -649,8 +740,10 @@ class OrdersScreen extends StatelessWidget {
     if (items.isNotEmpty) {
       imageUrl = items.first['imageUrl'] ?? '';
     }
-    final int itemCnt =
-        items.fold<int>(0, (sum, e) => sum + ((e['quantity'] ?? 1) as int));
+    final int itemCnt = items.fold<int>(
+        0,
+        (sum, e) =>
+            sum + TypeUtils.safeCastInt(e['quantity'], defaultValue: 1));
     final itemCountStr = '$itemCnt item${itemCnt > 1 ? 's' : ''}';
     final price =
         data.containsKey('total') ? '\$${data['total'].toString()}' : null;

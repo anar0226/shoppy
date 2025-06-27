@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shoppy/features/cart/models/cart_item.dart';
-import 'package:shoppy/features/stores/models/store_model.dart';
+import 'package:avii/features/cart/models/cart_item.dart';
+import 'package:avii/features/stores/models/store_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class OrderService {

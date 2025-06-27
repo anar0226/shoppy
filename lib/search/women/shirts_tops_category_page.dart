@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shoppy/features/stores/presentation/store_screen.dart'
+import 'package:avii/features/stores/presentation/store_screen.dart'
     show StoreScreen, StoreData, StoreCollection, StoreProduct;
-import 'package:shoppy/features/stores/models/store_model.dart';
-import 'package:shoppy/features/products/presentation/product_page.dart';
-import 'package:shoppy/features/products/models/product_model.dart'
+import 'package:avii/features/stores/models/store_model.dart';
+import 'package:avii/features/products/presentation/product_page.dart';
+import 'package:avii/features/products/models/product_model.dart'
     show ProductModel, ProductVariant;
 import '../../features/home/presentation/main_scaffold.dart';
-import 'package:shoppy/features/categories/presentation/final_category_page.dart';
+import 'package:avii/features/categories/presentation/final_category_page.dart';
 
 class ShirtsTopsCategoryPage extends StatefulWidget {
   const ShirtsTopsCategoryPage({super.key});

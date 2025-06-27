@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../notifications/widgets/notification_permission_widget.dart';
+import '../notifications/fcm_service.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({Key? key}) : super(key: key);
@@ -106,6 +108,94 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                // Push Notification Status
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.smartphone, color: Colors.blue.shade700),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Push Notifications',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const Spacer(),
+                          const NotificationStatusIndicator(),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Enable push notifications to receive instant updates on your device',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      FutureBuilder<bool>(
+                        future: FCMService().isNotificationPermissionGranted(),
+                        builder: (context, snapshot) {
+                          final isGranted = snapshot.data ?? false;
+                          if (!isGranted) {
+                            return const NotificationPermissionWidget(
+                              showAsCard: false,
+                              customTitle: 'Enable Push Notifications',
+                              customDescription:
+                                  'Tap to enable instant notifications on your device',
+                            );
+                          }
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.check_circle,
+                                    color: Colors.green.shade600, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Push notifications are enabled for this device',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.green.shade700,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                const Text(
+                  'Notification Types',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 _buildNotificationTile(
                   title: 'Order Tracking',
                   subtitle: 'Get updates about your order status',

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../auth/auth_service.dart';
 import '../../features/discounts/models/discount_model.dart';
 import '../../features/discounts/services/discount_service.dart';
+import '../../core/utils/type_utils.dart';
 
 class EditDiscountDialog extends StatefulWidget {
   final String discountId;
@@ -134,7 +135,8 @@ class _EditDiscountDialogState extends State<EditDiscountDialog> {
         name: _nameCtrl.text.trim(),
         type: _selectedType,
         value: value,
-        maxUseCount: int.parse(_maxUseCountCtrl.text),
+        maxUseCount:
+            TypeUtils.safeParseInt(_maxUseCountCtrl.text, defaultValue: 0),
         currentUseCount: widget.discount.currentUseCount, // Keep existing usage
         isActive: _status == 'Active',
         createdAt: widget.discount.createdAt, // Keep original creation date

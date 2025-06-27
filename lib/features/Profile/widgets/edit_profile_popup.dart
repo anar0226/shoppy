@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shoppy/features/auth/providers/auth_provider.dart';
+import 'package:avii/features/auth/providers/auth_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 

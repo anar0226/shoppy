@@ -1,4 +1,4 @@
-import 'package:shoppy/features/products/models/product_model.dart';
+import 'package:avii/features/products/models/product_model.dart';
 
 class CartItem {
   final ProductModel product;

@@ -1,20 +1,86 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shoppy/features/auth/providers/auth_provider.dart';
-import 'package:shoppy/features/stores/models/store_model.dart';
-import 'package:shoppy/features/products/models/product_model.dart';
-import 'package:shoppy/features/home/domain/models.dart' show SellerProduct;
-import 'package:shoppy/features/home/presentation/widgets/seller_card.dart';
-import 'package:shoppy/features/home/presentation/main_scaffold.dart';
-import 'package:shoppy/features/home/presentation/home_screen.dart'
+import 'package:avii/features/auth/providers/auth_provider.dart';
+import 'package:avii/features/stores/models/store_model.dart';
+import 'package:avii/features/products/models/product_model.dart';
+import 'package:avii/features/home/domain/models.dart' show SellerProduct;
+import 'package:avii/features/home/presentation/widgets/seller_card.dart';
+import 'package:avii/features/home/presentation/main_scaffold.dart';
+import 'package:avii/features/home/presentation/home_screen.dart'
     show SellerData;
-import 'package:shoppy/features/stores/presentation/store_screen.dart';
-import 'package:shoppy/features/stores/presentation/store_screen.dart'
+import 'package:avii/features/stores/presentation/store_screen.dart';
+import 'package:avii/features/stores/presentation/store_screen.dart'
     show StoreData, StoreProduct;
+import 'services/following_service.dart';
 
-class FollowingScreen extends StatelessWidget {
+class FollowingScreen extends StatefulWidget {
   const FollowingScreen({super.key});
+
+  @override
+  State<FollowingScreen> createState() => _FollowingScreenState();
+}
+
+class _FollowingScreenState extends State<FollowingScreen> {
+  final FollowingService _followingService = FollowingService();
+
+  void _showUnfollowAllDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Бүх дэлгүүрийг дагахаа больx'),
+        content:
+            const Text('Бүх дэлгүүрийг дагахаа больxдоо итгэлтэй байна уу?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Цуцлах'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _unfollowAllStores();
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Бүх дэлгүүрийг дагахаа больx'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _unfollowAllStores() async {
+    final auth = context.read<AuthProvider>();
+    if (auth.user == null) return;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(auth.user!.uid)
+          .get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
+        final storeIds = List<String>.from(data['followerStoreIds'] ?? []);
+
+        for (final storeId in storeIds) {
+          await _followingService.unfollowStore(storeId);
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Амжилттай!')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Алдаа гарлаа: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,9 +91,43 @@ class FollowingScreen extends StatelessWidget {
       onBack: () => Navigator.pop(context),
       child: Scaffold(
         backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          title: const Text(
+            'Таны дагадаг дэлгүүрүүд',
+            style: TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          actions: [
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.black),
+              onSelected: (value) {
+                if (value == 'unfollow_all') {
+                  _showUnfollowAllDialog();
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'unfollow_all',
+                  child: Row(
+                    children: [
+                      Icon(Icons.remove_circle_outline, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Бүх дэлгүүрийг дагахаа больx'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
         body: SafeArea(
           child: auth.user == null
-              ? const Center(child: Text('Sign in to view followed stores'))
+              ? const Center(child: Text('Бүртгүүлэх'))
               : StreamBuilder<DocumentSnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('users')
@@ -60,15 +160,15 @@ class _EmptyFollowing extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('No followed stores yet',
+          const Text('Та одоогоор ямар ч дэлгүүр дагаагүй байна',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          const Text('Tap the follow button on any store',
+          const Text('Та ямар ч дэлгүүрийг дагаx боломжтой!',
               style: TextStyle(color: Colors.black54)),
           const SizedBox(height: 16),
           TextButton(
             onPressed: () => Navigator.pushReplacementNamed(context, '/home'),
-            child: const Text('Go discover',
+            child: const Text('Discover',
                 style: TextStyle(color: Color(0xFF6A5AE0))),
           )
         ],
@@ -213,6 +313,7 @@ class _SellerCardWithNav extends StatelessWidget {
       rating: seller.rating,
       reviews: seller.reviews,
       products: seller.products,
+      storeId: seller.storeId,
       onShopAllTap: () => _openStore(context, seller.storeId),
     );
   }

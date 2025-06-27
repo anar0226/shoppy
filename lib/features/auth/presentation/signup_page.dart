@@ -19,7 +19,7 @@ class _SignUpPageState extends State<SignUpPage> {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Create account')),
+      appBar: AppBar(title: const Text('Шинээр бүртгүүлэx')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -28,27 +28,28 @@ class _SignUpPageState extends State<SignUpPage> {
             child: Column(
               children: [
                 TextFormField(
-                  decoration: const InputDecoration(labelText: 'Name'),
+                  decoration: const InputDecoration(labelText: 'Нэр'),
                   validator: (value) => value != null && value.isNotEmpty
                       ? null
-                      : 'Enter your name',
+                      : 'Нэрээ оруулна уу',
                   onSaved: (val) => _name = val!.trim(),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  decoration: const InputDecoration(labelText: 'И-мэйл'),
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) => value != null && value.contains('@')
                       ? null
-                      : 'Enter valid email',
+                      : 'И-мэйл оруулна уу',
                   onSaved: (val) => _email = val!.trim(),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  decoration: const InputDecoration(labelText: 'Password'),
+                  decoration: const InputDecoration(labelText: 'Нууц үг'),
                   obscureText: true,
-                  validator: (value) =>
-                      value != null && value.length >= 6 ? null : 'Min 6 chars',
+                  validator: (value) => value != null && value.length >= 6
+                      ? null
+                      : '6-аас дээш тэмдэгт оруулна уу',
                   onSaved: (val) => _password = val!.trim(),
                 ),
                 const SizedBox(height: 24),
@@ -74,7 +75,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           },
                     child: auth.loading
                         ? const CircularProgressIndicator()
-                        : const Text('Sign Up'),
+                        : const Text('Бүртгүүлэx'),
                   ),
                 ),
               ],

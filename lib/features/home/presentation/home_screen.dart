@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
-import 'package:shoppy/features/auth/providers/auth_provider.dart';
-import 'package:shoppy/features/stores/models/store_model.dart';
-import 'package:shoppy/features/products/models/product_model.dart';
+import 'package:avii/features/auth/providers/auth_provider.dart';
+import 'package:avii/features/stores/models/store_model.dart';
+import 'package:avii/features/products/models/product_model.dart';
 import '../domain/models.dart';
 import 'floating_nav_bar.dart';
 import 'main_scaffold.dart';
 import 'firestore_store_screen.dart';
-import 'package:shoppy/features/stores/presentation/store_screen.dart';
-import 'package:shoppy/features/stores/presentation/store_screen.dart'
+import 'package:avii/features/stores/presentation/store_screen.dart';
+import 'package:avii/features/stores/presentation/store_screen.dart'
     show StoreData, StoreProduct;
-import 'package:shoppy/features/products/presentation/product_page.dart';
+import 'package:avii/features/products/presentation/product_page.dart';
+import 'widgets/seller_card.dart';
+import 'package:avii/features/reviews/services/reviews_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -55,72 +57,194 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<List<SellerData>> _loadSellers() async {
-    // Fetch all stores; you can add filters like status=='active' once data is consistent
-    final storeSnap = await _db.collection('stores').get();
+    try {
+      // Try to load featured stores configuration
+      final featuredDoc = await _db
+          .collection('platform_settings')
+          .doc('featured_stores')
+          .get();
 
-    final List<SellerData> result = [];
-    for (final doc in storeSnap.docs) {
-      final storeModel = StoreModel.fromFirestore(doc);
-
-      // Load seller card settings
-      final sellerCardDoc =
-          await _db.collection('seller_cards').doc(storeModel.id).get();
-
-      List<String> featuredProductIds = [];
-      String? customBackgroundUrl;
-
-      if (sellerCardDoc.exists) {
-        final cardData = sellerCardDoc.data()!;
-        featuredProductIds =
-            List<String>.from(cardData['featuredProductIds'] ?? []);
-        customBackgroundUrl = cardData['backgroundImageUrl'];
+      List<String> featuredStoreIds = [];
+      if (featuredDoc.exists) {
+        featuredStoreIds =
+            List<String>.from(featuredDoc.data()?['storeIds'] ?? []);
       }
 
-      // Load products - either featured products or default products
-      List<ProductModel> products;
+      // If no featured stores configured or permission denied, use hardcoded store IDs
+      if (featuredStoreIds.isEmpty) {
+        featuredStoreIds = [
+          'TLLb3tqzvU2TZSsNPol9',
+          'store_rbA5yLk0vadvSWarOpzYW1bRRUz1'
+        ];
+      }
 
-      if (featuredProductIds.isNotEmpty) {
-        // Load the specific featured products
-        products = [];
-        for (final productId in featuredProductIds.take(4)) {
-          try {
-            final productDoc =
-                await _db.collection('products').doc(productId).get();
-            if (productDoc.exists) {
-              products.add(ProductModel.fromFirestore(productDoc));
+      final List<SellerData> result = [];
+      for (final storeId in featuredStoreIds) {
+        try {
+          final storeDoc = await _db.collection('stores').doc(storeId).get();
+          if (!storeDoc.exists) continue;
+
+          final storeModel = StoreModel.fromFirestore(storeDoc);
+
+          // Load seller card settings
+          final sellerCardDoc =
+              await _db.collection('seller_cards').doc(storeModel.id).get();
+
+          List<String> featuredProductIds = [];
+          String? customBackgroundUrl;
+
+          if (sellerCardDoc.exists) {
+            final cardData = sellerCardDoc.data()!;
+            featuredProductIds =
+                List<String>.from(cardData['featuredProductIds'] ?? []);
+            customBackgroundUrl = cardData['backgroundImageUrl'];
+          }
+
+          // Load products - either featured products or default products
+          List<ProductModel> products;
+
+          if (featuredProductIds.isNotEmpty) {
+            // Load the specific featured products
+            products = [];
+            for (final productId in featuredProductIds.take(4)) {
+              try {
+                final productDoc =
+                    await _db.collection('products').doc(productId).get();
+                if (productDoc.exists) {
+                  products.add(ProductModel.fromFirestore(productDoc));
+                }
+              } catch (e) {
+                print('Error loading featured product $productId: $e');
+              }
             }
-          } catch (e) {
-            print('Error loading featured product $productId: $e');
+          } else {
+            // Load default products if no featured products are set
+            products = await _fetchProducts(storeModel.id);
+          }
+
+          if (products.isEmpty) continue;
+
+          final sellerProducts = products
+              .map((p) => SellerProduct(
+                    id: p.id,
+                    imageUrl: p.images.isNotEmpty ? p.images.first : '',
+                    price: '\$${p.price.toStringAsFixed(2)}',
+                  ))
+              .toList();
+
+          // Load real ratings from reviews
+          double storeRating = 0.0; // Changed from 4.5 to 0.0 when no reviews
+          int reviewCount = 0;
+
+          try {
+            final reviewsSnapshot = await _db
+                .collection('stores')
+                .doc(storeModel.id)
+                .collection('reviews')
+                .where('status', isEqualTo: 'active')
+                .get();
+
+            if (reviewsSnapshot.docs.isNotEmpty) {
+              final reviews = reviewsSnapshot.docs;
+              final totalRating = reviews.fold<double>(0, (sum, doc) {
+                final data = doc.data();
+                return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+              });
+              storeRating = totalRating / reviews.length;
+              reviewCount = reviews.length;
+              print(
+                  '📊 Store ${storeModel.name}: $reviewCount reviews, rating: $storeRating');
+            }
+          } catch (reviewError) {
+            print(
+                '⚠️ Error loading reviews for ${storeModel.name}: $reviewError');
+          }
+
+          result.add(SellerData(
+            name: storeModel.name,
+            storeId: storeModel.id,
+            profileLetter: storeModel.name.isNotEmpty
+                ? storeModel.name[0].toUpperCase()
+                : '?',
+            rating: double.parse(storeRating.toStringAsFixed(1)),
+            reviews: reviewCount,
+            products: sellerProducts,
+            backgroundImageUrl: customBackgroundUrl ?? storeModel.banner,
+            isAssetBg: false,
+          ));
+        } catch (e) {
+          print('Error loading store $storeId: $e');
+        }
+      }
+
+      return result;
+    } catch (e) {
+      print('Error loading sellers: $e');
+      // Fallback: try to load any available stores directly
+      try {
+        final storeSnap = await _db.collection('stores').limit(2).get();
+        final List<SellerData> fallbackResult = [];
+
+        for (final doc in storeSnap.docs) {
+          final storeModel = StoreModel.fromFirestore(doc);
+          final products = await _fetchProducts(storeModel.id);
+
+          if (products.isNotEmpty) {
+            final sellerProducts = products
+                .map((p) => SellerProduct(
+                      id: p.id,
+                      imageUrl: p.images.isNotEmpty ? p.images.first : '',
+                      price: '\$${p.price.toStringAsFixed(2)}',
+                    ))
+                .toList();
+
+            // Load real ratings for fallback stores too
+            double fallbackRating =
+                0.0; // Changed from 4.5 to 0.0 when no reviews
+            int fallbackReviewCount = 0;
+
+            try {
+              final reviewsSnapshot = await _db
+                  .collection('stores')
+                  .doc(storeModel.id)
+                  .collection('reviews')
+                  .where('status', isEqualTo: 'active')
+                  .get();
+
+              if (reviewsSnapshot.docs.isNotEmpty) {
+                final reviews = reviewsSnapshot.docs;
+                final totalRating = reviews.fold<double>(0, (sum, doc) {
+                  final data = doc.data();
+                  return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+                });
+                fallbackRating = totalRating / reviews.length;
+                fallbackReviewCount = reviews.length;
+              }
+            } catch (reviewError) {
+              print(
+                  '⚠️ Error loading fallback reviews for ${storeModel.name}: $reviewError');
+            }
+
+            fallbackResult.add(SellerData(
+              name: storeModel.name,
+              storeId: storeModel.id,
+              profileLetter: storeModel.name.isNotEmpty
+                  ? storeModel.name[0].toUpperCase()
+                  : '?',
+              rating: double.parse(fallbackRating.toStringAsFixed(1)),
+              reviews: fallbackReviewCount,
+              products: sellerProducts,
+              backgroundImageUrl: storeModel.banner,
+              isAssetBg: false,
+            ));
           }
         }
-      } else {
-        // Load default products if no featured products are set
-        products = await _fetchProducts(storeModel.id);
+        return fallbackResult;
+      } catch (fallbackError) {
+        print('Fallback also failed: $fallbackError');
+        return [];
       }
-
-      if (products.isEmpty) continue;
-
-      final sellerProducts = products
-          .map((p) => SellerProduct(
-                id: p.id,
-                imageUrl: p.images.isNotEmpty ? p.images.first : '',
-                price: '\$${p.price.toStringAsFixed(2)}',
-              ))
-          .toList();
-
-      result.add(SellerData(
-        name: storeModel.name,
-        storeId: storeModel.id,
-        profileLetter:
-            storeModel.name.isNotEmpty ? storeModel.name[0].toUpperCase() : '?',
-        rating: 4.8,
-        reviews: 125,
-        products: sellerProducts,
-        backgroundImageUrl: customBackgroundUrl ?? storeModel.banner,
-        isAssetBg: false,
-      ));
     }
-    return result;
   }
 
   Future<List<ProductModel>> _fetchProducts(String storeId,
@@ -141,29 +265,94 @@ class _HomeScreenState extends State<HomeScreen> {
     return upper.docs.map((d) => ProductModel.fromFirestore(d)).toList();
   }
 
-  // Your offers data
-  final List<Offer> offers = [
-    Offer(
-      id: 'dracoslides',
-      imageUrl:
-          'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400',
-      discount: 'Save \$25',
-      storeName: 'DRACOSLIDES',
-      rating: 4.6,
-      reviews: '16K',
-      title: 'SPRING SALE',
-    ),
-    Offer(
-      id: 'purplebrand',
-      imageUrl:
-          'https://i.pinimg.com/236x/3b/de/66/3bde66eb4a2eb105e1e8e5f0f341a925.jpg',
-      discount: 'Save \$50',
-      storeName: 'PURPLE BRAND',
-      rating: 4.8,
-      reviews: '6.3K',
-      title: 'PURPLE',
-    ),
-  ];
+  // Load featured offers dynamically from real stores
+  Future<List<Offer>> _loadFeaturedOffers() async {
+    print('🔍 Loading featured offers - Starting...');
+
+    try {
+      final List<Offer> dynamicOffers = [];
+
+      // Use the same featured store IDs for consistency
+      final featuredStoreIds = [
+        'TLLb3tqzvU2TZSsNPol9',
+        'store_rbA5yLk0vadvSWarOpzYW1bRRUz1'
+      ];
+
+      print('🔍 Loading stores: $featuredStoreIds');
+
+      for (final storeId in featuredStoreIds) {
+        try {
+          print('🔍 Loading store: $storeId');
+          final storeDoc = await _db.collection('stores').doc(storeId).get();
+
+          if (!storeDoc.exists) {
+            print('❌ Store $storeId does not exist');
+            continue;
+          }
+
+          final storeData = storeDoc.data()!;
+          final storeName = storeData['name'] ?? 'Unknown Store';
+          final storeImage = storeData['banner'] ?? storeData['logo'] ?? '';
+
+          print('✅ Store loaded: $storeName, image: $storeImage');
+
+          // Get store reviews to calculate real rating
+          double rating = 0.0; // Default rating changed from 4.5 to 0.0
+          String reviewCount = '0';
+
+          try {
+            final reviewsSnapshot = await _db
+                .collection('stores')
+                .doc(storeId)
+                .collection('reviews')
+                .where('status', isEqualTo: 'active')
+                .get();
+
+            if (reviewsSnapshot.docs.isNotEmpty) {
+              final reviews = reviewsSnapshot.docs;
+              final totalRating = reviews.fold<double>(0, (sum, doc) {
+                final data = doc.data();
+                return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+              });
+              rating = totalRating / reviews.length;
+              reviewCount = reviews.length > 1000
+                  ? '${(reviews.length / 1000).toStringAsFixed(1)}K'
+                  : reviews.length.toString();
+              print('📊 Reviews loaded: $reviewCount reviews, rating: $rating');
+            } else {
+              print('📊 No reviews found for $storeName');
+            }
+          } catch (reviewError) {
+            print('⚠️ Error loading reviews for $storeId: $reviewError');
+          }
+
+          final offer = Offer(
+            id: storeId,
+            imageUrl: storeImage.isNotEmpty
+                ? storeImage
+                : 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400',
+            discount:
+                dynamicOffers.isEmpty ? 'Featured Store' : 'Special Offer',
+            storeName: storeName.toUpperCase(),
+            rating: double.parse(rating.toStringAsFixed(1)),
+            reviews: reviewCount,
+            title: dynamicOffers.isEmpty ? 'FEATURED' : 'SPECIAL',
+          );
+
+          dynamicOffers.add(offer);
+          print('✅ Offer created for: ${offer.storeName}');
+        } catch (e) {
+          print('❌ Error loading offer for store $storeId: $e');
+        }
+      }
+
+      print('🎯 Total offers loaded: ${dynamicOffers.length}');
+      return dynamicOffers;
+    } catch (e) {
+      print('💥 Fatal error loading featured offers: $e');
+      rethrow; // Re-throw to show in UI
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -257,7 +446,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           // Logo
           const Text(
-            'shop',
+            'Avii.mn',
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w900,
@@ -457,296 +646,186 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Your offers header
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
-              const Text(
-                'Xямдралтай бараа',
+              Text(
+                'Онцлоx Дэлгүүрүүд:',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 20,
                   color: Colors.black87,
                 ),
               ),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right, size: 20, color: Colors.black54),
+              SizedBox(width: 4),
+              Icon(Icons.chevron_right, size: 20, color: Colors.black54),
             ],
           ),
         ),
 
         const SizedBox(height: 12),
 
-        // Horizontal scrolling offers - 185x191 pixels
-        SizedBox(
-          height: 191, // Exact 191px height
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: offers.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 16),
-            itemBuilder: (context, index) {
-              final offer = offers[index];
-              return GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${offer.storeName} offer tapped!')),
-                  );
-                },
-                child: Container(
-                  width: 185, // Exact 185px width
-                  height: 191, // Exact 191px height
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      // Background image
-                      ClipRRect(
+        // Dynamic loading of offers
+        FutureBuilder<List<Offer>>(
+          future: _loadFeaturedOffers(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 191,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (snapshot.hasError) {
+              print('Featured offers error: ${snapshot.error}');
+              return SizedBox(
+                height: 191,
+                child: Center(
+                  child: Text('Error loading offers: ${snapshot.error}'),
+                ),
+              );
+            }
+
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const SizedBox(
+                height: 191,
+                child: Center(child: Text('No featured stores available')),
+              );
+            }
+
+            final offers = snapshot.data!;
+
+            return SizedBox(
+              height: 191, // Exact 191px height
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                itemCount: offers.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 16),
+                itemBuilder: (context, index) {
+                  final offer = offers[index];
+                  return GestureDetector(
+                    onTap: () {
+                      // Navigate to the actual store
+                      _openStore(context, offer.id);
+                    },
+                    child: Container(
+                      width: 185, // Exact 185px width
+                      height: 191, // Exact 191px height
+                      decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(20),
-                        child: Image.network(
-                          offer.imageUrl,
-                          width: 185,
-                          height: 191,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 185,
-                              height: 191,
-                              color: Colors.grey[300],
-                              child: const Icon(Icons.image,
-                                  size: 50, color: Colors.grey),
-                            );
-                          },
-                        ),
-                      ),
-
-                      // Gradient overlay
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withOpacity(0.7),
-                            ],
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
                           ),
-                        ),
+                        ],
                       ),
-
-                      // Bottom content
-                      Positioned(
-                        left: 12,
-                        right: 12,
-                        bottom: 12,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              offer.storeName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
+                      child: Stack(
+                        children: [
+                          // Background image with 70% opacity
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: Stack(
                               children: [
-                                Text(
-                                  offer.rating.toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
+                                Image.network(
+                                  offer.imageUrl,
+                                  width: 185,
+                                  height: 191,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 185,
+                                      height: 191,
+                                      color: Colors.grey[300],
+                                      child: const Icon(Icons.image,
+                                          size: 50, color: Colors.grey),
+                                    );
+                                  },
                                 ),
-                                const SizedBox(width: 2),
-                                const Icon(Icons.star,
-                                    color: Colors.amber, size: 12),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '(${offer.reviews})',
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 11,
+                                // 70% opacity overlay
+                                Container(
+                                  width: 185,
+                                  height: 191,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                    color: Colors.black.withOpacity(
+                                        0.3), // 70% opacity = 30% overlay
                                   ),
                                 ),
                               ],
                             ),
-                          ],
-                        ),
+                          ),
+
+                          // Content overlay
+                          Positioned(
+                            left: 12,
+                            right: 12,
+                            bottom: 12,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  offer.storeName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Text(
+                                      offer.rating.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Icon(Icons.star,
+                                        color: Colors.amber, size: 12),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '(${offer.reviews})',
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
         ),
       ],
     );
   }
 
   Widget _buildSellerCard(BuildContext context, SellerData seller) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        image: seller.backgroundImageUrl != null
-            ? DecorationImage(
-                image: seller.isAssetBg
-                    ? AssetImage(seller.backgroundImageUrl!)
-                    : NetworkImage(seller.backgroundImageUrl!) as ImageProvider,
-                fit: BoxFit.cover,
-                colorFilter: ColorFilter.mode(
-                  Colors.white.withOpacity(0.7),
-                  BlendMode.lighten,
-                ),
-              )
-            : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Seller Info
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.black87,
-                child: Text(
-                  seller.profileLetter,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      seller.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Text(
-                          seller.rating.toString(),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.star, color: Colors.black87, size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          '(${seller.reviews})',
-                          style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${seller.name} options tapped!')),
-                  );
-                },
-                child: const Icon(
-                  Icons.more_horiz,
-                  color: Colors.black54,
-                  size: 24,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // Products Grid
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 1,
-            ),
-            itemCount: seller.products.length,
-            itemBuilder: (context, index) {
-              return _buildProductCard(context, seller.products[index], seller);
-            },
-          ),
-
-          const SizedBox(height: 20),
-
-          // Shop All Button
-          Row(
-            children: [
-              const Text(
-                'Shop all',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => _openStore(context, seller.storeId),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF0F0F0),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.arrow_forward,
-                    size: 20,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return SellerCard(
+      sellerName: seller.name,
+      profileLetter: seller.profileLetter,
+      rating: seller.rating,
+      reviews: seller.reviews,
+      products: seller.products,
+      storeId: seller.storeId,
+      backgroundImageUrl: seller.backgroundImageUrl,
+      onShopAllTap: () => _openStore(context, seller.storeId),
     );
   }
 

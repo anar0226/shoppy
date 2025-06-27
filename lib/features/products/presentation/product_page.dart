@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:shoppy/features/products/models/product_model.dart';
+import 'package:avii/features/products/models/product_model.dart';
 import 'package:provider/provider.dart';
-import 'package:shoppy/features/cart/providers/cart_provider.dart';
-import 'package:shoppy/features/cart/models/cart_item.dart';
-import 'package:shoppy/features/profile/providers/recently_viewed_provider.dart';
-import 'package:shoppy/features/checkout/presentation/checkout_page.dart';
-import 'package:shoppy/features/checkout/models/checkout_item.dart';
-import 'package:shoppy/features/auth/providers/auth_provider.dart';
+import 'package:avii/features/cart/providers/cart_provider.dart';
+import 'package:avii/features/cart/models/cart_item.dart';
+import 'package:avii/features/profile/providers/recently_viewed_provider.dart';
+import 'package:avii/features/checkout/presentation/checkout_page.dart';
+import 'package:avii/features/checkout/models/checkout_item.dart';
+import 'package:avii/features/auth/providers/auth_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shoppy/features/addresses/providers/address_provider.dart';
-import 'package:shoppy/features/addresses/presentation/manage_addresses_page.dart';
+import 'package:avii/features/addresses/providers/address_provider.dart';
+import 'package:avii/features/addresses/presentation/manage_addresses_page.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'dart:async';
-import 'package:shoppy/features/stores/models/store_model.dart';
-import 'package:shoppy/features/stores/presentation/store_screen.dart';
-import 'package:shoppy/features/home/presentation/main_scaffold.dart';
+import 'package:avii/features/stores/models/store_model.dart';
+import 'package:avii/features/stores/presentation/store_screen.dart';
+import 'package:avii/features/home/presentation/main_scaffold.dart';
 
 class ProductPage extends StatefulWidget {
   final ProductModel product;

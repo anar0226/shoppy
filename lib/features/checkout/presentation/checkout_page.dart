@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:shoppy/features/home/presentation/main_scaffold.dart';
-import 'package:shoppy/features/checkout/models/checkout_item.dart';
-import 'package:shoppy/features/addresses/presentation/manage_addresses_page.dart';
+import 'package:avii/features/home/presentation/main_scaffold.dart';
+import 'package:avii/features/checkout/models/checkout_item.dart';
+import 'package:avii/features/addresses/presentation/manage_addresses_page.dart';
 import 'package:provider/provider.dart';
-import 'package:shoppy/features/addresses/providers/address_provider.dart';
-import 'package:shoppy/features/discounts/models/discount_model.dart';
-import 'package:shoppy/features/discounts/services/discount_service.dart';
+import 'package:avii/features/addresses/providers/address_provider.dart';
+import 'package:avii/features/discounts/models/discount_model.dart';
+import 'package:avii/features/discounts/services/discount_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CheckoutPage extends StatefulWidget {
@@ -110,14 +110,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Discount applied! You saved \$${_discountAmount.toStringAsFixed(2)}',
+            'Хөнгөлөлт амжилттай! хөнгөлөлсөн үнэ: \$${_discountAmount.toStringAsFixed(2)}',
           ),
           backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
       setState(() {
-        _discountError = 'Error applying discount code';
+        _discountError = 'Хөнгөлөлтийн кодыг ашиглахад алдаа гарлаа';
       });
     } finally {
       setState(() {
@@ -143,7 +143,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          title: const Text('Review & Pay'),
+          title: const Text('Төлбөр хийх'),
           backgroundColor: Colors.white,
           elevation: 0,
           foregroundColor: Colors.black,
@@ -159,36 +159,37 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 const SizedBox(height: 24),
 
                 // Ship to
-                _sectionHeader('Ship to'),
+                _sectionHeader('Хүргэлтийн хаяг'),
                 _buildShippingAddressTile(context),
                 const SizedBox(height: 24),
 
                 // Shipping method
-                _sectionHeader('Shipping method'),
-                _expandableTile(context, 'Standard · FREE'),
+                _sectionHeader('Хүргэлтийн арга'),
+                _expandableTile(context, 'UBCab · Үнэгүй'),
                 const SizedBox(height: 24),
 
                 // Payment section
-                const Text('Payment',
+                const Text('Тооцоо хийх',
                     style:
                         TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                const Text('All transactions are secure and encrypted.'),
+                const Text(
+                    'Таны төлбөрийн мэдээлэлийг бид хэзээ ч хадгалахгүй.'),
                 const SizedBox(height: 16),
 
                 _paymentOptionTile(
-                    title: 'Pay now',
-                    subtitle: 'Pay the entire amount today',
+                    title: 'Одоо төлөх',
+                    subtitle: 'Одоо төлөх',
                     selected: true),
                 const SizedBox(height: 12),
                 _paymentOptionTile(
-                    title: 'Pay in 4 installments of',
+                    title: '4 хуваан төлөx',
                     subtitle: '\$${(_finalTotal / 4).toStringAsFixed(2)}',
                     selected: false),
                 const SizedBox(height: 24),
 
                 // Order summary
-                const Text('Order summary',
+                const Text('Захиалгын хураангуй',
                     style:
                         TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
@@ -203,22 +204,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 ],
 
                 const Divider(height: 32),
-                _priceRow('Subtotal', widget.subtotal),
+                _priceRow('Нийт дүн', widget.subtotal),
 
                 // Show discount savings
                 if (_discountAmount > 0) ...[
-                  _priceRow(
-                      'Discount (${_appliedDiscount!.code})', -_discountAmount),
+                  _priceRow('Хөнгөлсөн дүн: (${_appliedDiscount!.code})',
+                      -_discountAmount),
                 ],
 
                 _priceRow(
-                    'Shipping',
+                    'Хүргэлтийн үнэ',
                     _appliedDiscount?.type == DiscountType.freeShipping
                         ? 0
                         : widget.shippingCost),
-                _priceRow('Tax', widget.tax),
+                _priceRow('Татвар', widget.tax),
                 const Divider(height: 32),
-                _priceRow('Total', _finalTotal, isTotal: true),
+                _priceRow('Нийт дүн', _finalTotal, isTotal: true),
                 const SizedBox(height: 32),
 
                 // Centered checkout button
@@ -245,13 +246,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         // TODO: Implement payment processing
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Order placed successfully!'),
+                            content: Text('Захиалга амжилттай боллоо!'),
                             backgroundColor: Colors.green,
                           ),
                         );
                       },
                       child: Text(
-                        'Pay \$${_finalTotal.toStringAsFixed(2)}',
+                        'Төлөх дүн: \$${_finalTotal.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -356,8 +357,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 enabled: _appliedDiscount == null,
                 decoration: InputDecoration(
                   hintText: _appliedDiscount != null
-                      ? 'Discount applied'
-                      : 'Discount code',
+                      ? 'Хөнгөлөлт амжилттай'
+                      : 'Хөнгөлөлтийн код',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(
@@ -393,7 +394,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         color: Colors.black54,
                       ),
                     )
-                  : Text(_appliedDiscount != null ? 'Applied' : 'Apply'),
+                  : Text(_appliedDiscount != null ? 'Амжилттай' : 'Шалгаx'),
             ),
           ],
         ),
@@ -416,14 +417,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
       children: [
         Expanded(
           child: Text(
-            'Applied Discount: ${_appliedDiscount!.code}',
+            'Хөнгөлөлтийн код: ${_appliedDiscount!.code}',
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
         GestureDetector(
           onTap: _removeDiscount,
           child: const Text(
-            'Remove',
+            'Устгах',
             style: TextStyle(color: Colors.blue, fontWeight: FontWeight.normal),
           ),
         ),

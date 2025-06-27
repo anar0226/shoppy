@@ -11,7 +11,7 @@ class ManageAddressesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage Addresses'),
+        title: const Text('Хүргэлтийн хаягууд'),
         centerTitle: true,
       ),
       body: Consumer<AddressProvider>(
@@ -31,7 +31,7 @@ class ManageAddressesPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'No addresses yet',
+                      'Хүргэлтийн хаяг байхгүй байна',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -40,7 +40,7 @@ class ManageAddressesPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Add your first shipping address to continue with your orders.',
+                      'Хүргэлтийн хаяг оруулсаны дараа хүргэлт хийгдэх боломжтой.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 16,
@@ -56,7 +56,7 @@ class ManageAddressesPage extends StatelessWidget {
                       ),
                       icon: const Icon(Icons.add, color: Colors.white),
                       label: const Text(
-                        'Add your first address',
+                        'Хүргэх хаягаа оруулна уу',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -134,11 +134,11 @@ class ManageAddressesPage extends StatelessWidget {
                     itemBuilder: (context) => [
                       const PopupMenuItem(
                         value: 'edit',
-                        child: Text('Edit'),
+                        child: Text('Өөрчлөх'),
                       ),
                       const PopupMenuItem(
                         value: 'delete',
-                        child: Text('Delete'),
+                        child: Text('Устгах'),
                       ),
                     ],
                   ),
@@ -164,7 +164,7 @@ class ManageAddressesPage extends StatelessWidget {
           onPressed: () => Navigator.push(
               context, MaterialPageRoute(builder: (_) => AddEditAddressPage())),
           style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16)),
-          child: const Text('Add new address'),
+          child: const Text('Хүргэлтийн хаяг шинээр нэмэх'),
         ),
       ),
     );
@@ -176,12 +176,12 @@ class ManageAddressesPage extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Address'),
-        content: Text(
-            'Are you sure you want to delete the address for ${address.firstName} ${address.lastName}?'),
+        content:
+            Text('${address.firstName} ${address.lastName} хаягыг устгах уу?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('Цуцалгах'),
           ),
           TextButton(
             onPressed: () {
@@ -189,7 +189,7 @@ class ManageAddressesPage extends StatelessWidget {
               Navigator.pop(context);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: const Text('Устгах'),
           ),
         ],
       ),
