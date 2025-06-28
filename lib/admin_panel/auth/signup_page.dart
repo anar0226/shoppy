@@ -72,23 +72,25 @@ class _SignupPageState extends State<SignupPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Create Admin Account',
+                  const Text('Шинээр бүртгүүлэх',
                       style:
                           TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 24),
                   TextFormField(
                     controller: _emailCtrl,
-                    decoration: const InputDecoration(labelText: 'Email'),
-                    validator: (v) =>
-                        v != null && v.contains('@') ? null : 'Enter email',
+                    decoration: const InputDecoration(labelText: 'И-мэйл хаяг'),
+                    validator: (v) => v != null && v.contains('@')
+                        ? null
+                        : 'И-мэйл хаяг оруулна уу',
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _passCtrl,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Password'),
-                    validator: (v) =>
-                        v != null && v.length >= 6 ? null : 'Min 6 characters',
+                    decoration: const InputDecoration(labelText: 'Нууц үг'),
+                    validator: (v) => v != null && v.length >= 6
+                        ? null
+                        : '6-н тэмдэгтээс дээш нууц үг оруулна уу',
                   ),
                   const SizedBox(height: 24),
                   if (_error != null)
@@ -108,13 +110,13 @@ class _SignupPageState extends State<SignupPage> {
                       child: _loading
                           ? const CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2)
-                          : const Text('Sign up'),
+                          : const Text('Бүртгүүлэх'),
                     ),
                   ),
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: _loading ? null : () => Navigator.pop(context),
-                    child: const Text('Already have an account? Log in'),
+                    child: const Text('Шууд нэвтрэх'),
                   ),
                 ],
               ),

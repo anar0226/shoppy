@@ -84,7 +84,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         elevation: 0,
         foregroundColor: Colors.black,
         title: const Text(
-          'Notifications',
+          'Мэдэгдэл',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -101,7 +101,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               padding: const EdgeInsets.all(16),
               children: [
                 const Text(
-                  'Manage your notification preferences',
+                  'Мэдэгдэл тохируулалт',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey,
@@ -125,7 +125,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           Icon(Icons.smartphone, color: Colors.blue.shade700),
                           const SizedBox(width: 8),
                           const Text(
-                            'Push Notifications',
+                            'Push мэдэгдэл',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -137,7 +137,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Enable push notifications to receive instant updates on your device',
+                        'Push мэдэгдэлээр мэдэгдэх боломжтой',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade600,
@@ -151,7 +151,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           if (!isGranted) {
                             return const NotificationPermissionWidget(
                               showAsCard: false,
-                              customTitle: 'Enable Push Notifications',
+                              customTitle:
+                                  'Push мэдэгдэлээр мэдэгдэх боломжтой',
                               customDescription:
                                   'Tap to enable instant notifications on your device',
                             );
@@ -170,7 +171,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'Push notifications are enabled for this device',
+                                    'Push мэдэгдэлээр мэдэгдэх боломжтой',
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: Colors.green.shade700,
@@ -189,7 +190,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 const SizedBox(height: 24),
 
                 const Text(
-                  'Notification Types',
+                  'Мэдэгдэл төрөл',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -197,8 +198,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 ),
                 const SizedBox(height: 16),
                 _buildNotificationTile(
-                  title: 'Order Tracking',
-                  subtitle: 'Get updates about your order status',
+                  title: 'Захиалгын төлөв',
+                  subtitle: 'Захиалгын талаарx мэдэглэл аваx',
                   icon: Icons.local_shipping,
                   value: _orderTracking,
                   onChanged: (value) {
@@ -209,9 +210,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   },
                 ),
                 _buildNotificationTile(
-                  title: 'Offers',
-                  subtitle:
-                      'Receive notifications about special offers and deals',
+                  title: 'Үнэлгээ',
+                  subtitle: 'Үнэлгээний талаар мэдэглэл авах',
                   icon: Icons.local_offer,
                   value: _offers,
                   onChanged: (value) {
@@ -222,9 +222,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   },
                 ),
                 _buildNotificationTile(
-                  title: 'Price Drops',
-                  subtitle:
-                      'Get notified when items from followed shops go on sale',
+                  title: 'Xямдрал',
+                  subtitle: 'Хямдралтай бүтээгдэхүүний талаар мэдэглэл авах',
                   icon: Icons.trending_down,
                   value: _priceDrops,
                   onChanged: (value) {
@@ -235,8 +234,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   },
                 ),
                 _buildNotificationTile(
-                  title: 'New Drops',
-                  subtitle: 'Get notified when followed shops add new items',
+                  title: 'Шинэ бүтээгдэхүүн',
+                  subtitle: 'Шинэ бүтээгдэхүүн талаар мэдэглэл авах',
                   icon: Icons.new_releases,
                   value: _newDrops,
                   onChanged: (value) {
@@ -257,7 +256,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'About Notifications',
+                        'Мэдэгдэл',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -265,7 +264,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'You can manage your notification preferences here. Changes will be saved automatically.',
+                        'Таны мэдэгдэлээ эндээс хянах боломжтой. Өөрчлөлтүүд автоматаар хадгалагдана.',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade600,

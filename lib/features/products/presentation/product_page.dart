@@ -432,7 +432,7 @@ class _ProductPageState extends State<ProductPage> {
                     _buildStarRating(widget.product.reviewStars.round()),
                     const SizedBox(width: 8),
                     Text(
-                      '$_reviewCount ratings',
+                      '$_reviewCount Үнэлгээ',
                       style: const TextStyle(
                         fontSize: 14,
                         color: Colors.black54,
@@ -494,11 +494,8 @@ class _ProductPageState extends State<ProductPage> {
               GestureDetector(
                 onTap: () {
                   // Share functionality disabled for now
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Share feature coming soon!'),
-                      duration: Duration(seconds: 1),
-                    ),
+                  _showPopupMessage(
+                    'уучлаарай, одоогоор энэ функц ажилгаагүй байна :(',
                   );
                 },
                 child: Container(
@@ -554,7 +551,7 @@ class _ProductPageState extends State<ProductPage> {
       child: Row(
         children: [
           Text(
-            '\$${widget.product.price.toStringAsFixed(2)}',
+            '\₮${widget.product.price.toStringAsFixed(2)}',
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -595,7 +592,7 @@ class _ProductPageState extends State<ProductPage> {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              'Save \$${(widget.product.price * widget.product.discountPercent / 100).toStringAsFixed(0)}',
+              'Save \₮${(widget.product.price * widget.product.discountPercent / 100).toStringAsFixed(0)}',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -606,7 +603,7 @@ class _ProductPageState extends State<ProductPage> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'on orders over \$45',
+              'on orders over ₮45',
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.purple,
@@ -635,7 +632,7 @@ class _ProductPageState extends State<ProductPage> {
       if (defaultAddress.apartment.isNotEmpty) {
         addressLine += ', ${defaultAddress.apartment}';
       }
-      shippingText = 'Ship to $addressLine';
+      shippingText = 'Xүргэх xаяг:$addressLine';
     }
 
     return Padding(
@@ -652,12 +649,17 @@ class _ProductPageState extends State<ProductPage> {
             },
             child: Row(
               children: [
-                Text(
-                  shippingText,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: defaultAddress != null ? Colors.black : Colors.blue,
+                Expanded(
+                  child: Text(
+                    shippingText,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          defaultAddress != null ? Colors.black : Colors.blue,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -672,8 +674,8 @@ class _ProductPageState extends State<ProductPage> {
           const SizedBox(height: 4),
           Text(
             defaultAddress != null
-                ? 'Estimated delivery Thu, Jul 3'
-                : 'Add an address to see delivery estimates',
+                ? 'Xүргэлтийн хугацааг дэлгүүрээс асууна уу'
+                : 'Хаяг оруулна уу',
             style: const TextStyle(
               fontSize: 14,
               color: Colors.black54,
@@ -720,7 +722,13 @@ class _ProductPageState extends State<ProductPage> {
     final variantName = variant['size'] as String;
     final isSelected = _selectedSize == variantName;
     final isAvailable = variant['available'] as bool? ?? false;
-    final inventory = variant['inventory'] as int? ?? 0;
+
+    // Determine if the variant name is short enough for a circular button
+    final isShortName = variantName.length <= 3;
+    // Make buttons 50% smaller
+    final buttonWidth =
+        isShortName ? 30.0 : (variantName.length * 6.0).clamp(30.0, 60.0);
+    const buttonHeight = 30.0; // 50% of original 60
 
     return GestureDetector(
       onTap: isAvailable
@@ -731,15 +739,16 @@ class _ProductPageState extends State<ProductPage> {
             }
           : null,
       child: Container(
-        width: 60,
-        height: 60,
+        width: buttonWidth,
+        height: buttonHeight,
         decoration: BoxDecoration(
           color: isSelected ? Colors.black : Colors.white,
           border: Border.all(
             color: isAvailable ? Colors.black : Colors.grey.shade300,
             width: isSelected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(8),
+          // Use circular shape for short names, stadium shape for longer names
+          borderRadius: BorderRadius.circular(isShortName ? 15 : 15),
         ),
         child: Stack(
           children: [
@@ -755,7 +764,7 @@ class _ProductPageState extends State<ProductPage> {
                   fontWeight: FontWeight.w600,
                   fontSize: variantName.length > 3
                       ? 12
-                      : 16, // Smaller font for longer text
+                      : 16, // Keep text size the same
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -765,27 +774,6 @@ class _ProductPageState extends State<ProductPage> {
               Positioned.fill(
                 child: CustomPaint(
                   painter: _CrossOutPainter(),
-                ),
-              ),
-            // Show inventory count for available variants
-            if (isAvailable && inventory <= 5 && inventory > 0)
-              Positioned(
-                bottom: 2,
-                right: 2,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Colors.orange,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '$inventory',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
                 ),
               ),
           ],
@@ -801,7 +789,7 @@ class _ProductPageState extends State<ProductPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Quantity',
+            'Тоо',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 18,
@@ -871,7 +859,7 @@ class _ProductPageState extends State<ProductPage> {
               ),
               onPressed: _addToCart,
               child: const Text(
-                'Add to Cart',
+                'Сагсанд нэмэх',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -893,7 +881,7 @@ class _ProductPageState extends State<ProductPage> {
               ),
               onPressed: _buyNow,
               child: const Text(
-                'Buy Now',
+                'Шууд авах',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -922,7 +910,7 @@ class _ProductPageState extends State<ProductPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Description',
+            'Дэлгэрэнгүй мэдээлэл',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
@@ -965,7 +953,7 @@ class _ProductPageState extends State<ProductPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Ratings and reviews',
+            'Үнэлгээ, сэтгэгдэл',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
@@ -981,7 +969,7 @@ class _ProductPageState extends State<ProductPage> {
               const Icon(Icons.star, size: 32),
               Padding(
                 padding: const EdgeInsets.only(top: 16),
-                child: Text('$_reviewCount ratings'),
+                child: Text('$_reviewCount Үнэлгээ'),
               ),
             ],
           ),
@@ -1083,7 +1071,7 @@ class _ProductPageState extends State<ProductPage> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  name.isNotEmpty ? name : 'Anonymous',
+                  name.isNotEmpty ? name : 'нэргүй хэрэглэгч',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
@@ -1138,7 +1126,7 @@ class _ProductPageState extends State<ProductPage> {
     }
     final original =
         widget.product.price / (1 - widget.product.discountPercent / 100);
-    return '\$${original.toStringAsFixed(2)}';
+    return '\₮${original.toStringAsFixed(2)}';
   }
 
   void _addToCart() {
@@ -1146,7 +1134,7 @@ class _ProductPageState extends State<ProductPage> {
     if (_availableVariants.isNotEmpty && _selectedSize.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please select a ${_variantType.toLowerCase()}'),
+          content: Text('${_variantType.toLowerCase()} сонгоно уу'),
           backgroundColor: Colors.red,
         ),
       );
@@ -1160,9 +1148,7 @@ class _ProductPageState extends State<ProductPage> {
       quantity: _quantity,
     ));
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Added to cart')),
-    );
+    _showPopupMessage('сагсанд нэмлээ');
 
     _animateAddToCart();
   }
@@ -1170,11 +1156,9 @@ class _ProductPageState extends State<ProductPage> {
   void _buyNow() {
     // Check if variant selection is required but not made
     if (_availableVariants.isNotEmpty && _selectedSize.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please select a ${_variantType.toLowerCase()}'),
-          backgroundColor: Colors.red,
-        ),
+      _showPopupMessage(
+        '${_variantType.toLowerCase()} сонгоно уу',
+        isError: true,
       );
       return;
     }
@@ -1183,7 +1167,7 @@ class _ProductPageState extends State<ProductPage> {
 
     // Allow proceeding to checkout even without addresses
     // The checkout page will handle address collection
-    String fullAddress = 'Address to be added';
+    String fullAddress = 'Хаяг оруулна уу';
     if (addrProvider.addresses.isNotEmpty) {
       final shippingAddr =
           addrProvider.defaultAddress ?? addrProvider.addresses.first;
@@ -1191,7 +1175,7 @@ class _ProductPageState extends State<ProductPage> {
     }
 
     // Determine variant text for display
-    String variantText = 'Standard';
+    String variantText = 'Стандарт';
     if (_availableVariants.isNotEmpty && _selectedSize.isNotEmpty) {
       variantText = _selectedSize;
     }
@@ -1305,7 +1289,7 @@ class _ProductPageState extends State<ProductPage> {
 
             // Title
             Text(
-              'Contact ${_storeName.toUpperCase()}',
+              ' ${_storeName.toUpperCase()}-тай холбогдох',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -1322,10 +1306,8 @@ class _ProductPageState extends State<ProductPage> {
                 value: instagram,
                 onTap: () {
                   // Could implement URL launcher here
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Instagram: $instagram')),
-                  );
                   Navigator.pop(context);
+                  _showPopupMessage('Instagram: $instagram');
                 },
               ),
               const SizedBox(height: 16),
@@ -1338,10 +1320,8 @@ class _ProductPageState extends State<ProductPage> {
                 value: facebook,
                 onTap: () {
                   // Could implement URL launcher here
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Facebook: $facebook')),
-                  );
                   Navigator.pop(context);
+                  _showPopupMessage('Facebook: $facebook');
                 },
               ),
               const SizedBox(height: 16),
@@ -1445,7 +1425,7 @@ class _ProductPageState extends State<ProductPage> {
 
             // Title
             Text(
-              'Contact ${_storeName.toUpperCase()}',
+              ' ${_storeName.toUpperCase()}-тай холбогдох',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -1463,7 +1443,7 @@ class _ProductPageState extends State<ProductPage> {
 
             // No contact info message
             const Text(
-              'Sorry, no contact information available :(',
+              'Уучлаарай, холбогдох мэдээлэл олдсонгүй :(',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
@@ -1486,7 +1466,7 @@ class _ProductPageState extends State<ProductPage> {
                   ),
                 ),
                 child: const Text(
-                  'Close',
+                  'Хаах',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
@@ -1501,19 +1481,14 @@ class _ProductPageState extends State<ProductPage> {
   void _navigateToStore() async {
     try {
       // Show loading indicator
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Loading store...'),
-          duration: Duration(seconds: 1),
-        ),
-      );
+      _showPopupMessage('Уншиж байна');
 
       final db = FirebaseFirestore.instance;
       final storeDoc =
           await db.collection('stores').doc(widget.product.storeId).get();
 
       if (!storeDoc.exists) {
-        throw Exception('Store not found');
+        throw Exception('Дэлгүүр олдсонгүй');
       }
 
       final storeModel = StoreModel.fromFirestore(storeDoc);
@@ -1606,11 +1581,9 @@ class _ProductPageState extends State<ProductPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Unable to load store: $e'),
-            backgroundColor: Colors.red,
-          ),
+        _showPopupMessage(
+          'Дэлгүүр олох явцад алдаа гарлаа: $e',
+          isError: true,
         );
       }
     }
@@ -1626,6 +1599,27 @@ class _ProductPageState extends State<ProductPage> {
       }
     }
     return ''; // Product not in any category
+  }
+
+  void _showPopupMessage(String message,
+      {Color? backgroundColor, bool isError = false}) {
+    final overlay = Overlay.of(context);
+    if (overlay == null) return;
+
+    final overlayEntry = OverlayEntry(
+      builder: (context) => _PopupMessage(
+        message: message,
+        backgroundColor:
+            backgroundColor ?? (isError ? Colors.red : Colors.black87),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+    Future.delayed(const Duration(seconds: 3), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+      }
+    });
   }
 }
 
@@ -1701,6 +1695,107 @@ class __FlyingImageState extends State<_FlyingImage>
                       ? Image.network(widget.image!, width: 80, height: 80)
                       : Image.asset(widget.image!, width: 80, height: 80))
                   : const SizedBox.shrink(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PopupMessage extends StatefulWidget {
+  final String message;
+  final Color backgroundColor;
+
+  const _PopupMessage({
+    required this.message,
+    required this.backgroundColor,
+  });
+
+  @override
+  State<_PopupMessage> createState() => __PopupMessageState();
+}
+
+class __PopupMessageState extends State<_PopupMessage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+
+    _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+
+    _scale = Tween<double>(begin: 0.7, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    );
+
+    _controller.forward();
+
+    // Start fade out animation after 2.5 seconds
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (mounted) {
+        _controller.reverse();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Positioned.fill(
+          child: Material(
+            color: Colors.transparent,
+            child: Center(
+              child: Transform.scale(
+                scale: _scale.value,
+                child: Opacity(
+                  opacity: _opacity.value,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 40),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: widget.backgroundColor,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      widget.message,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         );

@@ -11,9 +11,9 @@ import '../pages/settings_page.dart';
 import '../pages/storefront_page.dart';
 import '../pages/categories_page.dart';
 import '../pages/categorization_page.dart';
-import '../pages/featured_products_page.dart';
 import '../../features/settings/themes/app_themes.dart';
 import '../auth/auth_service.dart';
+import '../../super_admin/pages/featured_products_page.dart';
 
 class SideMenu extends StatefulWidget {
   final String selected;
@@ -70,91 +70,83 @@ class _SideMenuState extends State<SideMenu> {
           const SizedBox(height: 24),
           _storeHeader(context),
           const SizedBox(height: 8),
-          _navItem(context, Icons.home_outlined, 'Home',
-              selected: widget.selected == 'Home', onTap: () {
-            if (widget.selected != 'Home') {
+          _navItem(context, Icons.home_outlined, 'Нүүр хуудас',
+              selected: widget.selected == 'Нүүр хуудас', onTap: () {
+            if (widget.selected != 'Нүүр хуудас') {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const DashboardPage()),
               );
             }
           }),
-          _navItem(context, Icons.shopping_cart_outlined, 'Orders',
-              selected: widget.selected == 'Orders', onTap: () {
-            if (widget.selected != 'Orders') {
+          _navItem(context, Icons.shopping_cart_outlined, 'захиалгууд',
+              selected: widget.selected == 'захиалгууд', onTap: () {
+            if (widget.selected != 'захиалгууд') {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const OrdersPage()),
               );
             }
           }),
-          _navItem(context, Icons.inventory_2_outlined, 'Products',
-              selected: widget.selected == 'Products', onTap: () {
-            if (widget.selected != 'Products') {
+          _navItem(context, Icons.inventory_2_outlined, 'Бүтээгдэхүүнүүд',
+              selected: widget.selected == 'Бүтээгдэхүүнүүд', onTap: () {
+            if (widget.selected != 'Бүтээгдэхүүнүүд') {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const ProductsPage()),
               );
             }
           }),
-          _navItem(context, Icons.people_outline, 'Customers',
-              selected: widget.selected == 'Users', onTap: () {
-            if (widget.selected != 'Users') {
+          _navItem(context, Icons.people_outline, 'Хэрэглэгчид',
+              selected: widget.selected == 'Хэрэглэгчид', onTap: () {
+            if (widget.selected != 'Хэрэглэгчид') {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const UsersPage()),
               );
             }
           }),
-          _navItem(context, Icons.bar_chart_outlined, 'Analytics',
-              selected: widget.selected == 'Analytics', onTap: () {
-            if (widget.selected != 'Analytics') {
+          _navItem(context, Icons.bar_chart_outlined, 'Аналитик',
+              selected: widget.selected == 'Аналитик', onTap: () {
+            if (widget.selected != 'Аналитик') {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const AnalyticsPage()),
               );
             }
           }),
-          _navItem(context, Icons.local_offer_outlined, 'Discounts',
-              selected: widget.selected == 'Discounts', onTap: () {
-            if (widget.selected != 'Discounts') {
+          _navItem(context, Icons.local_offer_outlined, 'Хөнгөлөлтийн код',
+              selected: widget.selected == 'Хөнгөлөлтийн код', onTap: () {
+            if (widget.selected != 'Хөнгөлөлтийн код') {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const DiscountsPage()),
               );
             }
           }),
-          _navItem(context, Icons.collections, 'Collections',
-              selected: widget.selected == 'Collections', onTap: () {
-            if (widget.selected != 'Collections') {
+          _navItem(context, Icons.collections, 'Коллекц',
+              selected: widget.selected == 'Коллекц', onTap: () {
+            if (widget.selected != 'Коллекц') {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const CollectionsPage()),
               );
             }
           }),
-          _navItem(context, Icons.category, 'Categorization',
-              selected: widget.selected == 'Categorization', onTap: () {
-            if (widget.selected != 'Categorization') {
+          _navItem(context, Icons.category, 'Бүтээгдэхүүний ангилал',
+              selected: widget.selected == 'Бүтээгдэхүүний ангилал', onTap: () {
+            if (widget.selected != 'Бүтээгдэхүүний ангилал') {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const CategorizationPage()),
               );
             }
           }),
-          _navItem(context, Icons.storefront, 'Storefront',
-              selected: widget.selected == 'Storefront', onTap: () {
-            if (widget.selected != 'Storefront') {
+          _navItem(context, Icons.storefront, 'Дэлгүүр',
+              selected: widget.selected == 'Дэлгүүр', onTap: () {
+            if (widget.selected != 'Дэлгүүр') {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const StorefrontPage()),
               );
             }
           }),
-          _navItem(context, Icons.star_outline, 'Featured Products',
-              selected: widget.selected == 'Featured Products', onTap: () {
-            if (widget.selected != 'Featured Products') {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const FeaturedProductsPage()),
-              );
-            }
-          }),
           const Spacer(),
           const Divider(height: 1),
-          _navItem(context, Icons.settings_outlined, 'Settings',
-              selected: widget.selected == 'Settings', onTap: () {
-            if (widget.selected != 'Settings') {
+          _navItem(context, Icons.settings_outlined, 'Тохиргоо',
+              selected: widget.selected == 'Тохиргоо', onTap: () {
+            if (widget.selected != 'Тохиргоо') {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const SettingsPage()),
               );

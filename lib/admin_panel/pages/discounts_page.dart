@@ -74,7 +74,8 @@ class _DiscountsPageState extends State<DiscountsPage> {
     }
 
     if (_storeId == null) {
-      return const Center(child: Text('You do not have a store yet.'));
+      return const Center(
+          child: Text('Танд одоогоор дэлгүүр нээгээгүй байна.'));
     }
 
     return StreamBuilder<List<DiscountModel>>(
@@ -100,11 +101,11 @@ class _DiscountsPageState extends State<DiscountsPage> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
-                      Text('Discounts',
+                      Text('Хөнгөлөлтийн код',
                           style: TextStyle(
                               fontSize: 28, fontWeight: FontWeight.bold)),
                       SizedBox(height: 4),
-                      Text('Create and manage promotional offers'),
+                      Text('Хөнгөлөлтийн код үүсгэх, засах'),
                     ],
                   ),
                   ElevatedButton.icon(
@@ -115,7 +116,7 @@ class _DiscountsPageState extends State<DiscountsPage> {
                       );
                     },
                     icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Create discount'),
+                    label: const Text('Хөнгөлөлтийн код үүсгэх'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       padding: const EdgeInsets.symmetric(
@@ -146,14 +147,13 @@ class _DiscountsPageState extends State<DiscountsPage> {
                   SizedBox(
                     width: 130,
                     child: DropdownButtonFormField<String>(
-                      value: 'All Status',
+                      value: 'төлөв',
                       items: const [
+                        DropdownMenuItem(value: 'төлөв', child: Text('төлөв')),
                         DropdownMenuItem(
-                            value: 'All Status', child: Text('All Status')),
+                            value: 'идэвхтэй', child: Text('идэвхтэй')),
                         DropdownMenuItem(
-                            value: 'Active', child: Text('Active')),
-                        DropdownMenuItem(
-                            value: 'Inactive', child: Text('Inactive')),
+                            value: 'идэвхгүй', child: Text('идэвхгүй')),
                       ],
                       onChanged: (_) {},
                       decoration: InputDecoration(
@@ -167,17 +167,16 @@ class _DiscountsPageState extends State<DiscountsPage> {
                   SizedBox(
                     width: 150,
                     child: DropdownButtonFormField<String>(
-                      value: 'All Types',
+                      value: 'төрөл',
                       items: const [
                         DropdownMenuItem(
                             value: 'All Types', child: Text('All Types')),
                         DropdownMenuItem(
-                            value: 'Free Shipping',
-                            child: Text('Free Shipping')),
+                            value: 'үнэгүй хүргэлт',
+                            child: Text('үнэгүй хүргэлт')),
+                        DropdownMenuItem(value: 'хувь', child: Text('хувь')),
                         DropdownMenuItem(
-                            value: 'Percentage', child: Text('Percentage')),
-                        DropdownMenuItem(
-                            value: 'Fixed Amount', child: Text('Fixed Amount')),
+                            value: 'тогтмол дүн', child: Text('тогтмол дүн')),
                       ],
                       onChanged: (_) {},
                       decoration: InputDecoration(
@@ -192,25 +191,25 @@ class _DiscountsPageState extends State<DiscountsPage> {
                     children: [
                       const Icon(Icons.local_offer_outlined, size: 16),
                       const SizedBox(width: 4),
-                      Text('${discounts.length} discounts'),
+                      Text('${discounts.length} хөнгөлөлтийн код'),
                       const SizedBox(width: 16),
                       const Icon(Icons.calendar_today_outlined, size: 16),
                       const SizedBox(width: 4),
-                      Text('$activeDiscounts active'),
+                      Text('$activeDiscounts идэвхтэй'),
                       const SizedBox(width: 16),
                       const Icon(Icons.person_outline, size: 16),
                       const SizedBox(width: 4),
-                      Text('$totalUses uses'),
+                      Text('$totalUses хэрэглэгдсэн'),
                     ],
                   ),
                 ],
               ),
               const SizedBox(height: 24),
-              const Text('Discount Codes',
+              const Text('Хөнгөлөлтийн код',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
               discounts.isEmpty
-                  ? const Text('No discounts yet. Start by creating one!')
+                  ? const Text('Хөнгөлөлтийн код оруулаагүй байна.')
                   : _discountTable(discounts),
             ],
           ),
@@ -236,31 +235,31 @@ class _DiscountsPageState extends State<DiscountsPage> {
             color: AppThemes.getSecondaryTextColor(context)),
         columns: [
           DataColumn(
-              label: Text('Discount',
+              label: Text('хөнгөлөлтийн код',
                   style: TextStyle(
                       color: AppThemes.getSecondaryTextColor(context)))),
           DataColumn(
-              label: Text('Code',
+              label: Text('код',
                   style: TextStyle(
                       color: AppThemes.getSecondaryTextColor(context)))),
           DataColumn(
-              label: Text('Type',
+              label: Text('төрөл',
                   style: TextStyle(
                       color: AppThemes.getSecondaryTextColor(context)))),
           DataColumn(
-              label: Text('Value',
+              label: Text('Утга',
                   style: TextStyle(
                       color: AppThemes.getSecondaryTextColor(context)))),
           DataColumn(
-              label: Text('Uses',
+              label: Text('Хэрэглэгдсэн тоо',
                   style: TextStyle(
                       color: AppThemes.getSecondaryTextColor(context)))),
           DataColumn(
-              label: Text('Status',
+              label: Text('төлөв',
                   style: TextStyle(
                       color: AppThemes.getSecondaryTextColor(context)))),
           DataColumn(
-              label: Text('Actions',
+              label: Text('өөрчлөх, устгах',
                   style: TextStyle(
                       color: AppThemes.getSecondaryTextColor(context)))),
         ],
@@ -286,7 +285,7 @@ class _DiscountsPageState extends State<DiscountsPage> {
                       style: TextStyle(
                           fontWeight: FontWeight.w600,
                           color: AppThemes.getTextColor(context))),
-                  Text('Created ${_formatDate(discount.createdAt)}',
+                  Text('Үүсгэсэн ${_formatDate(discount.createdAt)}',
                       style: TextStyle(
                           color: AppThemes.getSecondaryTextColor(context),
                           fontSize: 12)),
@@ -328,7 +327,7 @@ class _DiscountsPageState extends State<DiscountsPage> {
                     : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(discount.isActive ? 'active' : 'inactive',
+              child: Text(discount.isActive ? 'идэвхтэй' : 'идэвхгүй',
                   style: TextStyle(
                       fontSize: 12, color: AppThemes.getTextColor(context))),
             )),
@@ -340,12 +339,12 @@ class _DiscountsPageState extends State<DiscountsPage> {
                   IconButton(
                     icon: const Icon(Icons.edit, color: Colors.blue),
                     onPressed: () => _editDiscount(discount),
-                    tooltip: 'Edit Discount',
+                    tooltip: 'Хөнгөлөлтийн код засах',
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red),
                     onPressed: () => _deleteDiscount(discount),
-                    tooltip: 'Delete Discount',
+                    tooltip: 'Хөнгөлөлтийн код устгах',
                   ),
                 ],
               ),
@@ -389,13 +388,15 @@ class _DiscountsPageState extends State<DiscountsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Discount "$discountName" deleted successfully')),
+              content: Text(
+                  'Хөнгөлөлтийн код "$discountName" амжилттай устгагдлаа')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting discount: $e')),
+          SnackBar(
+              content: Text('Хөнгөлөлтийн код устгах үед алдаа гарлаа: $e')),
         );
       }
     }

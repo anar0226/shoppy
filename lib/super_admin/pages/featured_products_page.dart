@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/top_nav_bar.dart';
 import '../widgets/side_menu.dart';
 
@@ -29,25 +30,95 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
   @override
   void initState() {
     super.initState();
-    _loadInitialData();
+    _checkAuthenticationAndLoadData();
+  }
+
+  Future<void> _checkAuthenticationAndLoadData() async {
+    try {
+      print('🔍 DEBUG: Starting authentication and permission check');
+
+      // Check current user
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        print('✅ DEBUG: User is authenticated');
+        print('🔍 DEBUG: User UID: ${user.uid}');
+        print('🔍 DEBUG: User Email: ${user.email}');
+
+        // Check if user has super admin document
+        try {
+          final superAdminDoc =
+              await _firestore.collection('super_admins').doc(user.uid).get();
+          if (superAdminDoc.exists) {
+            final data = superAdminDoc.data();
+            print('✅ DEBUG: Super admin document found');
+            print('🔍 DEBUG: Super admin data: $data');
+            print('🔍 DEBUG: isActive: ${data?['isActive']}');
+          } else {
+            print('⚠️ DEBUG: No super admin document found for this user');
+          }
+        } catch (e) {
+          print('❌ DEBUG: Error checking super admin document: $e');
+        }
+
+        // Check if user is regular admin
+        try {
+          final userDoc =
+              await _firestore.collection('users').doc(user.uid).get();
+          if (userDoc.exists) {
+            final userData = userDoc.data();
+            print('✅ DEBUG: User document found');
+            print('🔍 DEBUG: User type: ${userData?['userType']}');
+            print('🔍 DEBUG: Is admin: ${userData?['userType'] == 'admin'}');
+          } else {
+            print('⚠️ DEBUG: No user document found');
+          }
+        } catch (e) {
+          print('❌ DEBUG: Error checking user document: $e');
+        }
+      } else {
+        print('❌ DEBUG: No authenticated user found');
+      }
+
+      // Now proceed with loading data
+      await _loadInitialData();
+    } catch (e) {
+      print('❌ DEBUG: Error in authentication check: $e');
+      setState(() {
+        _error = 'Authentication check failed: $e';
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _loadInitialData() async {
     try {
+      print('🔍 DEBUG: Starting _loadInitialData()');
       setState(() {
         _isLoading = true;
         _error = null;
       });
 
-      await Future.wait([
-        _loadCategories(),
-        _loadAllProducts(),
-      ]);
+      print('🔍 DEBUG: About to load categories and products in parallel');
 
+      // Load them separately to better identify which one fails
+      print('🔍 DEBUG: Step 1 - Loading categories...');
+      await _loadCategories();
+      print('✅ DEBUG: Categories loaded successfully');
+
+      print('🔍 DEBUG: Step 2 - Loading all products...');
+      await _loadAllProducts();
+      print('✅ DEBUG: All products loaded successfully');
+
+      print('🔍 DEBUG: Successfully loaded all initial data');
       setState(() {
         _isLoading = false;
       });
     } catch (e) {
+      print('❌ DEBUG: Error in _loadInitialData(): $e');
+      print('❌ DEBUG: Error type: ${e.runtimeType}');
+      if (e.toString().contains('permission-denied')) {
+        print('❌ DEBUG: This is a Firestore permission error');
+      }
       setState(() {
         _error = 'Failed to load data: $e';
         _isLoading = false;
@@ -57,13 +128,22 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
 
   Future<void> _loadCategories() async {
     try {
+      print('🔍 DEBUG: Starting _loadCategories()');
+      print('🔍 DEBUG: Attempting to read from "categories" collection');
+
       final categoriesSnapshot =
           await _firestore.collection('categories').get();
 
+      print('✅ DEBUG: Successfully read categories collection');
+      print(
+          '🔍 DEBUG: Found ${categoriesSnapshot.docs.length} category documents');
+
       if (categoriesSnapshot.docs.isEmpty) {
+        print('🔍 DEBUG: No categories found, creating sample categories');
         // Create sample categories if none exist
         await _createSampleCategories();
         // Reload categories after creation
+        print('🔍 DEBUG: Reloading categories after sample creation');
         final newSnapshot = await _firestore.collection('categories').get();
         _categories = newSnapshot.docs
             .map((doc) => {
@@ -71,6 +151,8 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
                   ...doc.data(),
                 })
             .toList();
+        print(
+            '✅ DEBUG: Successfully loaded ${_categories.length} categories after creation');
       } else {
         _categories = categoriesSnapshot.docs
             .map((doc) => {
@@ -78,15 +160,26 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
                   ...doc.data(),
                 })
             .toList();
+        print(
+            '✅ DEBUG: Successfully loaded ${_categories.length} existing categories');
       }
     } catch (e) {
-      print('Error loading categories: $e');
+      print('❌ DEBUG: Error in _loadCategories(): $e');
+      print('❌ DEBUG: Error type: ${e.runtimeType}');
+      if (e.toString().contains('permission-denied')) {
+        print(
+            '❌ DEBUG: Categories collection access DENIED - check Firestore rules');
+      }
       throw e;
     }
   }
 
   Future<void> _createSampleCategories() async {
     try {
+      print('🔍 DEBUG: Starting _createSampleCategories()');
+      print(
+          '🔍 DEBUG: Attempting to CREATE documents in "categories" collection');
+
       // Create basic categories
       final categories = [
         {'id': 'Эмэгтэй', 'name': 'Эмэгтэй'},
@@ -96,28 +189,74 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
         {'id': 'Accessories', 'name': 'Accessories'},
       ];
 
+      print('🔍 DEBUG: Creating ${categories.length} sample categories');
+
       for (final category in categories) {
+        print(
+            '🔍 DEBUG: Creating category: ${category['name']} (ID: ${category['id']})');
         await _firestore.collection('categories').doc(category['id']).set({
           'name': category['name'],
           'createdAt': FieldValue.serverTimestamp(),
         });
+        print('✅ DEBUG: Successfully created category: ${category['name']}');
       }
 
-      print('Sample categories created successfully');
+      print('✅ DEBUG: All sample categories created successfully');
     } catch (e) {
-      print('Error creating sample categories: $e');
+      print('❌ DEBUG: Error in _createSampleCategories(): $e');
+      print('❌ DEBUG: Error type: ${e.runtimeType}');
+      if (e.toString().contains('permission-denied')) {
+        print('❌ DEBUG: Categories collection WRITE access DENIED');
+        print(
+            '❌ DEBUG: Cannot create sample categories - check Firestore rules');
+      }
+      throw e;
     }
   }
 
   Future<void> _loadAllProducts() async {
-    final productsSnapshot = await _firestore.collectionGroup('products').get();
-    _allProducts = productsSnapshot.docs
-        .map((doc) => {
-              'id': doc.id,
-              'storeId': doc.reference.parent.parent!.id,
-              ...doc.data(),
-            })
-        .toList();
+    try {
+      print('🔍 DEBUG: Starting _loadAllProducts()');
+      print('🔍 DEBUG: Attempting collectionGroup("products") query');
+      print('🔍 DEBUG: This queries ALL products from ALL stores');
+
+      final productsSnapshot =
+          await _firestore.collectionGroup('products').get();
+
+      print('✅ DEBUG: Successfully executed collectionGroup query');
+      print(
+          '🔍 DEBUG: Found ${productsSnapshot.docs.length} product documents');
+
+      _allProducts = productsSnapshot.docs
+          .map((doc) => {
+                'id': doc.id,
+                'storeId': doc.reference.parent.parent!.id,
+                ...doc.data(),
+              })
+          .toList();
+
+      print('✅ DEBUG: Successfully processed ${_allProducts.length} products');
+
+      // Debug: Show first few products
+      if (_allProducts.isNotEmpty) {
+        print('🔍 DEBUG: Sample products:');
+        for (int i = 0; i < _allProducts.length && i < 3; i++) {
+          final product = _allProducts[i];
+          print('  - ${product['name']} (Store: ${product['storeId']})');
+        }
+      }
+    } catch (e) {
+      print('❌ DEBUG: Error in _loadAllProducts(): $e');
+      print('❌ DEBUG: Error type: ${e.runtimeType}');
+      if (e.toString().contains('permission-denied')) {
+        print('❌ DEBUG: CollectionGroup("products") access DENIED');
+        print(
+            '❌ DEBUG: This means Firestore rules don\'t allow reading products from stores');
+        print(
+            '❌ DEBUG: Check rules for: /stores/{storeId}/products/{productId}');
+      }
+      throw e;
+    }
   }
 
   Future<void> _loadSubcategories(String categoryId) async {
@@ -162,7 +301,11 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
   }
 
   Future<void> _loadFeaturedProducts() async {
-    if (_selectedCategory == null) return;
+    if (_selectedCategory == null) {
+      print(
+          '🔍 DEBUG: _loadFeaturedProducts() called but no category selected');
+      return;
+    }
 
     String path = 'featured_products/${_selectedCategory}';
     if (_selectedSubcategory != null) {
@@ -173,20 +316,39 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
     }
 
     try {
+      print('🔍 DEBUG: Starting _loadFeaturedProducts()');
+      print('🔍 DEBUG: Document path: $path');
+      print('🔍 DEBUG: Attempting to read featured products document');
+
       final doc = await _firestore.doc(path).get();
+
+      print('✅ DEBUG: Successfully read featured products document');
+      print('🔍 DEBUG: Document exists: ${doc.exists}');
+
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
+        print('🔍 DEBUG: Featured products data: $data');
         _selectedProductIds = List<String>.from(data['productIds'] ?? []);
         _featuredProducts = _allProducts
             .where((product) => _selectedProductIds.contains(product['id']))
             .toList();
+        print('✅ DEBUG: Loaded ${_featuredProducts.length} featured products');
       } else {
+        print(
+            '🔍 DEBUG: No featured products document found, starting with empty list');
         _selectedProductIds = [];
         _featuredProducts = [];
       }
       setState(() {});
     } catch (e) {
-      print('Error loading featured products: $e');
+      print('❌ DEBUG: Error in _loadFeaturedProducts(): $e');
+      print('❌ DEBUG: Error type: ${e.runtimeType}');
+      if (e.toString().contains('permission-denied')) {
+        print('❌ DEBUG: Featured products document access DENIED');
+        print('❌ DEBUG: Path attempted: $path');
+        print(
+            '❌ DEBUG: Check Firestore rules for featured_products collection');
+      }
     }
   }
 

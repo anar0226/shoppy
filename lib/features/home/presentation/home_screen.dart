@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as FirebaseAuth;
 import 'package:provider/provider.dart';
 import 'package:avii/features/auth/providers/auth_provider.dart';
 import 'package:avii/features/stores/models/store_model.dart';
 import 'package:avii/features/products/models/product_model.dart';
+import '../../notifications/notifications_inbox_page.dart';
 import '../domain/models.dart';
 import 'floating_nav_bar.dart';
 import 'main_scaffold.dart';
@@ -407,7 +409,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (data.isEmpty) {
                             return const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: Text('No active stores yet'),
+                              child: Text(
+                                  'Одоогоор идэвхтэй дэлгүүр байхгүй байна'),
                             );
                           }
                           return Padding(
@@ -462,7 +465,7 @@ class _HomeScreenState extends State<HomeScreen> {
               GestureDetector(
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Balance tapped!')),
+                    const SnackBar(content: Text('Авий оноо')),
                   );
                 },
                 child: Container(
@@ -494,28 +497,77 @@ class _HomeScreenState extends State<HomeScreen> {
               // Notification
               GestureDetector(
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Notifications tapped!')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationsInboxPage(),
+                    ),
                   );
                 },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.notifications_outlined,
-                    size: 20,
-                    color: Colors.black87,
-                  ),
+                      child: const Icon(
+                        Icons.notifications_outlined,
+                        size: 20,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseAuth.FirebaseAuth.instance.currentUser !=
+                              null
+                          ? FirebaseFirestore.instance
+                              .collection('notifications')
+                              .where('userId',
+                                  isEqualTo: FirebaseAuth
+                                      .FirebaseAuth.instance.currentUser!.uid)
+                              .where('read', isEqualTo: false)
+                              .snapshots()
+                          : null,
+                      builder: (context, snapshot) {
+                        final unreadCount = snapshot.data?.docs.length ?? 0;
+
+                        if (unreadCount == 0) return const SizedBox.shrink();
+
+                        return Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                                minWidth: 16, minHeight: 16),
+                            child: Text(
+                              unreadCount > 99 ? '99+' : unreadCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
 
@@ -578,7 +630,7 @@ class _HomeScreenState extends State<HomeScreen> {
               if (followingStores.isEmpty) {
                 // show placeholder text
                 return const Center(
-                    child: Text("You don't follow any stores at the moment"));
+                    child: Text("Та одоогоор ямар ч дэлгүүр дагаагүй байна"));
               }
               final store = followingStores[index];
               return GestureDetector(
@@ -682,7 +734,7 @@ class _HomeScreenState extends State<HomeScreen> {
               return SizedBox(
                 height: 191,
                 child: Center(
-                  child: Text('Error loading offers: ${snapshot.error}'),
+                  child: Text('Ачаалахад алдаа гарлаа: ${snapshot.error}'),
                 ),
               );
             }
@@ -690,7 +742,7 @@ class _HomeScreenState extends State<HomeScreen> {
             if (!snapshot.hasData || snapshot.data!.isEmpty) {
               return const SizedBox(
                 height: 191,
-                child: Center(child: Text('No featured stores available')),
+                child: Center(child: Text('Онцлоx дэлгүүрүүд байхгүй байна')),
               );
             }
 
@@ -906,7 +958,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: GestureDetector(
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Added to favorites!')),
+                    const SnackBar(content: Text('Таалагдлаа!')),
                   );
                 },
                 child: Container(

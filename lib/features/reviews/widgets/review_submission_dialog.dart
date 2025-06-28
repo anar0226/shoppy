@@ -36,14 +36,14 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
   Future<void> _submitReview() async {
     if (_rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a rating')),
+        const SnackBar(content: Text('Үнэлгээ сонгоно уу')),
       );
       return;
     }
 
     if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a review title')),
+        const SnackBar(content: Text('Үнэлгээний гарчиг оруулна уу')),
       );
       return;
     }
@@ -64,19 +64,19 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
           Navigator.of(context).pop(true); // Return true to indicate success
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Review submitted successfully!'),
+              content: Text('Үнэлгээ амжилттай илгээгдлээ'),
               backgroundColor: Colors.green,
             ),
           );
         }
       } else {
-        throw Exception('Failed to submit review');
+        throw Exception('Үнэлгээ илгээх үед алдаа гарлаа');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error submitting review: ${e.toString()}'),
+            content: Text('Үнэлгээ илгээх үед алдаа гарлаа: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -105,7 +105,7 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Review ${widget.storeName}',
+                    'Үнэлгээ ${widget.storeName}',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -123,7 +123,7 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
 
             // Rating section
             const Text(
-              'Your Rating',
+              'Таны үнэлгээ',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -153,7 +153,7 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
 
             // Title field
             const Text(
-              'Review Title',
+              'Үнэлгээний гарчиг',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -163,7 +163,7 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
             TextField(
               controller: _titleController,
               decoration: const InputDecoration(
-                hintText: 'Summarize your experience...',
+                hintText: 'Таны үнэлгээг тодорхойлох...',
                 border: OutlineInputBorder(),
               ),
               maxLength: 100,
@@ -173,7 +173,7 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
 
             // Comment field
             const Text(
-              'Your Review',
+              'Таны үнэлгээ',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -183,7 +183,7 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
             TextField(
               controller: _commentController,
               decoration: const InputDecoration(
-                hintText: 'Tell us about your experience with this store...',
+                hintText: 'Таны үнэлгээг тодорхойлох...',
                 border: OutlineInputBorder(),
               ),
               maxLines: 4,
@@ -205,7 +205,7 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
                         color: Colors.green.shade600, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      'Verified Purchase',
+                      'худалдан авагдсан',
                       style: TextStyle(
                         color: Colors.green.shade600,
                         fontWeight: FontWeight.w600,
@@ -226,7 +226,7 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
                     onPressed: _isSubmitting
                         ? null
                         : () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                    child: const Text('Цуцалгах'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -239,7 +239,7 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('Submit Review'),
+                        : const Text('Илгээх'),
                   ),
                 ),
               ],

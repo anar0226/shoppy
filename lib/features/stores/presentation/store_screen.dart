@@ -40,7 +40,7 @@ class _StoreScreenState extends State<StoreScreen>
       curve: Curves.elasticInOut,
     ));
 
-    _checkFollowStatus();
+    _setupFollowStatusListener();
   }
 
   @override
@@ -49,14 +49,18 @@ class _StoreScreenState extends State<StoreScreen>
     super.dispose();
   }
 
-  Future<void> _checkFollowStatus() async {
-    final isFollowing =
-        await _followingService.isFollowingStore(widget.storeData.id);
-    if (mounted) {
-      setState(() {
-        _isFollowing = isFollowing;
-      });
-    }
+  void _setupFollowStatusListener() {
+    // Listen to real-time follow status changes
+    _followingService
+        .followStatusStream(widget.storeData.id)
+        .listen((isFollowing) {
+      if (mounted) {
+        setState(() {
+          _isFollowing = isFollowing;
+          _isLoading = false; // Stop loading when we get real data
+        });
+      }
+    });
   }
 
   Future<void> _toggleFollow() async {
@@ -64,9 +68,8 @@ class _StoreScreenState extends State<StoreScreen>
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in to follow stores')),
-      );
+      _showPopupMessage('Дэлгүүрүүдийг дагахын тулд нэвтэрнэ үү',
+          isError: true);
       return;
     }
 
@@ -78,35 +81,27 @@ class _StoreScreenState extends State<StoreScreen>
   }
 
   Future<void> _followStore() async {
+    // Optimistic update
     setState(() {
       _isLoading = true;
     });
 
-    final success = await _followingService.followStore(widget.storeData.id);
+    // Trigger animation immediately for better UX
+    _followAnimationController.forward().then((_) {
+      _followAnimationController.reverse();
+    });
 
-    if (success && mounted) {
-      _followAnimationController.forward().then((_) {
-        _followAnimationController.reverse();
-      });
-
-      setState(() {
-        _isFollowing = true;
-        _isLoading = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Following ${widget.storeData.name}'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } else if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to follow store')),
-      );
+    try {
+      await _followingService.followStore(widget.storeData.id);
+      // Success message will be shown after real-time listener updates
+      _showPopupMessage('${widget.storeData.name}-г дагаж байна');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        _showPopupMessage('Дэлгүүрийг дагах явцад алдаа гарлаа', isError: true);
+      }
     }
   }
 
@@ -114,13 +109,12 @@ class _StoreScreenState extends State<StoreScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Unfollow Store'),
-        content:
-            Text('Are you sure you want to unfollow ${widget.storeData.name}?'),
+        title: const Text('Дагахаа болих?'),
+        content: Text('${widget.storeData.name} дагахаа болих уу?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('Цуцлах'),
           ),
           TextButton(
             onPressed: () {
@@ -128,7 +122,7 @@ class _StoreScreenState extends State<StoreScreen>
               _unfollowStore();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Unfollow'),
+            child: const Text('Дагахаа болих'),
           ),
         ],
       ),
@@ -136,32 +130,44 @@ class _StoreScreenState extends State<StoreScreen>
   }
 
   Future<void> _unfollowStore() async {
+    // Optimistic update
     setState(() {
       _isLoading = true;
     });
 
-    final success = await _followingService.unfollowStore(widget.storeData.id);
-
-    if (success && mounted) {
-      setState(() {
-        _isFollowing = false;
-        _isLoading = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Unfollowed ${widget.storeData.name}'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } else if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to unfollow store')),
-      );
+    try {
+      await _followingService.unfollowStore(widget.storeData.id);
+      // Success message will be shown after real-time listener updates
+      _showPopupMessage('${widget.storeData.name} дагахаа болилоо');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        _showPopupMessage('Дагахаа болих явцад алдаа гарлаа', isError: true);
+      }
     }
+  }
+
+  void _showPopupMessage(String message,
+      {Color? backgroundColor, bool isError = false}) {
+    final overlay = Overlay.of(context);
+    if (overlay == null) return;
+
+    final overlayEntry = OverlayEntry(
+      builder: (context) => _PopupMessage(
+        message: message,
+        backgroundColor:
+            backgroundColor ?? (isError ? Colors.red : Colors.black87),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+    Future.delayed(const Duration(seconds: 3), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+      }
+    });
   }
 
   @override
@@ -433,7 +439,7 @@ class _StoreScreenState extends State<StoreScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Collections',
+            'Коллекц',
             style: TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -595,7 +601,7 @@ class _StoreScreenState extends State<StoreScreen>
       color: Colors.black,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Text(
-        '${filteredProducts.length} products',
+        '${filteredProducts.length} бүтээгдэхүүн',
         style: const TextStyle(
           color: Colors.white,
           fontSize: 16,
@@ -741,7 +747,7 @@ class _StoreScreenState extends State<StoreScreen>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '\$${product.price.toStringAsFixed(0)}',
+                    '\₮${product.price.toStringAsFixed(0)}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -819,4 +825,105 @@ class StoreProduct {
     this.discount,
     this.category = '',
   });
+}
+
+class _PopupMessage extends StatefulWidget {
+  final String message;
+  final Color backgroundColor;
+
+  const _PopupMessage({
+    required this.message,
+    required this.backgroundColor,
+  });
+
+  @override
+  State<_PopupMessage> createState() => __PopupMessageState();
+}
+
+class __PopupMessageState extends State<_PopupMessage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+
+    _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+
+    _scale = Tween<double>(begin: 0.7, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    );
+
+    _controller.forward();
+
+    // Start fade out animation after 2.5 seconds
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (mounted) {
+        _controller.reverse();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Positioned.fill(
+          child: Material(
+            color: Colors.transparent,
+            child: Center(
+              child: Transform.scale(
+                scale: _scale.value,
+                child: Opacity(
+                  opacity: _opacity.value,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 40),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: widget.backgroundColor,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      widget.message,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

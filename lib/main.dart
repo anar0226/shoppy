@@ -26,6 +26,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'features/notifications/fcm_service.dart';
 import 'features/products/presentation/product_page.dart';
 import 'core/utils/type_utils.dart';
+import 'package:firebase_auth/firebase_auth.dart' as auth;
+import 'features/reviews/widgets/review_submission_dialog.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -128,7 +130,7 @@ class _ShopUBAppState extends State<ShopUBApp> {
       child: Consumer<ThemeProvider>(
         builder: (_, themeProvider, __) => MaterialApp(
           navigatorKey: _navigatorKey,
-          title: 'Shop UB',
+          title: 'Avii.mn',
           theme: ThemeData(
             primarySwatch: Colors.teal,
             fontFamily: 'Roboto',
@@ -144,6 +146,7 @@ class _ShopUBAppState extends State<ShopUBApp> {
             '/saved': (_) => const SavedScreen(),
           },
           onGenerateRoute: (settings) {
+            // Handle store routes
             if (settings.name != null && settings.name!.startsWith('/store/')) {
               final storeId = settings.name!.split('/')[2];
               final storeData = SampleStores.getStoreById(storeId);
@@ -153,10 +156,102 @@ class _ShopUBAppState extends State<ShopUBApp> {
                 );
               }
             }
+
+            // Handle product routes
+            if (settings.name != null &&
+                settings.name!.startsWith('/product/')) {
+              final productId = settings.name!.split('/')[2];
+              return MaterialPageRoute(
+                builder: (context) =>
+                    _ProductRouteHandler(productId: productId),
+              );
+            }
+
             return null;
           },
         ),
       ),
+    );
+  }
+}
+
+class _ProductRouteHandler extends StatelessWidget {
+  final String productId;
+
+  const _ProductRouteHandler({required this.productId});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('products')
+          .doc(productId)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Бүтээгдэхүүн олдсонгүй')),
+            body: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'Бүтээгдэхүүн олдсонгүй',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Таньд хайж байгаа бүтээгдэхүүн олдсонгүй.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        try {
+          final product = ProductModel.fromFirestore(snapshot.data!);
+          return ProductPage(
+            product: product,
+            storeName: 'Store',
+            storeLogoUrl: '',
+            storeRating: 5.0,
+            storeRatingCount: 0,
+          );
+        } catch (e) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Алдаа')),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Бүтээгдэхүүнийг олох явцад алдаа гарлаа',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Алдаа: ${e.toString()}',
+                    style: const TextStyle(color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+      },
     );
   }
 }
@@ -170,6 +265,13 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  bool _isSearching = false;
+  List<SearchResult> _searchResults = [];
+  String _selectedFilter = 'Бүгд'; // All
+
+  // Search filters
+  final List<String> _filters = ['Бүгд', 'Бүтээгдэхүүн', 'Дэлгүүр'];
 
   // Category data matching the screenshot
   final List<CategoryItem> categories = [
@@ -231,6 +333,298 @@ class _SearchScreenState extends State<SearchScreen> {
   ];
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _performSearch(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _searchQuery = '';
+        _searchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+      _searchQuery = query;
+    });
+
+    try {
+      final results = <SearchResult>[];
+      print('🔍 Searching for: "$query"');
+
+      // Search products
+      if (_selectedFilter == 'Бүгд' || _selectedFilter == 'Бүтээгдэхүүн') {
+        final productResults = await _searchProducts(query);
+        results.addAll(productResults);
+        print('📦 Found ${productResults.length} products');
+      }
+
+      // Search stores
+      if (_selectedFilter == 'Бүгд' || _selectedFilter == 'Дэлгүүр') {
+        final storeResults = await _searchStores(query);
+        results.addAll(storeResults);
+        print('🏪 Found ${storeResults.length} stores');
+      }
+
+      print('📊 Total results: ${results.length}');
+
+      setState(() {
+        _searchResults = results;
+        _isSearching = false;
+      });
+    } catch (e) {
+      print('❌ Search error: $e');
+      setState(() {
+        _isSearching = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Хайлт хийхэд алдаа гарлаа: $e')),
+        );
+      }
+    }
+  }
+
+  Future<List<SearchResult>> _searchProducts(String query) async {
+    final results = <SearchResult>[];
+    final db = FirebaseFirestore.instance;
+    final searchTerm = query.toLowerCase().trim();
+
+    try {
+      // Get all active products and filter in memory for better matching
+      final productsQuery = await db
+          .collection('products')
+          .where('isActive', isEqualTo: true)
+          .limit(50) // Get more products to filter through
+          .get();
+
+      for (final doc in productsQuery.docs) {
+        try {
+          final product = ProductModel.fromFirestore(doc);
+          final productName = product.name.toLowerCase();
+          final productCategory = product.category.toLowerCase();
+
+          // Check if search term matches product name or category
+          if (productName.contains(searchTerm) ||
+              productCategory.contains(searchTerm)) {
+            results.add(SearchResult(
+              id: product.id,
+              title: product.name,
+              subtitle: 'Бүтээгдэхүүн • ₮${product.price.toStringAsFixed(0)}',
+              imageUrl: product.images.isNotEmpty ? product.images.first : '',
+              type: SearchResultType.product,
+              data: product,
+            ));
+          }
+        } catch (e) {
+          print('Error processing product ${doc.id}: $e');
+        }
+      }
+
+      // If still no results, try a broader search
+      if (results.isEmpty && searchTerm.length >= 2) {
+        final broadQuery = await db
+            .collection('products')
+            .where('isActive', isEqualTo: true)
+            .limit(100)
+            .get();
+
+        for (final doc in broadQuery.docs) {
+          try {
+            final product = ProductModel.fromFirestore(doc);
+            final productName = product.name.toLowerCase();
+            final productDescription = product.description.toLowerCase();
+
+            // More flexible matching
+            if (productName.contains(searchTerm) ||
+                productDescription.contains(searchTerm)) {
+              results.add(SearchResult(
+                id: product.id,
+                title: product.name,
+                subtitle: 'Бүтээгдэхүүн • ₮${product.price.toStringAsFixed(0)}',
+                imageUrl: product.images.isNotEmpty ? product.images.first : '',
+                type: SearchResultType.product,
+                data: product,
+              ));
+            }
+          } catch (e) {
+            print('Error processing product ${doc.id}: $e');
+          }
+        }
+      }
+
+      // Final fallback: word-based search
+      if (results.isEmpty && searchTerm.length >= 3) {
+        final words =
+            searchTerm.split(' ').where((w) => w.length >= 2).toList();
+        if (words.isNotEmpty) {
+          final wordQuery = await db
+              .collection('products')
+              .where('isActive', isEqualTo: true)
+              .limit(200)
+              .get();
+
+          for (final doc in wordQuery.docs) {
+            try {
+              final product = ProductModel.fromFirestore(doc);
+              final productName = product.name.toLowerCase();
+
+              // Check if any word matches
+              for (final word in words) {
+                if (productName.contains(word)) {
+                  results.add(SearchResult(
+                    id: product.id,
+                    title: product.name,
+                    subtitle:
+                        'Бүтээгдэхүүн • ₮${product.price.toStringAsFixed(0)}',
+                    imageUrl:
+                        product.images.isNotEmpty ? product.images.first : '',
+                    type: SearchResultType.product,
+                    data: product,
+                  ));
+                  break; // Found a match, no need to check other words
+                }
+              }
+            } catch (e) {
+              print('Error processing product ${doc.id}: $e');
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error searching products: $e');
+    }
+
+    // Remove duplicates and limit results
+    final uniqueResults = <String, SearchResult>{};
+    for (final result in results) {
+      uniqueResults[result.id] = result;
+    }
+
+    return uniqueResults.values.take(10).toList();
+  }
+
+  Future<List<SearchResult>> _searchStores(String query) async {
+    final results = <SearchResult>[];
+    final db = FirebaseFirestore.instance;
+    final searchTerm = query.toLowerCase().trim();
+
+    try {
+      // Get all active stores and filter in memory for better matching
+      final storesQuery = await db
+          .collection('stores')
+          .where('isActive', isEqualTo: true)
+          .limit(50)
+          .get();
+
+      for (final doc in storesQuery.docs) {
+        try {
+          final store = StoreModel.fromFirestore(doc);
+          final storeName = store.name.toLowerCase();
+          final storeDescription = store.description.toLowerCase();
+
+          // Check if search term matches store name or description
+          if (storeName.contains(searchTerm) ||
+              storeDescription.contains(searchTerm)) {
+            results.add(SearchResult(
+              id: store.id,
+              title: store.name,
+              subtitle:
+                  'Дэлгүүр • ${store.description.isNotEmpty ? store.description : 'Онлайн дэлгүүр'}',
+              imageUrl: store.logo.isNotEmpty ? store.logo : store.banner,
+              type: SearchResultType.store,
+              data: store,
+            ));
+          }
+        } catch (e) {
+          print('Error processing store ${doc.id}: $e');
+        }
+      }
+
+      // If no results found, try even broader search
+      if (results.isEmpty && searchTerm.length >= 2) {
+        // Try searching without the isActive filter in case that's causing issues
+        final broadQuery = await db.collection('stores').limit(100).get();
+
+        for (final doc in broadQuery.docs) {
+          try {
+            final data = doc.data() as Map<String, dynamic>;
+            final storeName = (data['name'] ?? '').toString().toLowerCase();
+            final storeDescription =
+                (data['description'] ?? '').toString().toLowerCase();
+
+            if (storeName.contains(searchTerm) ||
+                storeDescription.contains(searchTerm)) {
+              final store = StoreModel.fromFirestore(doc);
+              results.add(SearchResult(
+                id: store.id,
+                title: store.name,
+                subtitle:
+                    'Дэлгүүр • ${store.description.isNotEmpty ? store.description : 'Онлайн дэлгүүр'}',
+                imageUrl: store.logo.isNotEmpty ? store.logo : store.banner,
+                type: SearchResultType.store,
+                data: store,
+              ));
+            }
+          } catch (e) {
+            print('Error processing store ${doc.id}: $e');
+          }
+        }
+      }
+
+      // Final fallback: word-based search for stores
+      if (results.isEmpty && searchTerm.length >= 3) {
+        final words =
+            searchTerm.split(' ').where((w) => w.length >= 2).toList();
+        if (words.isNotEmpty) {
+          final wordQuery = await db.collection('stores').limit(200).get();
+
+          for (final doc in wordQuery.docs) {
+            try {
+              final data = doc.data() as Map<String, dynamic>;
+              final storeName = (data['name'] ?? '').toString().toLowerCase();
+
+              // Check if any word matches
+              for (final word in words) {
+                if (storeName.contains(word)) {
+                  final store = StoreModel.fromFirestore(doc);
+                  results.add(SearchResult(
+                    id: store.id,
+                    title: store.name,
+                    subtitle:
+                        'Дэлгүүр • ${store.description.isNotEmpty ? store.description : 'Онлайн дэлгүүр'}',
+                    imageUrl: store.logo.isNotEmpty ? store.logo : store.banner,
+                    type: SearchResultType.store,
+                    data: store,
+                  ));
+                  break; // Found a match, no need to check other words
+                }
+              }
+            } catch (e) {
+              print('Error processing store ${doc.id}: $e');
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error searching stores: $e');
+    }
+
+    // Remove duplicates and limit results
+    final uniqueResults = <String, SearchResult>{};
+    for (final result in results) {
+      uniqueResults[result.id] = result;
+    }
+
+    return uniqueResults.values.take(10).toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MainScaffold(
       currentIndex: 1,
@@ -242,9 +636,14 @@ class _SearchScreenState extends State<SearchScreen> {
               // Search Bar
               _buildSearchBar(),
 
-              // Categories Grid
+              // Search Filters (only show when searching)
+              if (_searchQuery.isNotEmpty) _buildSearchFilters(),
+
+              // Content - either search results or categories
               Expanded(
-                child: _buildCategoriesGrid(),
+                child: _searchQuery.isEmpty
+                    ? _buildCategoriesGrid()
+                    : _buildSearchResults(),
               ),
             ],
           ),
@@ -269,25 +668,343 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       child: TextField(
         controller: _searchController,
-        decoration: const InputDecoration(
-          hintText: 'Search',
-          hintStyle: TextStyle(
+        decoration: InputDecoration(
+          hintText: 'Бүтээгдэхүүн, дэлгүүр хайх...',
+          hintStyle: const TextStyle(
             color: Colors.grey,
             fontSize: 16,
           ),
-          prefixIcon: Icon(
+          prefixIcon: const Icon(
             Icons.search,
             color: Colors.grey,
             size: 20,
           ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, color: Colors.grey),
+                  onPressed: () {
+                    _searchController.clear();
+                    _performSearch('');
+                  },
+                )
+              : null,
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
         onChanged: (value) {
-          // Handle search functionality
+          _performSearch(value);
+        },
+        onSubmitted: (value) {
+          _performSearch(value);
         },
       ),
     );
+  }
+
+  Widget _buildSearchFilters() {
+    return Container(
+      height: 50,
+      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _filters.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final filter = _filters[index];
+          final isSelected = _selectedFilter == filter;
+
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedFilter = filter;
+              });
+              _performSearch(_searchQuery);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? Colors.black : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected ? Colors.black : Colors.grey.shade300,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  filter,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black,
+                    fontWeight:
+                        isSelected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSearchResults() {
+    if (_isSearching) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text(
+              'Хайж байна...',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_searchResults.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.search_off,
+              size: 64,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '"$_searchQuery" хайлтаар илэрц олдсонгүй',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Хайлтын зөвлөмж:',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('• Товч түлхүүр үг ашиглана уу',
+                      style: TextStyle(color: Colors.grey)),
+                  Text('• Үсгийн алдаа шалгана уу',
+                      style: TextStyle(color: Colors.grey)),
+                  Text('• Өөр түлхүүр үг ашиглана уу',
+                      style: TextStyle(color: Colors.grey)),
+                  Text('• Бүх шүүлтүүр "Бүгд" болгоно уу',
+                      style: TextStyle(color: Colors.grey)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _selectedFilter = 'Бүгд';
+                });
+                _performSearch(_searchQuery);
+              },
+              child: const Text('Дахин хайх'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _searchResults.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final result = _searchResults[index];
+        return _buildSearchResultCard(result);
+      },
+    );
+  }
+
+  Widget _buildSearchResultCard(SearchResult result) {
+    return GestureDetector(
+      onTap: () => _handleSearchResultTap(result),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: 60,
+                height: 60,
+                child: result.imageUrl.isNotEmpty
+                    ? Image.network(
+                        result.imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey.shade200,
+                            child: Icon(
+                              result.type == SearchResultType.product
+                                  ? Icons.inventory_2
+                                  : Icons.store,
+                              color: Colors.grey,
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
+                        color: Colors.grey.shade200,
+                        child: Icon(
+                          result.type == SearchResultType.product
+                              ? Icons.inventory_2
+                              : Icons.store,
+                          color: Colors.grey,
+                        ),
+                      ),
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    result.title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    result.subtitle,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+
+            // Arrow
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handleSearchResultTap(SearchResult result) {
+    if (result.type == SearchResultType.product) {
+      final product = result.data as ProductModel;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProductPage(
+            product: product,
+            storeName: 'Store',
+            storeLogoUrl: '',
+            storeRating: 5.0,
+            storeRatingCount: 0,
+          ),
+        ),
+      );
+    } else if (result.type == SearchResultType.store) {
+      final store = result.data as StoreModel;
+      _navigateToStore(store);
+    }
+  }
+
+  Future<void> _navigateToStore(StoreModel store) async {
+    try {
+      final db = FirebaseFirestore.instance;
+
+      // Fetch products for this store
+      final productsQuery = await db
+          .collection('products')
+          .where('storeId', isEqualTo: store.id)
+          .where('isActive', isEqualTo: true)
+          .limit(20)
+          .get();
+
+      final products = productsQuery.docs
+          .map((doc) => ProductModel.fromFirestore(doc))
+          .toList();
+
+      // Navigate to store page
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StoreScreen(
+            storeData: StoreData(
+              id: store.id,
+              name: store.name,
+              displayName: store.name.toUpperCase(),
+              heroImageUrl: store.banner.isNotEmpty ? store.banner : store.logo,
+              backgroundColor: const Color(0xFF01BCE7),
+              rating: 4.9,
+              reviewCount: '25',
+              collections: const [],
+              categories: const ['All'],
+              productCount: products.length,
+              products: products
+                  .map((p) => StoreProduct(
+                        id: p.id,
+                        name: p.name,
+                        imageUrl: p.images.isNotEmpty ? p.images.first : '',
+                        price: p.price,
+                      ))
+                  .toList(),
+              showFollowButton: true,
+              hasNotification: false,
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Дэлгүүр нээхэд алдаа гарлаа: $e')),
+      );
+    }
   }
 
   Widget _buildCategoriesGrid() {
@@ -325,7 +1042,7 @@ class _SearchScreenState extends State<SearchScreen> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${category.name} coming soon!')),
+            SnackBar(content: Text('${category.name} удахгүй!')),
           );
         }
       },
@@ -407,12 +1124,6 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     );
   }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
 }
 
 // Category data model
@@ -425,6 +1136,30 @@ class CategoryItem {
     required this.name,
     required this.imageUrl,
     required this.color,
+  });
+}
+
+// Search result models
+enum SearchResultType {
+  product,
+  store,
+}
+
+class SearchResult {
+  final String id;
+  final String title;
+  final String subtitle;
+  final String imageUrl;
+  final SearchResultType type;
+  final dynamic data;
+
+  SearchResult({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.imageUrl,
+    required this.type,
+    required this.data,
   });
 }
 
@@ -445,7 +1180,8 @@ class OrdersScreen extends StatelessWidget {
               _buildHeader(context),
               Expanded(
                 child: auth.user == null
-                    ? const Center(child: Text('Sign in to view orders'))
+                    ? const Center(
+                        child: Text('Нэвтэрч орж захиалгын жагсаалтыг үзэх'))
                     : StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('users')
@@ -458,41 +1194,21 @@ class OrdersScreen extends StatelessWidget {
                             return const Center(
                                 child: CircularProgressIndicator());
                           }
+
                           final docs = snap.data?.docs ?? [];
-
                           if (docs.isEmpty) {
-                            return _emptyState();
+                            return _buildEmptyState();
                           }
 
-                          // Build buy again list unique by productId
-                          final Map<String, BuyAgainItem> buyAgainMap = {};
-                          for (final doc in docs) {
-                            final items = List<Map<String, dynamic>>.from(
-                                doc['items'] ?? []);
-                            for (final item in items) {
-                              final id = item['productId'];
-                              if (!buyAgainMap.containsKey(id)) {
-                                buyAgainMap[id] = BuyAgainItem(
-                                  id: id,
-                                  imageUrl: item['imageUrl'] ?? '',
-                                  name: item['name'] ?? '',
-                                );
-                              }
-                            }
-                          }
-
-                          return SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                          return ListView.separated(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: docs.length,
+                            separatorBuilder: (_, __) =>
                                 const SizedBox(height: 16),
-                                _buildBuyAgainSection(
-                                    context, buyAgainMap.values.toList()),
-                                const SizedBox(height: 32),
-                                _buildPastOrdersSection(context, docs),
-                                const SizedBox(height: 80),
-                              ],
-                            ),
+                            itemBuilder: (context, index) {
+                              final order = docs[index];
+                              return _buildOrderCard(context, order);
+                            },
                           );
                         },
                       ),
@@ -512,7 +1228,7 @@ class OrdersScreen extends StatelessWidget {
         children: [
           const SizedBox(width: 40), // Spacer for centering
           const Text(
-            'Orders',
+            'Миний захиалга',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -524,7 +1240,7 @@ class OrdersScreen extends StatelessWidget {
               GestureDetector(
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Search orders tapped!')),
+                    const SnackBar(content: Text('Захиалга хайх!')),
                   );
                 },
                 child: Container(
@@ -551,7 +1267,7 @@ class OrdersScreen extends StatelessWidget {
               GestureDetector(
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('More options tapped!')),
+                    const SnackBar(content: Text('Нэмэлт сонголт!')),
                   );
                 },
                 child: Container(
@@ -581,280 +1297,361 @@ class OrdersScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBuyAgainSection(
-      BuildContext context, List<BuyAgainItem> buyAgainItems) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            children: [
-              const Text(
-                'Buy again',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right, size: 20, color: Colors.black54),
-            ],
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.shopping_bag_outlined,
+            size: 80,
+            color: Colors.grey,
           ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 120,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: buyAgainItems.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final item = buyAgainItems[index];
-              return _buildBuyAgainItem(context, item);
+          SizedBox(height: 16),
+          Text(
+            'Захиалга байхгүй байна',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Таны анхны захиалгыг хийж эхлээрэй!',
+            style: TextStyle(
+              color: Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderCard(BuildContext context, QueryDocumentSnapshot order) {
+    final data = order.data() as Map<String, dynamic>;
+    final items = List<Map<String, dynamic>>.from(data['items'] ?? []);
+    final storeId = data['storeId'] as String? ?? '';
+    final status = data['status'] as String? ?? 'placed';
+    final totalAmount =
+        TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
+    final createdAt = (data['createdAt'] ?? Timestamp.now()) as Timestamp;
+
+    // Extract payment and address information
+    final String paymentMethod = data['paymentMethod'] as String? ?? 'Карт';
+    final String paymentIntentId = (data['paymentIntentId'] as String?) ?? '';
+    final String customerEmail = (data['customerEmail'] as String?) ??
+        (data['userEmail'] as String?) ??
+        '';
+    final Map<String, dynamic> deliveryAddress =
+        (data['deliveryAddress'] as Map<String, dynamic>?) ?? {};
+    final String shippingAddress = (data['shippingAddress'] as String?) ?? '';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Store header with status
+          FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance
+                .collection('stores')
+                .doc(storeId)
+                .get(),
+            builder: (context, storeSnap) {
+              String storeName = 'Дэлгүүр';
+              String storeImage = '';
+
+              if (storeSnap.hasData && storeSnap.data!.exists) {
+                final storeData =
+                    storeSnap.data!.data() as Map<String, dynamic>;
+                storeName = storeData['name'] ?? 'Дэлгүүр';
+                storeImage = storeData['logo'] ?? storeData['banner'] ?? '';
+              }
+
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Color(0xFFF0F0F0)),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    // Store profile picture
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey.shade200,
+                      ),
+                      child: storeImage.isNotEmpty
+                          ? ClipOval(
+                              child: Image.network(
+                                storeImage,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.store,
+                                    color: Colors.grey.shade600,
+                                    size: 20,
+                                  );
+                                },
+                              ),
+                            )
+                          : Icon(
+                              Icons.store,
+                              color: Colors.grey.shade600,
+                              size: 20,
+                            ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Store name and order info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            storeName,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${items.length} зүйл • ${_getStatusText(status)}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // More options
+                    GestureDetector(
+                      onTap: () => _showOrderOptions(context, order, storeName),
+                      child: const Icon(
+                        Icons.more_horiz,
+                        color: Colors.grey,
+                        size: 20,
+                      ),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
-        ),
-      ],
-    );
-  }
 
-  Widget _buildBuyAgainItem(BuildContext context, BuyAgainItem item) {
-    return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Buy again ${item.name} tapped!')),
-        );
-      },
-      child: Container(
-        width: 100,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF0F0F0),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                item.imageUrl,
-                width: 100,
-                height: 120,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 100,
-                    height: 120,
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.image, color: Colors.grey),
-                  );
-                },
-              ),
+          // Products list
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const Divider(
+              height: 1,
+              color: Color(0xFFF0F0F0),
             ),
-            Positioned(
-              bottom: 8,
-              right: 8,
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
-                  color: Colors.black87,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.shopping_cart,
-                  size: 16,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return _buildProductItem(context, item, order.id, storeId);
+            },
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildPastOrdersSection(
-      BuildContext context, List<QueryDocumentSnapshot> ordersDocs) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            children: [
-              const Text(
-                'Past orders',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right, size: 20, color: Colors.black54),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          itemCount: ordersDocs.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final order = ordersDocs[index];
-            return _buildPastOrderItem(context, order);
-          },
-        ),
-      ],
-    );
-  }
+  Widget _buildProductItem(BuildContext context, Map<String, dynamic> item,
+      String orderId, String storeId) {
+    final productName = item['name'] ?? 'Бүтээгдэхүүн';
+    final price = TypeUtils.safeCastDouble(item['price'], defaultValue: 0.0);
+    final quantity = TypeUtils.safeCastInt(item['quantity'], defaultValue: 1);
+    final variant = item['variant'] ?? '';
+    final imageUrl = item['imageUrl'] ?? '';
+    final productId = item['productId'] ?? '';
 
-  Widget _buildPastOrderItem(
-      BuildContext context, QueryDocumentSnapshot order) {
-    final data = order.data() as Map<String, dynamic>;
-    final statusKey = (data['status'] ?? 'placed') as String;
-    String status;
-    if (statusKey == 'delivered') {
-      final ts = (data['deliveredAt'] ?? data['updatedAt'] ?? data['createdAt'])
-          as Timestamp?;
-      final dateStr = ts != null ? _fmtDate(ts.toDate()) : '';
-      status = 'Delivered $dateStr';
-    } else if (statusKey == 'shipped') {
-      final ts = (data['shippedAt'] ?? data['updatedAt'] ?? data['createdAt'])
-          as Timestamp?;
-      final dateStr = ts != null ? _fmtDate(ts.toDate()) : '';
-      status = 'Shipped $dateStr';
-    } else if (statusKey == 'canceled') {
-      status = 'Cancelled';
-    } else {
-      status = 'Placed';
-    }
-    final storeName = (data['storeName'] ?? 'Store') as String;
-
-    final items = List<Map<String, dynamic>>.from(data['items'] ?? []);
-    String imageUrl = '';
-    if (items.isNotEmpty) {
-      imageUrl = items.first['imageUrl'] ?? '';
-    }
-    final int itemCnt = items.fold<int>(
-        0,
-        (sum, e) =>
-            sum + TypeUtils.safeCastInt(e['quantity'], defaultValue: 1));
-    final itemCountStr = '$itemCnt item${itemCnt > 1 ? 's' : ''}';
-    final price =
-        data.containsKey('total') ? '\$${data['total'].toString()}' : null;
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => OrderDetailPage(orderDoc: order),
-          ),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Product image
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.grey.shade100,
             ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Product Image
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0F0F0),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.image, color: Colors.grey),
-                    );
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // Order Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    status,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.inventory_2,
+                          color: Colors.grey,
+                          size: 30,
+                        );
+                      },
+                    )
+                  : const Icon(
+                      Icons.inventory_2,
+                      color: Colors.grey,
+                      size: 30,
                     ),
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // Product details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  productName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        storeName,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black54,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+
+                // Price and variant on same line
+                Row(
+                  children: [
+                    Text(
+                      '₮${price.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    if (variant.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      const Text('•', style: TextStyle(color: Colors.grey)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          variant,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (itemCnt > 0) ...[
-                        const Text(
-                          ' • ',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.black54,
-                          ),
-                        ),
-                        Text(
-                          itemCountStr,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ],
-                      if (price != null) ...[
-                        const Text(
-                          ' • ',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.black54,
-                          ),
-                        ),
-                        Text(
-                          price,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ],
                     ],
+                  ],
+                ),
+
+                if (quantity > 1) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Тоо ширхэг: $quantity',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
                   ),
                 ],
+                const SizedBox(height: 8),
+
+                // Review button - moved to where variant was
+                GestureDetector(
+                  onTap: () =>
+                      _navigateToReview(context, productId, orderId, storeId),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Үнэлгээ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showOrderOptions(
+      BuildContext context, QueryDocumentSnapshot order, String storeName) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
               ),
+            ),
+            const SizedBox(height: 20),
+
+            // Receipt option
+            ListTile(
+              leading: const Icon(Icons.receipt_long, color: Colors.black87),
+              title: const Text('Баримт'),
+              onTap: () {
+                Navigator.pop(context);
+                _navigateToReceipt(context, order);
+              },
+            ),
+
+            // Contact store option
+            ListTile(
+              leading: const Icon(Icons.message, color: Colors.black87),
+              title: Text('$storeName-тай холбогдох'),
+              onTap: () {
+                Navigator.pop(context);
+                _showContactStore(context, storeName);
+              },
             ),
           ],
         ),
@@ -862,31 +1659,60 @@ class OrdersScreen extends StatelessWidget {
     );
   }
 
-  String _fmtDate(DateTime dt) {
-    final month = dt.month.toString().padLeft(2, '0');
-    final day = dt.day.toString().padLeft(2, '0');
-    final hr = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-    final min = dt.minute.toString().padLeft(2, '0');
-    final amPm = dt.hour >= 12 ? 'PM' : 'AM';
-    return '$month/$day ${hr}:$min $amPm';
+  void _navigateToReceipt(BuildContext context, QueryDocumentSnapshot order) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReceiptPage(order: order),
+      ),
+    );
   }
 
-  Widget _emptyState() {
-    return const Center(child: Text('Таньд захиалсан бүтээгдэхүүн алга.'));
+  void _showContactStore(BuildContext context, String storeName) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$storeName-тай холбогдох функц удахгүй нэмэгдэнэ'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
-}
 
-// Data models for Orders screen
-class BuyAgainItem {
-  final String id;
-  final String imageUrl;
-  final String name;
+  void _navigateToReview(
+      BuildContext context, String productId, String orderId, String storeId) {
+    if (productId.isEmpty || storeId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Бүтээгдэхүүний мэдээлэл олдсонгүй')),
+      );
+      return;
+    }
 
-  const BuyAgainItem({
-    required this.id,
-    required this.imageUrl,
-    required this.name,
-  });
+    // Use existing review functionality
+    showDialog(
+      context: context,
+      builder: (context) => ReviewSubmissionDialog(
+        storeId: storeId,
+        storeName: 'Дэлгүүр', // Will be loaded from store data
+        orderId: orderId,
+      ),
+    );
+  }
+
+  String _getStatusText(String status) {
+    switch (status) {
+      case 'placed':
+        return 'Захиалсан';
+      case 'confirmed':
+        return 'Баталгаажсан';
+      case 'shipped':
+        return 'Илгээсэн';
+      case 'delivered':
+        return 'Хүргэгдсэн';
+      case 'cancelled':
+        return 'Цуцалсан';
+      default:
+        return 'Захиалсан';
+    }
+  }
 }
 
 class AccountScreen extends StatelessWidget {
@@ -895,8 +1721,8 @@ class AccountScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Account')),
-      body: const Center(child: Text('User Profile')),
+      appBar: AppBar(title: const Text('профайл')),
+      body: const Center(child: Text('профайл')),
     );
   }
 }
@@ -916,53 +1742,559 @@ class ShopUBBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bar = Container(
-      margin: floating
-          ? const EdgeInsets.only(left: 24, right: 24, bottom: 16)
-          : EdgeInsets.zero,
-      decoration: floating
-          ? BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 12,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            )
-          : null,
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[850] : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
       child: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: floating ? Colors.transparent : Colors.white,
-        elevation: floating ? 0 : 8,
         currentIndex: currentIndex,
-        onTap: (i) => _onTap(context, i),
-        selectedItemColor: const Color(0xFF7B61FF),
-        unselectedItemColor: Colors.grey,
-        showSelectedLabels: false,
-        showUnselectedLabels: false,
+        onTap: (index) => _onTap(context, index),
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        selectedItemColor: Colors.black,
+        unselectedItemColor: Colors.grey.shade600,
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt), label: 'Orders'),
-          BottomNavigationBarItem(icon: Icon(Icons.bookmark), label: 'Saved'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Нүүр'),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Хайх'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_bag), label: 'Захиалга'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.bookmark), label: 'Хадгалсан'),
         ],
       ),
     );
-    return floating
-        ? Stack(
-            children: [
-              const SizedBox(height: 70),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: bar,
+  }
+}
+
+class ReceiptPage extends StatelessWidget {
+  final QueryDocumentSnapshot order;
+
+  const ReceiptPage({super.key, required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final data = order.data() as Map<String, dynamic>;
+    final items = List<Map<String, dynamic>>.from(data['items'] ?? []);
+    final totalAmount =
+        TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
+    final createdAt = (data['createdAt'] ?? Timestamp.now()) as Timestamp;
+    final storeId = data['storeId'] as String? ?? '';
+
+    // Extract payment and address information
+    final String paymentMethod = data['paymentMethod'] as String? ?? 'Карт';
+    final String paymentIntentId = (data['paymentIntentId'] as String?) ?? '';
+    final String customerEmail = (data['customerEmail'] as String?) ??
+        (data['userEmail'] as String?) ??
+        '';
+    final Map<String, dynamic> deliveryAddress =
+        (data['deliveryAddress'] as Map<String, dynamic>?) ?? {};
+    final String shippingAddress = (data['shippingAddress'] as String?) ?? '';
+
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Баримт',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.black),
+            onPressed: () {
+              // Share receipt functionality
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Баримт хуваалцах функц удахгүй нэмэгдэнэ')),
+              );
+            },
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
             ],
-          )
-        : bar;
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                const Center(
+                  child: Text(
+                    'Баримт',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Order info - using actual order number
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Захиалгын дугаар #${order.id.toUpperCase()}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _formatDate(createdAt.toDate()),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 32),
+
+                // Items list
+                ...items.map((item) => _buildReceiptItem(item)),
+
+                const SizedBox(height: 24),
+
+                // Divider
+                Container(
+                  height: 1,
+                  color: Colors.grey.shade300,
+                ),
+
+                const SizedBox(height: 16),
+
+                // Subtotal
+                _buildReceiptRow(
+                    'Үнийн дүн', '₮${totalAmount.toStringAsFixed(0)}'),
+                const SizedBox(height: 8),
+
+                // Shipping
+                _buildReceiptRow('Хүргэлт', 'Үнэгүй'),
+
+                const SizedBox(height: 16),
+
+                // Another divider
+                Container(
+                  height: 2,
+                  color: Colors.black,
+                ),
+
+                const SizedBox(height: 16),
+
+                // Total
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Нийт дүн',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    Text(
+                      '₮${totalAmount.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 32),
+
+                // Payment method - using actual payment data
+                const Text(
+                  'Төлбөрийн хэрэгсэл',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Text(
+                      _getPaymentMethodDisplay(paymentMethod),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      paymentIntentId.isNotEmpty
+                          ? '•••• ${paymentIntentId.substring(paymentIntentId.length - 4)}'
+                          : 'QPay төлбөр',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // Payment details
+                _buildPaymentDetails(paymentMethod, paymentIntentId),
+
+                const SizedBox(height: 32),
+
+                // Billing address - using actual address data
+                _buildBillingAddressSection(
+                    customerEmail, deliveryAddress, shippingAddress),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentDetails(String paymentMethod, String paymentIntentId) {
+    if (paymentMethod.toLowerCase() == 'qpay') {
+      return Row(
+        children: [
+          Container(
+            width: 32,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Colors.orange,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Center(
+              child: Text(
+                'QPay',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              paymentIntentId.isNotEmpty
+                  ? '•••• ${paymentIntentId.substring(paymentIntentId.length - 4)}'
+                  : 'QPay төлбөр',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black,
+              ),
+            ),
+          ),
+          Icon(
+            Icons.info_outline,
+            size: 16,
+            color: Colors.grey.shade600,
+          ),
+        ],
+      );
+    } else {
+      // Default card display
+      return Row(
+        children: [
+          Container(
+            width: 24,
+            height: 16,
+            decoration: BoxDecoration(
+              color: Colors.blue,
+              borderRadius: BorderRadius.circular(2),
+            ),
+            child: const Center(
+              child: Text(
+                'VISA',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            '•••• •••• •••• 1099',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(
+            Icons.info_outline,
+            size: 16,
+            color: Colors.grey.shade600,
+          ),
+        ],
+      );
+    }
+  }
+
+  Widget _buildBillingAddressSection(String customerEmail,
+      Map<String, dynamic> deliveryAddress, String shippingAddress) {
+    // Extract address information
+    final recipientName = deliveryAddress['recipientName'] as String? ??
+        deliveryAddress['contactName'] as String? ??
+        'Хэрэглэгч';
+    final fullAddress = deliveryAddress['fullAddress'] as String? ??
+        deliveryAddress['address'] as String? ??
+        (shippingAddress.isNotEmpty
+            ? shippingAddress
+            : 'Улаанbaatar, Монгол улс');
+    final phone = deliveryAddress['phone'] as String? ??
+        deliveryAddress['contactPhone'] as String? ??
+        '+976 9999 9999';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Төлбөрийн хаяг',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          recipientName,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          fullAddress,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          phone,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.black,
+          ),
+        ),
+        if (customerEmail.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            customerEmail,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _getPaymentMethodDisplay(String paymentMethod) {
+    switch (paymentMethod.toLowerCase()) {
+      case 'qpay':
+        return 'QPay';
+      case 'card':
+      case 'visa':
+      case 'mastercard':
+        return 'Карт';
+      case 'cash':
+        return 'Бэлэн мөнгө';
+      default:
+        return 'Карт';
+    }
+  }
+
+  Widget _buildReceiptItem(Map<String, dynamic> item) {
+    final name = item['name'] ?? 'Бүтээгдэхүүн';
+    final price = TypeUtils.safeCastDouble(item['price'], defaultValue: 0.0);
+    final quantity = TypeUtils.safeCastInt(item['quantity'], defaultValue: 1);
+    final variant = item['variant'] ?? '';
+    final imageUrl = item['imageUrl'] ?? '';
+
+    return Container(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          // Product image
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.grey.shade100,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.inventory_2,
+                          color: Colors.grey,
+                          size: 24,
+                        );
+                      },
+                    )
+                  : const Icon(
+                      Icons.inventory_2,
+                      color: Colors.grey,
+                      size: 24,
+                    ),
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // Product details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (variant.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    variant,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+                if (quantity > 1) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Тоо ширхэг: $quantity',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          // Price
+          Text(
+            '₮${(price * quantity).toStringAsFixed(0)}',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReceiptRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.black,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.black,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final months = [
+      '1 сарын',
+      '2 сарын',
+      '3 сарын',
+      '4 сарын',
+      '5 сарын',
+      '6 сарын',
+      '7 сарын',
+      '8 сарын',
+      '9 сарын',
+      '10 сарын',
+      '11 сарын',
+      '12 сарын'
+    ];
+
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 }

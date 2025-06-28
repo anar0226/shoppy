@@ -13,7 +13,7 @@ class WomenCategoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CategoryPage(
-      title: 'Women',
+      title: 'Эмэгтэй',
       featuredStoreIds: const [_lalarStoreId],
       sections: const [
         'Shirts & tops',
@@ -25,7 +25,7 @@ class WomenCategoryPage extends StatelessWidget {
       ],
       subCategories: [
         SubCategory(
-          name: 'Shirts & tops',
+          name: 'Гадуур хувцас & Футболк',
           imageUrl: 'assets/images/categories/Women/WomenTshirt.jpg',
           color: const Color(0xFF2D8A47),
           onTap: () => Navigator.push(
@@ -34,7 +34,7 @@ class WomenCategoryPage extends StatelessWidget {
           ),
         ),
         SubCategory(
-          name: 'Shoes',
+          name: 'Эмэгтэй гутал',
           imageUrl: 'assets/images/categories/Women/WomenShoe.jpg',
           color: const Color(0xFFD97841),
           onTap: () => Navigator.push(
@@ -43,27 +43,27 @@ class WomenCategoryPage extends StatelessWidget {
           ),
         ),
         SubCategory(
-          name: 'Dresses',
+          name: 'Даашинз',
           imageUrl: 'assets/images/categories/Women/WomenDress.jpg',
           color: const Color(0xFF8B4513),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => const FinalCategoryPage(title: 'Dresses')),
+                builder: (_) => const FinalCategoryPage(title: 'Даашинз')),
           ),
         ),
         SubCategory(
-          name: 'Pants',
+          name: 'Өмд',
           imageUrl: 'assets/images/categories/Women/WomenPants.jpg',
           color: const Color(0xFFB8A082),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => const FinalCategoryPage(title: 'Pants')),
+                builder: (_) => const FinalCategoryPage(title: 'Өмд')),
           ),
         ),
         SubCategory(
-          name: 'Intimates',
+          name: 'Дотуур хувцас',
           imageUrl: 'assets/images/categories/Women/WomenLingerie.jpg',
           color: const Color(0xFFE8B5C8),
           onTap: () => Navigator.push(
@@ -72,13 +72,13 @@ class WomenCategoryPage extends StatelessWidget {
           ),
         ),
         SubCategory(
-          name: 'Activewear',
+          name: 'Актив хувцас',
           imageUrl: 'assets/images/categories/Women/WomenActivewear.jpg',
           color: const Color(0xFF6B9BD1),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => const FinalCategoryPage(title: 'Activewear')),
+                builder: (_) => const FinalCategoryPage(title: 'Актив хувцас')),
           ),
         ),
       ],

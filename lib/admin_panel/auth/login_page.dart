@@ -49,23 +49,25 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Admin Login',
+                  const Text('Avii.mn Admin',
                       style:
                           TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 24),
                   TextFormField(
                     controller: _emailCtrl,
-                    decoration: const InputDecoration(labelText: 'Email'),
-                    validator: (v) =>
-                        v != null && v.contains('@') ? null : 'Enter email',
+                    decoration: const InputDecoration(labelText: 'И-мэйл хаяг'),
+                    validator: (v) => v != null && v.contains('@')
+                        ? null
+                        : 'И-мэйл хаяг оруулна уу',
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _passCtrl,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Password'),
-                    validator: (v) =>
-                        v != null && v.length >= 6 ? null : 'Min 6 characters',
+                    decoration: const InputDecoration(labelText: 'Нууц үг'),
+                    validator: (v) => v != null && v.length >= 6
+                        ? null
+                        : '6-н тэмдэгтээс дээш нууц үг оруулна уу',
                   ),
                   const SizedBox(height: 24),
                   Align(
@@ -75,7 +77,8 @@ class _LoginPageState extends State<LoginPage> {
                         if (_emailCtrl.text.trim().isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                  content: Text('Enter email first')));
+                                  content:
+                                      Text('Эхлээд И-мэйл хаяг оруулна уу')));
                           return;
                         }
                         await AuthService.instance
@@ -83,10 +86,11 @@ class _LoginPageState extends State<LoginPage> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                  content: Text('Password reset email sent')));
+                                  content: Text(
+                                      'Нууц үг сэргээх и-мэйл илгээгдлээ')));
                         }
                       },
-                      child: const Text('Forgot password?'),
+                      child: const Text('Нууц үг мартсан уу?'),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -107,7 +111,7 @@ class _LoginPageState extends State<LoginPage> {
                       child: _loading
                           ? const CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2)
-                          : const Text('Login'),
+                          : const Text('Нэвтрэх'),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -118,7 +122,7 @@ class _LoginPageState extends State<LoginPage> {
                               MaterialPageRoute(
                                   builder: (_) => const SignupPage()),
                             ),
-                    child: const Text("Don't have an account? Sign up"),
+                    child: const Text("Шинээр бүртгүүлэх"),
                   ),
                 ],
               ),

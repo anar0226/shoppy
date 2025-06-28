@@ -93,15 +93,15 @@ class _CollectionsPageState extends State<CollectionsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Collection'),
+        title: const Text('Коллекц устгах'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Are you sure you want to delete "${collection.name}"?'),
+            Text('${collection.name} коллекцыг устгах уу?'),
             const SizedBox(height: 8),
             const Text(
-              'This action cannot be undone.',
+              'Та итгэлтэй байна уу',
               style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
             ),
           ],
@@ -109,7 +109,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: const Text('Цуцалгах'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -117,7 +117,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Delete'),
+            child: const Text('Устгах'),
           ),
         ],
       ),
@@ -147,11 +147,11 @@ class _CollectionsPageState extends State<CollectionsPage> {
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
         children: [
-          const SideMenu(selected: 'Collections'),
+          const SideMenu(selected: 'Коллекц'),
           Expanded(
             child: Column(
               children: [
-                const TopNavBar(title: 'Collections Catalog'),
+                const TopNavBar(title: 'Коллекцүүд'),
                 Expanded(
                   child: _currentStoreId == null
                       ? const Center(child: CircularProgressIndicator())
@@ -185,7 +185,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'Search collections...',
+                      hintText: 'Коллекцүүд хайх...',
                       prefixIcon: const Icon(Icons.search, color: Colors.grey),
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(
@@ -214,7 +214,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
               ElevatedButton.icon(
                 onPressed: _showCreateCollectionDialog,
                 icon: const Icon(Icons.add),
-                label: const Text('Create Collection'),
+                label: const Text('Коллекц үүсгэх'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppThemes.primaryColor,
                   foregroundColor: Colors.white,
@@ -253,7 +253,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'Error loading collections',
+                                'Коллекц оруулах үед алдаа гарлаа',
                                 style: Theme.of(context)
                                     .textTheme
                                     .titleLarge
@@ -300,8 +300,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
           const SizedBox(height: 16),
           Text(
             _searchQuery.isEmpty
-                ? 'No collections yet'
-                : 'No collections found',
+                ? 'Коллекц оруулаагүй байна'
+                : 'Коллекц оруулаагүй байна',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: Colors.grey.shade600,
                 ),
@@ -309,8 +309,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
           const SizedBox(height: 8),
           Text(
             _searchQuery.isEmpty
-                ? 'Create your first collection to organize your products'
-                : 'Try adjusting your search terms',
+                ? 'Эхний коллекц оруулах'
+                : 'Хайлтын тэмдэгтүүдийг өөрчлөх',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Colors.grey.shade500,
                 ),
@@ -321,7 +321,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
             ElevatedButton.icon(
               onPressed: _showCreateCollectionDialog,
               icon: const Icon(Icons.add),
-              label: const Text('Create Collection'),
+              label: const Text('Коллекц үүсгэх'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppThemes.primaryColor,
                 foregroundColor: Colors.white,
@@ -408,7 +408,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                           onPressed: () =>
                               _showEditCollectionDialog(collection),
                           icon: const Icon(Icons.edit, size: 16),
-                          label: const Text('Edit'),
+                          label: const Text('Засварлах'),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 4),
@@ -420,7 +420,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                       IconButton(
                         onPressed: () => _deleteCollection(collection),
                         icon: const Icon(Icons.delete, color: Colors.red),
-                        tooltip: 'Delete collection',
+                        tooltip: 'Коллекц устгах',
                         constraints:
                             const BoxConstraints(minWidth: 32, minHeight: 32),
                         padding: EdgeInsets.zero,
@@ -554,8 +554,8 @@ class _AddEditCollectionDialogState extends State<AddEditCollectionDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(widget.collection == null
-                ? 'Collection created successfully!'
-                : 'Collection updated successfully!'),
+                ? 'Коллекц амжилттай үүслээ'
+                : 'Коллекц амжилттай засагдлаа'),
           ),
         );
       }
@@ -589,8 +589,8 @@ class _AddEditCollectionDialogState extends State<AddEditCollectionDialog> {
           children: [
             Text(
               widget.collection == null
-                  ? 'Create Collection'
-                  : 'Edit Collection',
+                  ? 'Коллекц үүсгэх'
+                  : 'Коллекц засварлах',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -607,13 +607,13 @@ class _AddEditCollectionDialogState extends State<AddEditCollectionDialog> {
                       TextFormField(
                         controller: _nameController,
                         decoration: const InputDecoration(
-                          labelText: 'Collection Name',
+                          labelText: 'Коллекцын нэр',
                           border: OutlineInputBorder(),
-                          hintText: 'Enter collection name',
+                          hintText: 'Коллекцын нэр оруулна уу',
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Please enter a collection name';
+                            return 'Коллекцын нэр оруулна уу';
                           }
                           return null;
                         },
@@ -624,16 +624,16 @@ class _AddEditCollectionDialogState extends State<AddEditCollectionDialog> {
                       TextFormField(
                         controller: _imageController,
                         decoration: const InputDecoration(
-                          labelText: 'Background Image URL',
+                          labelText: 'Фон зураг',
                           border: OutlineInputBorder(),
-                          hintText: 'Enter image URL (optional)',
+                          hintText: 'Зураг оруулна уу (заавал биш)',
                         ),
                       ),
                       const SizedBox(height: 24),
 
                       // Products selection
                       Text(
-                        'Select Products',
+                        'Бүтээгдэхүүнүүд сонгох',
                         style:
                             Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
@@ -650,7 +650,7 @@ class _AddEditCollectionDialogState extends State<AddEditCollectionDialog> {
                             border: Border.all(color: Colors.grey.shade300),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text('No products available'),
+                          child: const Text('Бүтээгдэхүүн оруулаагүй байна'),
                         )
                       else
                         Container(
@@ -687,7 +687,7 @@ class _AddEditCollectionDialogState extends State<AddEditCollectionDialog> {
 
                       const SizedBox(height: 8),
                       Text(
-                        '${_selectedProductIds.length} products selected',
+                        '${_selectedProductIds.length} бүтээгдэхүүн сонгогдлоо',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Colors.grey.shade600,
                             ),
@@ -704,7 +704,7 @@ class _AddEditCollectionDialogState extends State<AddEditCollectionDialog> {
                 TextButton(
                   onPressed:
                       _isLoading ? null : () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
+                  child: const Text('Цуцалгах'),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
@@ -719,7 +719,8 @@ class _AddEditCollectionDialogState extends State<AddEditCollectionDialog> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(widget.collection == null ? 'Create' : 'Update'),
+                      : Text(
+                          widget.collection == null ? 'Үүсгэх' : 'Засварлах'),
                 ),
               ],
             ),

@@ -21,6 +21,16 @@ class TypeUtils {
     return defaultValue;
   }
 
+  /// Safely get double from dynamic value
+  static double safeCastDouble(dynamic value, {double defaultValue = 0.0}) {
+    if (value == null) return defaultValue;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String)
+      return safeParseDouble(value, defaultValue: defaultValue);
+    return defaultValue;
+  }
+
   /// Safely get string from dynamic value
   static String safeCastString(dynamic value, {String defaultValue = ''}) {
     if (value == null) return defaultValue;
