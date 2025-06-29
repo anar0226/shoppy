@@ -81,7 +81,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('All notifications marked as read'),
+            content: Text('Бүх мэдэгдэл уншигдсан'),
             backgroundColor: Colors.green,
           ),
         );
@@ -91,7 +91,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to mark all as read'),
+            content: Text('Алдаа гарлаа'),
             backgroundColor: Colors.red,
           ),
         );
@@ -110,7 +110,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
         title: Row(
           children: [
             const Text(
-              'Notifications',
+              'Мэдэгдэл',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
@@ -146,7 +146,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
             TextButton(
               onPressed: _markAllAsRead,
               child: const Text(
-                'Mark all read',
+                'Бүгд уншигдсан',
                 style: TextStyle(
                   color: Colors.blue,
                   fontWeight: FontWeight.w500,
@@ -158,7 +158,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
       body: _auth.currentUser == null
           ? const Center(
               child: Text(
-                'Please log in to view notifications',
+                'Мэдэгдэл харахын тулд нэвтрэх хэрэгтэй',
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
             )
@@ -178,7 +178,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                             size: 64, color: Colors.red[300]),
                         const SizedBox(height: 16),
                         const Text(
-                          'Error loading notifications',
+                          'Мэдэгдэл олдсонгүй',
                           style: TextStyle(
                               fontSize: 18, fontWeight: FontWeight.bold),
                         ),
@@ -207,7 +207,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'No notifications yet',
+                          'Шинэ мэдэгдэл алга',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w500,
@@ -216,7 +216,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'You\'ll receive notifications about orders, offers, and more',
+                          'Та захиалга, xямдрал болон бусад зүйлийн талаар мэдэгдэл хүлээн авах болно',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[500],

@@ -37,17 +37,26 @@ class StatCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppThemes.getSecondaryTextColor(context),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppThemes.getSecondaryTextColor(context),
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text(periodLabel,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  periodLabel,
                   style: TextStyle(
                       fontSize: 12,
-                      color: AppThemes.getSecondaryTextColor(context))),
+                      color: AppThemes.getSecondaryTextColor(context)),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -84,20 +93,25 @@ class StatCard extends StatelessWidget {
                 color: deltaUp ? Colors.green : Colors.red,
               ),
               const SizedBox(width: 4),
-              Text(
-                delta,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: deltaUp ? Colors.green : Colors.red,
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  delta,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: deltaUp ? Colors.green : Colors.red,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const SizedBox(width: 4),
-              Text(
-                comparisonLabel ?? 'vs last period',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppThemes.getSecondaryTextColor(context),
+              Flexible(
+                child: Text(
+                  comparisonLabel ?? 'өмнөх үе',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppThemes.getSecondaryTextColor(context),
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

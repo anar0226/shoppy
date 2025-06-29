@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/top_nav_bar.dart';
 import '../../features/settings/themes/app_themes.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../auth/auth_service.dart';
+import '../../core/utils/type_utils.dart';
 
 class CustomersPage extends StatefulWidget {
   const CustomersPage({super.key});
@@ -11,156 +14,121 @@ class CustomersPage extends StatefulWidget {
 }
 
 class _CustomersPageState extends State<CustomersPage> {
+  String? _storeId;
+  bool _storeLoaded = false;
+  String _searchQuery = '';
+
+  // Statistics variables
+  int totalCustomers = 0;
+  double totalRevenue = 0.0;
+  int totalOrders = 0;
+
+  // Cache to prevent unnecessary recalculation
+  List<QueryDocumentSnapshot<Map<String, dynamic>>>? _lastOrders;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStoreId();
+  }
+
+  @override
+  void dispose() {
+    // Clean up any resources if needed
+    super.dispose();
+  }
+
+  Future<void> _loadStoreId() async {
+    final ownerId = AuthService.instance.currentUser?.uid;
+    if (ownerId == null) {
+      if (mounted) {
+        setState(() => _storeLoaded = true);
+      }
+      return;
+    }
+    final snap = await FirebaseFirestore.instance
+        .collection('stores')
+        .where('ownerId', isEqualTo: ownerId)
+        .limit(1)
+        .get();
+    if (mounted) {
+      setState(() {
+        _storeLoaded = true;
+        if (snap.docs.isNotEmpty) {
+          _storeId = snap.docs.first.id;
+        }
+      });
+    }
+  }
+
+  void _calculateStatistics(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> orders) {
+    // Avoid recalculation if orders haven't changed
+    if (_lastOrders != null && _ordersEqual(_lastOrders!, orders)) {
+      return;
+    }
+
+    _lastOrders = orders;
+
+    final Set<String> uniqueCustomers = {};
+    double revenue = 0.0;
+
+    for (var order in orders) {
+      final data = order.data();
+      // Track unique customers
+      final customerEmail = data['customerEmail'] as String? ??
+          data['userEmail'] as String? ??
+          '';
+      if (customerEmail.isNotEmpty) {
+        uniqueCustomers.add(customerEmail);
+      }
+
+      // Calculate revenue
+      final orderTotal =
+          TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
+      revenue += orderTotal;
+    }
+
+    final newTotalCustomers = uniqueCustomers.length;
+    final newTotalRevenue = revenue;
+    final newTotalOrders = orders.length;
+
+    // Only setState if values actually changed
+    if (totalCustomers != newTotalCustomers ||
+        totalRevenue != newTotalRevenue ||
+        totalOrders != newTotalOrders) {
+      if (mounted) {
+        setState(() {
+          totalCustomers = newTotalCustomers;
+          totalRevenue = newTotalRevenue;
+          totalOrders = newTotalOrders;
+        });
+      }
+    }
+  }
+
+  bool _ordersEqual(List<QueryDocumentSnapshot<Map<String, dynamic>>> orders1,
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> orders2) {
+    if (orders1.length != orders2.length) return false;
+    for (int i = 0; i < orders1.length; i++) {
+      if (orders1[i].id != orders2[i].id) return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
         children: [
-          const SideMenu(selected: 'Customers'),
+          const SideMenu(selected: 'Үйлчлүүлэгчид'),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const TopNavBar(title: 'Customers'),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Customers',
-                                    style: TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.bold,
-                                        color:
-                                            AppThemes.getTextColor(context))),
-                                const SizedBox(height: 4),
-                                Text('Manage your customer relationships',
-                                    style: TextStyle(
-                                        color: AppThemes.getSecondaryTextColor(
-                                            context))),
-                              ],
-                            ),
-                            ElevatedButton.icon(
-                              onPressed: () {},
-                              icon: const Icon(Icons.add, size: 18),
-                              label: const Text('Add customer'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: 260,
-                              child: TextField(
-                                style: TextStyle(
-                                    color: AppThemes.getTextColor(context)),
-                                decoration: InputDecoration(
-                                  hintText: 'Search customers...',
-                                  hintStyle: TextStyle(
-                                      color: AppThemes.getSecondaryTextColor(
-                                          context)),
-                                  prefixIcon: Icon(Icons.search,
-                                      color: AppThemes.getSecondaryTextColor(
-                                          context)),
-                                  border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(
-                                          color: AppThemes.getBorderColor(
-                                              context))),
-                                  enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(
-                                          color: AppThemes.getBorderColor(
-                                              context))),
-                                  fillColor: AppThemes.getCardColor(context),
-                                  filled: true,
-                                  isDense: true,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            SizedBox(
-                              width: 180,
-                              child: DropdownButtonFormField<String>(
-                                value: 'All Status',
-                                items: const [
-                                  DropdownMenuItem(
-                                      value: 'All Status',
-                                      child: Text('All Status')),
-                                ],
-                                onChanged: (_) {},
-                                decoration: InputDecoration(
-                                  border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8)),
-                                  isDense: true,
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-                            Row(
-                              children: [
-                                Icon(Icons.person_outline,
-                                    size: 16,
-                                    color: AppThemes.getSecondaryTextColor(
-                                        context)),
-                                const SizedBox(width: 4),
-                                Text('4 customers',
-                                    style: TextStyle(
-                                        color:
-                                            AppThemes.getTextColor(context))),
-                                const SizedBox(width: 16),
-                                Icon(Icons.attach_money,
-                                    size: 16,
-                                    color: AppThemes.getSecondaryTextColor(
-                                        context)),
-                                const SizedBox(width: 4),
-                                Text('\$4,863.95 revenue',
-                                    style: TextStyle(
-                                        color:
-                                            AppThemes.getTextColor(context))),
-                                const SizedBox(width: 16),
-                                Icon(Icons.shopping_cart_outlined,
-                                    size: 16,
-                                    color: AppThemes.getSecondaryTextColor(
-                                        context)),
-                                const SizedBox(width: 4),
-                                Text('18 orders',
-                                    style: TextStyle(
-                                        color:
-                                            AppThemes.getTextColor(context))),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        Text('Customer Database',
-                            style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                color: AppThemes.getTextColor(context))),
-                        const SizedBox(height: 12),
-                        _customerTable(),
-                      ],
-                    ),
-                  ),
-                ),
+                const TopNavBar(title: 'Үйлчлүүлэгчид'),
+                Expanded(child: _buildBody()),
               ],
             ),
           ),
@@ -169,7 +137,190 @@ class _CustomersPageState extends State<CustomersPage> {
     );
   }
 
-  Widget _customerTable() {
+  Widget _buildBody() {
+    if (!_storeLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_storeId == null) {
+      return const Center(child: Text('Танд одоогоор дэлгүүр байхгүй байна.'));
+    }
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('orders')
+          .where('storeId', isEqualTo: _storeId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final orders = snapshot.data?.docs ?? [];
+
+        // Calculate statistics directly (no postFrameCallback to avoid rebuild loop)
+        _calculateStatistics(orders);
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 24),
+              _buildStatsRow(),
+              const SizedBox(height: 24),
+              const Text('Үйлчлүүлэгчид',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              _buildCustomersTable(orders),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Үйлчлүүлэгчид',
+                style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: AppThemes.getTextColor(context))),
+            const SizedBox(height: 4),
+            Text('Үйлчлүүлэгчдийн мэдээлэл харах, засах',
+                style:
+                    TextStyle(color: AppThemes.getSecondaryTextColor(context))),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatsRow() {
+    return Row(
+      children: [
+        SizedBox(
+          width: 300,
+          child: TextField(
+            style: TextStyle(color: AppThemes.getTextColor(context)),
+            decoration: InputDecoration(
+              hintText: 'Үйлчлүүлэгч хайх...',
+              hintStyle:
+                  TextStyle(color: AppThemes.getSecondaryTextColor(context)),
+              prefixIcon: Icon(Icons.search,
+                  color: AppThemes.getSecondaryTextColor(context)),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              isDense: true,
+            ),
+            onChanged: (value) {
+              if (mounted) {
+                setState(() {
+                  _searchQuery = value.toLowerCase();
+                });
+              }
+            },
+          ),
+        ),
+        const Spacer(),
+        Row(
+          children: [
+            Icon(Icons.person_outline,
+                size: 16, color: AppThemes.getSecondaryTextColor(context)),
+            const SizedBox(width: 4),
+            Text('$totalCustomers үйлчлүүлэгч',
+                style: TextStyle(color: AppThemes.getTextColor(context))),
+            const SizedBox(width: 16),
+            Icon(Icons.attach_money,
+                size: 16, color: AppThemes.getSecondaryTextColor(context)),
+            const SizedBox(width: 4),
+            Text('₮${totalRevenue.toStringAsFixed(0)} орлого',
+                style: TextStyle(color: AppThemes.getTextColor(context))),
+            const SizedBox(width: 16),
+            Icon(Icons.shopping_cart_outlined,
+                size: 16, color: AppThemes.getSecondaryTextColor(context)),
+            const SizedBox(width: 4),
+            Text('$totalOrders захиалга',
+                style: TextStyle(color: AppThemes.getTextColor(context))),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCustomersTable(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> orders) {
+    // Group orders by customer
+    final Map<String, Map<String, dynamic>> customerData = {};
+
+    for (var order in orders) {
+      final data = order.data();
+      final customerEmail = data['customerEmail'] as String? ??
+          data['userEmail'] as String? ??
+          '';
+      final customerName = data['customerName'] as String? ?? 'Үл мэдэгдэх';
+
+      if (customerEmail.isNotEmpty) {
+        if (!customerData.containsKey(customerEmail)) {
+          customerData[customerEmail] = {
+            'name': customerName,
+            'email': customerEmail,
+            'orders': 0,
+            'totalSpent': 0.0,
+            'lastOrderDate': null,
+            'status': 'идэвхтэй',
+            'address': data['shippingAddress'] ?? data['deliveryAddress'] ?? '',
+          };
+        }
+
+        customerData[customerEmail]!['orders'] += 1;
+        customerData[customerEmail]!['totalSpent'] +=
+            TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
+
+        final orderDate = (data['createdAt'] ?? data['date']) as Timestamp?;
+        if (orderDate != null) {
+          if (customerData[customerEmail]!['lastOrderDate'] == null ||
+              orderDate
+                  .toDate()
+                  .isAfter(customerData[customerEmail]!['lastOrderDate'])) {
+            customerData[customerEmail]!['lastOrderDate'] = orderDate.toDate();
+          }
+        }
+      }
+    }
+
+    // Filter customers based on search query
+    final filteredCustomers = customerData.entries.where((entry) {
+      if (_searchQuery.isEmpty) return true;
+      final customer = entry.value;
+      return customer['name'].toString().toLowerCase().contains(_searchQuery) ||
+          customer['email'].toString().toLowerCase().contains(_searchQuery);
+    }).toList();
+
+    if (filteredCustomers.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        child: Center(
+          child: Text(
+            _searchQuery.isEmpty
+                ? 'Үйлчлүүлэгч байхгүй байна.'
+                : 'Хайлтад тохирох үйлчлүүлэгч олдсонгүй.',
+            style: TextStyle(
+              fontSize: 16,
+              color: AppThemes.getSecondaryTextColor(context),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -186,151 +337,169 @@ class _CustomersPageState extends State<CustomersPage> {
             color: AppThemes.getSecondaryTextColor(context)),
         columns: [
           DataColumn(
-              label: Text('Customer',
+              label: Text('Үйлчлүүлэгч',
                   style: TextStyle(
                       color: AppThemes.getSecondaryTextColor(context)))),
           DataColumn(
-              label: Text('Location',
+              label: Text('И-мэйл',
                   style: TextStyle(
                       color: AppThemes.getSecondaryTextColor(context)))),
           DataColumn(
-              label: Text('Orders',
+              label: Text('Захиалгын тоо',
                   style: TextStyle(
                       color: AppThemes.getSecondaryTextColor(context)))),
           DataColumn(
-              label: Text('Total Spent',
+              label: Text('Нийт зарцуулсан',
                   style: TextStyle(
                       color: AppThemes.getSecondaryTextColor(context)))),
           DataColumn(
-              label: Text('Status',
+              label: Text('Сүүлийн захиалга',
                   style: TextStyle(
                       color: AppThemes.getSecondaryTextColor(context)))),
           DataColumn(
-              label: Text('Actions',
+              label: Text('Үйлдэл',
                   style: TextStyle(
                       color: AppThemes.getSecondaryTextColor(context)))),
         ],
-        rows: _rows(),
+        rows: filteredCustomers.map((entry) {
+          final customer = entry.value;
+          final name = customer['name'] as String;
+          final email = customer['email'] as String;
+          final orders = customer['orders'] as int;
+          final totalSpent = customer['totalSpent'] as double;
+          final lastOrderDate = customer['lastOrderDate'] as DateTime?;
+
+          final initials = name
+              .split(' ')
+              .map((e) => e.isNotEmpty ? e[0] : '')
+              .take(2)
+              .join()
+              .toUpperCase();
+
+          return DataRow(cells: [
+            // Customer name with avatar
+            DataCell(Row(children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.blue.shade200,
+                child: Text(initials,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 12)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(name,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppThemes.getTextColor(context)),
+                        overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+            ])),
+            // Email
+            DataCell(Text(email,
+                style: TextStyle(color: AppThemes.getTextColor(context)),
+                overflow: TextOverflow.ellipsis)),
+            // Orders count
+            DataCell(Text(orders.toString(),
+                style: TextStyle(color: AppThemes.getTextColor(context)))),
+            // Total spent
+            DataCell(Text('₮${totalSpent.toStringAsFixed(0)}',
+                style: TextStyle(color: AppThemes.getTextColor(context)))),
+            // Last order date
+            DataCell(Text(
+                lastOrderDate != null
+                    ? '${lastOrderDate.year}/${lastOrderDate.month}/${lastOrderDate.day}'
+                    : '-',
+                style: TextStyle(color: AppThemes.getTextColor(context)))),
+            // Actions
+            DataCell(Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.visibility, size: 18, color: Colors.blue),
+                  onPressed: () => _viewCustomerDetails(customer),
+                  tooltip: 'Дэлгэрэнгүй харах',
+                ),
+                IconButton(
+                  icon: Icon(Icons.email, size: 18, color: Colors.green),
+                  onPressed: () => _contactCustomer(email),
+                  tooltip: 'И-мэйл илгээх',
+                ),
+              ],
+            )),
+          ]);
+        }).toList(),
       ),
     );
   }
 
-  List<DataRow> _rows() {
-    final data = [
-      {
-        'name': 'Sarah Johnson',
-        'email': 'sarah.johnson@example.com',
-        'city': 'Toronto',
-        'country': 'Canada',
-        'orders': 3,
-        'spent': 892.25,
-        'status': 'active'
-      },
-      {
-        'name': 'John Smith',
-        'email': 'john.smith@example.com',
-        'city': 'New York',
-        'country': 'United States',
-        'orders': 5,
-        'spent': 1247.50,
-        'status': 'active'
-      },
-      {
-        'name': 'Mike Davis',
-        'email': 'mike.davis@example.com',
-        'city': 'Los Angeles',
-        'country': 'United States',
-        'orders': 8,
-        'spent': 2156.80,
-        'status': 'active'
-      },
-      {
-        'name': 'Emma Wilson',
-        'email': 'emma.wilson@example.com',
-        'city': 'London',
-        'country': 'United Kingdom',
-        'orders': 2,
-        'spent': 567.40,
-        'status': 'inactive'
-      },
-    ];
+  void _viewCustomerDetails(Map<String, dynamic> customer) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Үйлчлүүлэгчийн мэдээлэл'),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildDetailRow('Нэр:', customer['name']),
+              _buildDetailRow('И-мэйл:', customer['email']),
+              _buildDetailRow('Захиалгын тоо:', customer['orders'].toString()),
+              _buildDetailRow('Нийт зарцуулсан:',
+                  '₮${customer['totalSpent'].toStringAsFixed(0)}'),
+              if (customer['address'] != null && customer['address'].isNotEmpty)
+                _buildDetailRow('Хаяг:', customer['address']),
+              if (customer['lastOrderDate'] != null)
+                _buildDetailRow('Сүүлийн захиалга:',
+                    '${customer['lastOrderDate'].year}/${customer['lastOrderDate'].month}/${customer['lastOrderDate'].day}'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Хаах'),
+          ),
+        ],
+      ),
+    );
+  }
 
-    Color badgeColor(String status) =>
-        status == 'active' ? Colors.green.shade200 : Colors.grey.shade300;
-
-    return data.map((raw) {
-      final item = raw as Map<String, dynamic>;
-      final name = item['name'] as String;
-      final email = item['email'] as String;
-      final city = item['city'] as String;
-      final country = item['country'] as String;
-      final orders = item['orders'] as int;
-      final spent = item['spent'] as double;
-      final status = item['status'] as String;
-
-      final initials = name.split(' ').map((e) => e[0]).take(2).join();
-      return DataRow(cells: [
-        // Customer
-        DataCell(Row(children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: Colors.blue.shade200,
-            child: Text(initials,
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(label,
                 style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(name,
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppThemes.getTextColor(context))),
-              Text(email,
-                  style: TextStyle(
-                      color: AppThemes.getSecondaryTextColor(context),
-                      fontSize: 12)),
-            ],
-          )
-        ])),
-        // Location
-        DataCell(Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(city,
-                style: TextStyle(color: AppThemes.getTextColor(context))),
-            Text(country,
-                style: TextStyle(
-                    color: AppThemes.getSecondaryTextColor(context),
-                    fontSize: 12)),
-          ],
-        )),
-        // Orders
-        DataCell(Text(orders.toString(),
-            style: TextStyle(color: AppThemes.getTextColor(context)))),
-        // Total Spent
-        DataCell(Text('\$${spent.toStringAsFixed(2)}',
-            style: TextStyle(color: AppThemes.getTextColor(context)))),
-        // Status
-        DataCell(Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: badgeColor(status),
-            borderRadius: BorderRadius.circular(12),
+          Expanded(
+            child: Text(value),
           ),
-          child: Text(status,
-              style: TextStyle(
-                  fontSize: 12, color: AppThemes.getTextColor(context))),
-        )),
-        // Actions
-        DataCell(Row(children: [
-          Icon(Icons.edit, size: 18, color: AppThemes.getTextColor(context)),
-          const SizedBox(width: 16),
-          Icon(Icons.delete_outline, size: 18, color: Colors.red),
-        ])),
-      ]);
-    }).toList();
+        ],
+      ),
+    );
+  }
+
+  void _contactCustomer(String email) {
+    // This would integrate with email service
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            'И-мэйл хаяг: $email руу мессеж илгээх функц удахгүй нэмэгдэнэ'),
+        backgroundColor: Colors.blue,
+      ),
+    );
   }
 }

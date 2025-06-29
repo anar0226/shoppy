@@ -3,80 +3,103 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class CategoryModel {
   final String id;
   final String name;
-  final String description;
-  final String storeId;
-  final List<String> productIds;
+  final String? description;
+  final String? backgroundImageUrl;
+  final String? iconUrl;
+  final int sortOrder;
+  final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final bool isActive;
-  final int sortOrder;
+  final String? storeId; // For store-specific categories
+  final Map<String, dynamic> metadata; // Additional custom fields
 
   CategoryModel({
     required this.id,
     required this.name,
-    required this.description,
-    required this.storeId,
-    required this.productIds,
+    this.description,
+    this.backgroundImageUrl,
+    this.iconUrl,
+    this.sortOrder = 0,
+    this.isActive = true,
     required this.createdAt,
     required this.updatedAt,
-    this.isActive = true,
-    this.sortOrder = 0,
+    this.storeId,
+    this.metadata = const {},
   });
 
+  // Create from Firestore document
   factory CategoryModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    final data = doc.data() as Map<String, dynamic>;
+
     return CategoryModel(
       id: doc.id,
       name: data['name'] ?? '',
-      description: data['description'] ?? '',
-      storeId: data['storeId'] ?? '',
-      productIds: List<String>.from(data['productIds'] ?? []),
-      createdAt: _parseTimestamp(data['createdAt']),
-      updatedAt: _parseTimestamp(data['updatedAt']),
-      isActive: data['isActive'] ?? true,
+      description: data['description'],
+      backgroundImageUrl: data['backgroundImageUrl'],
+      iconUrl: data['iconUrl'],
       sortOrder: data['sortOrder'] ?? 0,
+      isActive: data['isActive'] ?? true,
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      storeId: data['storeId'],
+      metadata: Map<String, dynamic>.from(data['metadata'] ?? {}),
     );
   }
 
-  Map<String, dynamic> toMap() {
+  // Convert to Firestore document
+  Map<String, dynamic> toFirestore() {
     return {
       'name': name,
       'description': description,
-      'storeId': storeId,
-      'productIds': productIds,
+      'backgroundImageUrl': backgroundImageUrl,
+      'iconUrl': iconUrl,
+      'sortOrder': sortOrder,
+      'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
-      'isActive': isActive,
-      'sortOrder': sortOrder,
+      'storeId': storeId,
+      'metadata': metadata,
     };
   }
 
+  // Create a copy with updated fields
   CategoryModel copyWith({
-    String? id,
     String? name,
     String? description,
-    String? storeId,
-    List<String>? productIds,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-    bool? isActive,
+    String? backgroundImageUrl,
+    String? iconUrl,
     int? sortOrder,
+    bool? isActive,
+    DateTime? updatedAt,
+    String? storeId,
+    Map<String, dynamic>? metadata,
   }) {
     return CategoryModel(
-      id: id ?? this.id,
+      id: id,
       name: name ?? this.name,
       description: description ?? this.description,
-      storeId: storeId ?? this.storeId,
-      productIds: productIds ?? this.productIds,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      isActive: isActive ?? this.isActive,
+      backgroundImageUrl: backgroundImageUrl ?? this.backgroundImageUrl,
+      iconUrl: iconUrl ?? this.iconUrl,
       sortOrder: sortOrder ?? this.sortOrder,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? DateTime.now(),
+      storeId: storeId ?? this.storeId,
+      metadata: metadata ?? this.metadata,
     );
   }
 
-  static DateTime _parseTimestamp(dynamic ts) {
-    if (ts is Timestamp) return ts.toDate();
-    return DateTime.now();
+  @override
+  String toString() {
+    return 'CategoryModel(id: $id, name: $name, backgroundImageUrl: $backgroundImageUrl)';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is CategoryModel && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
 }

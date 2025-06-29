@@ -7,6 +7,7 @@ import 'package:avii/features/checkout/models/checkout_item.dart';
 import 'package:avii/features/addresses/providers/address_provider.dart';
 import 'package:avii/features/addresses/presentation/manage_addresses_page.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import '../../../core/utils/popup_utils.dart';
 
 class CartBottomSheet extends StatelessWidget {
   const CartBottomSheet({super.key});
@@ -65,8 +66,10 @@ class CartBottomSheet extends StatelessWidget {
                         Provider.of<AddressProvider>(context, listen: false);
 
                     if (addrProvider.addresses.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('Хүргэлтийн хаяг оруулна уу')));
+                      PopupUtils.showWarning(
+                        context: context,
+                        message: 'Хүргэлтийн хаяг оруулна уу',
+                      );
                       Navigator.push(
                         context,
                         MaterialPageRoute(

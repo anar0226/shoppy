@@ -6,6 +6,7 @@ import 'package:avii/features/addresses/presentation/manage_addresses_page.dart'
 import 'package:avii/features/auth/providers/auth_provider.dart';
 import 'package:avii/features/auth/presentation/login_page.dart';
 import 'package:avii/features/settings/notifications_page.dart';
+import '../../core/utils/popup_utils.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -13,10 +14,10 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<_SettingsItem> items = [
-      _SettingsItem(Icons.location_on, "Addresses"),
-      _SettingsItem(Icons.notifications, "Notifications"),
-      _SettingsItem(Icons.verified_user, "Data and privacy"),
-      _SettingsItem(Icons.language, "Language"),
+      _SettingsItem(Icons.location_on, "Хүргэлтийн хаяг"),
+      _SettingsItem(Icons.notifications, "Мэдэгдэл"),
+      _SettingsItem(Icons.verified_user, "Дата"),
+      _SettingsItem(Icons.language, "Хэл"),
     ];
 
     return Scaffold(
@@ -45,21 +46,40 @@ class SettingsPage extends StatelessWidget {
                   crossAxisSpacing: 20,
                   physics: const NeverScrollableScrollPhysics(),
                   childAspectRatio: 2.4,
-                  children: items.map((item) {
+                  children: items.asMap().entries.map((entry) {
+                    int index = entry.key;
+                    _SettingsItem item = entry.value;
                     return GestureDetector(
                       onTap: () {
-                        if (item.label == 'Addresses') {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const ManageAddressesPage(),
-                            ),
-                          );
-                        } else if (item.label == 'Notifications') {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const NotificationsPage(),
-                            ),
-                          );
+                        switch (index) {
+                          case 0: // Хүргэлтийн хаяг (Addresses)
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const ManageAddressesPage(),
+                              ),
+                            );
+                            break;
+                          case 1: // Мэдэгдэл (Notifications)
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationsPage(),
+                              ),
+                            );
+                            break;
+                          case 2: // Дата (Data)
+                            // TODO: Add data management page navigation
+                            PopupUtils.showInfo(
+                              context: context,
+                              message: 'Дата хуудас удахгүй нээгдэх болно',
+                            );
+                            break;
+                          case 3: // Хэл (Language)
+                            // TODO: Add language selection page navigation
+                            PopupUtils.showInfo(
+                              context: context,
+                              message: 'Хэлний тохиргоо удахгүй нээгдэх болно',
+                            );
+                            break;
                         }
                       },
                       child: Container(
@@ -110,7 +130,7 @@ class SettingsPage extends StatelessWidget {
                     },
                     icon: const Icon(Icons.logout, color: Colors.black),
                     label: const Text(
-                      "Sign out",
+                      "Гарах",
                       style: TextStyle(
                         color: Colors.black,
                         fontSize: 18,
@@ -125,7 +145,7 @@ class SettingsPage extends StatelessWidget {
                 const SizedBox(height: 16),
                 const Center(
                   child: Text(
-                    "Version 1.0.0",
+                    "1.0.0",
                     style: TextStyle(
                       color: Colors.black54,
                       fontSize: 13,
@@ -140,7 +160,7 @@ class SettingsPage extends StatelessWidget {
                       TextButton(
                         onPressed: () {},
                         child: const Text(
-                          "Terms and conditions",
+                          "Ерөнхий нөхцлүүд",
                           style: TextStyle(
                             decoration: TextDecoration.underline,
                             color: Colors.black87,
@@ -150,7 +170,7 @@ class SettingsPage extends StatelessWidget {
                       TextButton(
                         onPressed: () {},
                         child: const Text(
-                          "Licenses",
+                          "Лиценз",
                           style: TextStyle(
                             decoration: TextDecoration.underline,
                             color: Colors.black87,

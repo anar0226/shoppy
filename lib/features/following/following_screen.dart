@@ -13,6 +13,7 @@ import 'package:avii/features/stores/presentation/store_screen.dart';
 import 'package:avii/features/stores/presentation/store_screen.dart'
     show StoreData, StoreProduct;
 import 'services/following_service.dart';
+import '../../core/services/rating_service.dart';
 
 class FollowingScreen extends StatefulWidget {
   const FollowingScreen({super.key});
@@ -204,13 +205,17 @@ class _FollowedStoresGrid extends StatelessWidget {
                 price: '\$${p.price.toStringAsFixed(2)}',
               ))
           .toList();
+
+      // Get actual rating data instead of hardcoded values
+      final ratingData = await RatingService().getStoreRating(store.id);
+
       result.add(SellerData(
         name: store.name,
         storeId: store.id,
         profileLetter:
             store.name.isNotEmpty ? store.name[0].toUpperCase() : '?',
-        rating: 4.9,
-        reviews: 0,
+        rating: ratingData.rating,
+        reviews: ratingData.reviewCount,
         products: sellerProducts,
         backgroundImageUrl: store.banner,
         isAssetBg: false,
@@ -272,6 +277,9 @@ class _SellerCardWithNav extends StatelessWidget {
           upperSnap.docs.map((d) => ProductModel.fromFirestore(d)).toList();
     }
 
+    // Get actual rating data instead of hardcoded values
+    final ratingData = await RatingService().getStoreRating(storeModel.id);
+
     // Build StoreData
     final storeData = StoreData(
       id: storeModel.id,
@@ -280,8 +288,8 @@ class _SellerCardWithNav extends StatelessWidget {
       heroImageUrl:
           storeModel.banner.isNotEmpty ? storeModel.banner : storeModel.logo,
       backgroundColor: const Color(0xFF01BCE7),
-      rating: 4.9,
-      reviewCount: '25',
+      rating: ratingData.rating,
+      reviewCount: ratingData.reviewCountDisplay,
       collections: const [],
       categories: const ['All'],
       productCount: products.length,

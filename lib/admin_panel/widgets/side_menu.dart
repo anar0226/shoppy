@@ -3,17 +3,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../pages/orders_page.dart';
 import '../pages/products_page.dart';
 import '../pages/dashboard_page.dart';
-import '../pages/users_page.dart';
+import '../pages/customers_page.dart';
 import '../pages/analytics_page.dart';
 import '../pages/collections_page.dart';
 import '../pages/discounts_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/storefront_page.dart';
-import '../pages/categories_page.dart';
 import '../pages/categorization_page.dart';
 import '../../features/settings/themes/app_themes.dart';
 import '../auth/auth_service.dart';
-import '../../super_admin/pages/featured_products_page.dart';
 
 class SideMenu extends StatefulWidget {
   final String selected;
@@ -94,11 +92,11 @@ class _SideMenuState extends State<SideMenu> {
               );
             }
           }),
-          _navItem(context, Icons.people_outline, 'Хэрэглэгчид',
-              selected: widget.selected == 'Хэрэглэгчид', onTap: () {
-            if (widget.selected != 'Хэрэглэгчид') {
+          _navItem(context, Icons.people_outline, 'Үйлчлүүлэгчид',
+              selected: widget.selected == 'Үйлчлүүлэгчид', onTap: () {
+            if (widget.selected != 'Үйлчлүүлэгчид') {
               Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const UsersPage()),
+                MaterialPageRoute(builder: (_) => const CustomersPage()),
               );
             }
           }),

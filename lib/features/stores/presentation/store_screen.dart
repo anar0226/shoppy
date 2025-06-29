@@ -25,6 +25,11 @@ class _StoreScreenState extends State<StoreScreen>
   bool _isFollowing = false;
   bool _isLoading = false;
 
+  // Search functionality
+  String _searchQuery = '';
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -46,6 +51,7 @@ class _StoreScreenState extends State<StoreScreen>
   @override
   void dispose() {
     _followAnimationController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -168,6 +174,31 @@ class _StoreScreenState extends State<StoreScreen>
         overlayEntry.remove();
       }
     });
+  }
+
+  void _showSearchDialog() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (context) => _SearchDialog(
+        controller: _searchController,
+        onSearch: (query) {
+          setState(() {
+            _searchQuery = query.toLowerCase();
+            _isSearching = query.isNotEmpty;
+            _selectedCategory = 'All'; // Reset category filter when searching
+          });
+        },
+        onClear: () {
+          setState(() {
+            _searchQuery = '';
+            _isSearching = false;
+            _searchController.clear();
+          });
+        },
+        storeProducts: widget.storeData.products,
+      ),
+    );
   }
 
   @override
@@ -323,7 +354,7 @@ class _StoreScreenState extends State<StoreScreen>
                   children: [
                     _buildFollowButton(),
                     const SizedBox(width: 12),
-                    _buildActionIcon(Icons.search),
+                    _buildSearchIcon(),
                     const SizedBox(width: 12),
                     _buildActionIcon(Icons.more_horiz),
                   ],
@@ -363,6 +394,30 @@ class _StoreScreenState extends State<StoreScreen>
         icon,
         color: Colors.white,
         size: 18,
+      ),
+    );
+  }
+
+  Widget _buildSearchIcon() {
+    return GestureDetector(
+      onTap: _showSearchDialog,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: _isSearching
+              ? Colors.white.withOpacity(0.25)
+              : Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(18),
+          border: _isSearching
+              ? Border.all(color: Colors.white.withOpacity(0.3), width: 1)
+              : null,
+        ),
+        child: Icon(
+          _isSearching ? Icons.search_off : Icons.search,
+          color: Colors.white,
+          size: 18,
+        ),
       ),
     );
   }
@@ -600,13 +655,60 @@ class _StoreScreenState extends State<StoreScreen>
     return Container(
       color: Colors.black,
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Text(
-        '${filteredProducts.length} бүтээгдэхүүн',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
+      child: Row(
+        children: [
+          Text(
+            '${filteredProducts.length} бүтээгдэхүүн',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if (_isSearching) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.search,
+                    color: Colors.white,
+                    size: 12,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '"$_searchQuery"',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _searchQuery = '';
+                        _isSearching = false;
+                        _searchController.clear();
+                      });
+                    },
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -635,13 +737,23 @@ class _StoreScreenState extends State<StoreScreen>
   }
 
   List<StoreProduct> _getFilteredProducts() {
-    if (_selectedCategory == 'All') {
-      return widget.storeData.products;
+    List<StoreProduct> filteredProducts = widget.storeData.products;
+
+    // Filter by search query first
+    if (_searchQuery.isNotEmpty) {
+      filteredProducts = filteredProducts
+          .where((product) => product.name.toLowerCase().contains(_searchQuery))
+          .toList();
     }
 
-    return widget.storeData.products
-        .where((product) => product.category == _selectedCategory)
-        .toList();
+    // Then filter by category
+    if (_selectedCategory != 'All') {
+      filteredProducts = filteredProducts
+          .where((product) => product.category == _selectedCategory)
+          .toList();
+    }
+
+    return filteredProducts;
   }
 
   List<String> _getAvailableCategories() {
@@ -825,6 +937,293 @@ class StoreProduct {
     this.discount,
     this.category = '',
   });
+}
+
+class _SearchDialog extends StatefulWidget {
+  final TextEditingController controller;
+  final Function(String) onSearch;
+  final VoidCallback onClear;
+  final List<StoreProduct> storeProducts;
+
+  const _SearchDialog({
+    required this.controller,
+    required this.onSearch,
+    required this.onClear,
+    required this.storeProducts,
+  });
+
+  @override
+  State<_SearchDialog> createState() => _SearchDialogState();
+}
+
+class _SearchDialogState extends State<_SearchDialog> {
+  List<StoreProduct> _searchResults = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _searchResults = widget.storeProducts;
+  }
+
+  void _performSearch(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _searchResults = widget.storeProducts;
+      } else {
+        _searchResults = widget.storeProducts
+            .where((product) =>
+                product.name.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.8,
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade800),
+        ),
+        child: Column(
+          children: [
+            // Search header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade800),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: widget.controller,
+                      autofocus: true,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Бүтээгдэхүүн хайх...',
+                        hintStyle: TextStyle(color: Colors.grey.shade400),
+                        prefixIcon:
+                            Icon(Icons.search, color: Colors.grey.shade400),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade600),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade600),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.white),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade900,
+                      ),
+                      onChanged: (value) {
+                        _performSearch(value);
+                        widget.onSearch(value);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: () {
+                      widget.onClear();
+                      Navigator.pop(context);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade800,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.close,
+                          color: Colors.white, size: 20),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Search results count
+            Container(
+              padding: const EdgeInsets.all(16),
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '${_searchResults.length} бүтээгдэхүүн олдлоо',
+                style: TextStyle(
+                  color: Colors.grey.shade300,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+
+            // Search results
+            Expanded(
+              child: _searchResults.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            color: Colors.grey.shade600,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Бүтээгдэхүүн олдсонгүй',
+                            style: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: _searchResults.length,
+                      itemBuilder: (context, index) {
+                        final product = _searchResults[index];
+                        return _buildSearchResultItem(product);
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchResultItem(StoreProduct product) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.pop(context);
+        // Navigate to product details
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductPage(
+              product: ProductModel(
+                id: product.id,
+                storeId: '',
+                name: product.name,
+                description: 'A great product',
+                price: product.price,
+                images: [product.imageUrl],
+                category: product.category,
+                stock: 10,
+                variants: const [],
+                isActive: true,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              ),
+              storeName: '',
+              storeLogoUrl: '',
+              storeRating: 4.5,
+              storeRatingCount: 100,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade900,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade800),
+        ),
+        child: Row(
+          children: [
+            // Product image
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.grey.shade800,
+              ),
+              child: product.imageUrl.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        product.imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.checkroom,
+                            color: Colors.grey,
+                            size: 24,
+                          );
+                        },
+                      ),
+                    )
+                  : const Icon(
+                      Icons.checkroom,
+                      color: Colors.grey,
+                      size: 24,
+                    ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // Product details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  if (product.category.isNotEmpty)
+                    Text(
+                      product.category,
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 12,
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '₮${product.price.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.grey,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _PopupMessage extends StatefulWidget {

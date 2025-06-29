@@ -25,9 +25,15 @@ class _SplashRouterState extends State<SplashRouter> {
     await Future.delayed(const Duration(milliseconds: 800));
     final prefs = await SharedPreferences.getInstance();
     final bool? seenOnboarding = prefs.getBool('seen_onboarding');
+
     if (auth.user != null) {
-      Navigator.of(context)
-          .pushReplacement(MaterialPageRoute(builder: (_) => HomeScreen()));
+      // Check if authenticated user needs profile completion
+      if (auth.needsProfileCompletion) {
+        Navigator.of(context).pushReplacementNamed('/profile-completion');
+      } else {
+        Navigator.of(context)
+            .pushReplacement(MaterialPageRoute(builder: (_) => HomeScreen()));
+      }
     } else if (seenOnboarding == true) {
       Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const LoginPage()));

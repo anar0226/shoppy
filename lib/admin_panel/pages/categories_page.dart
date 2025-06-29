@@ -1,9 +1,14 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/top_nav_bar.dart';
 import '../../features/settings/themes/app_themes.dart';
 import '../auth/auth_service.dart';
+import '../../features/categories/models/category_model.dart';
+import '../../features/categories/services/category_service.dart';
+import '../../core/utils/popup_utils.dart';
 
 class CategoriesPage extends StatefulWidget {
   const CategoriesPage({super.key});
@@ -14,10 +19,11 @@ class CategoriesPage extends StatefulWidget {
 
 class _CategoriesPageState extends State<CategoriesPage> {
   String? _currentStoreId;
-  final List<String> _categories = [];
+  List<CategoryModel> _categories = [];
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  final CategoryService _categoryService = CategoryService();
 
   @override
   void initState() {
@@ -33,7 +39,12 @@ class _CategoriesPageState extends State<CategoriesPage> {
 
   Future<void> _loadCurrentStore() async {
     final ownerId = AuthService.instance.currentUser?.uid;
-    if (ownerId == null) return;
+    if (ownerId == null) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      return;
+    }
 
     try {
       final storeSnapshot = await FirebaseFirestore.instance
@@ -44,21 +55,26 @@ class _CategoriesPageState extends State<CategoriesPage> {
 
       if (storeSnapshot.docs.isNotEmpty) {
         final storeId = storeSnapshot.docs.first.id;
-        setState(() {
-          _currentStoreId = storeId;
-        });
+        if (mounted) {
+          setState(() {
+            _currentStoreId = storeId;
+          });
+        }
         await _loadCategories();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading store: $e')),
+        PopupUtils.showError(
+          context: context,
+          message: 'Алдаа гарлаа: $e',
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -66,27 +82,18 @@ class _CategoriesPageState extends State<CategoriesPage> {
     if (_currentStoreId == null) return;
 
     try {
-      final productSnapshot = await FirebaseFirestore.instance
-          .collection('products')
-          .where('storeId', isEqualTo: _currentStoreId)
-          .get();
-
-      final categorySet = <String>{};
-      for (final doc in productSnapshot.docs) {
-        final category = doc.data()['category'] as String?;
-        if (category != null && category.isNotEmpty) {
-          categorySet.add(category);
-        }
+      final categories =
+          await _categoryService.getStoreCategories(_currentStoreId!);
+      if (mounted) {
+        setState(() {
+          _categories = categories;
+        });
       }
-
-      setState(() {
-        _categories.clear();
-        _categories.addAll(categorySet.toList()..sort());
-      });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading categories: $e')),
+        PopupUtils.showError(
+          context: context,
+          message: 'Категориуд ачаалахад алдаа гарлаа: $e',
         );
       }
     }
@@ -95,23 +102,76 @@ class _CategoriesPageState extends State<CategoriesPage> {
   void _showCreateCategoryDialog() {
     showDialog(
       context: context,
-      builder: (context) => _CreateCategoryDialog(
-        onCategoryCreated: (category) async {
+      builder: (context) => _CreateEditCategoryDialog(
+        storeId: _currentStoreId!,
+        onCategoryChanged: () async {
           await _loadCategories();
         },
       ),
     );
   }
 
-  void _showRenameCategoryDialog(String currentCategory) {
+  void _showEditCategoryDialog(CategoryModel category) {
     showDialog(
       context: context,
-      builder: (context) => _RenameCategoryDialog(
-        currentCategory: currentCategory,
+      builder: (context) => _CreateEditCategoryDialog(
         storeId: _currentStoreId!,
-        onCategoryRenamed: () async {
+        category: category,
+        onCategoryChanged: () async {
           await _loadCategories();
         },
+      ),
+    );
+  }
+
+  void _showDeleteCategoryDialog(CategoryModel category) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Категорийг устгах'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('"${category.name}" категорийг устгах уу?'),
+            const SizedBox(height: 8),
+            const Text(
+              'Энэ үйлдлийг буцаах боломжгүй.',
+              style:
+                  TextStyle(color: Colors.orange, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Цуцлах'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              final success =
+                  await _categoryService.deleteCategory(category.id);
+              if (success && mounted) {
+                PopupUtils.showSuccess(
+                  context: context,
+                  message: '"${category.name}" категорийг амжилттай устгалаа',
+                );
+                await _loadCategories();
+              } else if (mounted) {
+                PopupUtils.showError(
+                  context: context,
+                  message: 'Категорийг устгахад алдаа гарлаа',
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Устгах'),
+          ),
+        ],
       ),
     );
   }
@@ -120,15 +180,15 @@ class _CategoriesPageState extends State<CategoriesPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Category'),
+        title: const Text('Категорийн устгах'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Are you sure you want to delete "$category"?'),
+            Text('"$category" категорийг устгах уу?'),
             const SizedBox(height: 8),
             const Text(
-              'All products in this category will be set to "Uncategorized".',
+              'Энэ ангиллын бүх бүтээгдэхүүнийг "Ангилалгүй" гэж тохируулна.',
               style:
                   TextStyle(color: Colors.orange, fontWeight: FontWeight.w500),
             ),
@@ -137,7 +197,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: const Text('Цуцалгах'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -145,7 +205,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Delete'),
+            child: const Text('Устгах'),
           ),
         ],
       ),
@@ -170,27 +230,26 @@ class _CategoriesPageState extends State<CategoriesPage> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text('Category "$category" deleted successfully')),
+            SnackBar(content: Text('"$category" ангиллыг амжилттай устгалаа')),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting category: $e')),
+            SnackBar(content: Text('Алдаа гарлаа: $e')),
           );
         }
       }
     }
   }
 
-  List<String> _getFilteredCategories() {
+  List<CategoryModel> _getFilteredCategories() {
     if (_searchQuery.isEmpty) {
       return _categories;
     }
     return _categories
         .where((category) =>
-            category.toLowerCase().contains(_searchQuery.toLowerCase()))
+            category.name.toLowerCase().contains(_searchQuery.toLowerCase()))
         .toList();
   }
 
@@ -204,7 +263,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
           Expanded(
             child: Column(
               children: [
-                const TopNavBar(title: 'Categories Management'),
+                const TopNavBar(title: 'Ангиллын хянах'),
                 Expanded(
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
@@ -224,13 +283,72 @@ class _CategoriesPageState extends State<CategoriesPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Categories are automatically created when you assign them to products.',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.grey.shade600,
+          // Header with actions
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Категориуд',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: AppThemes.getTextColor(context),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Дэлгүүрийн категориуд болон тэдгээрийн зургуудыг удирдах',
+                    style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context),
+                    ),
+                  ),
+                ],
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _showCreateCategoryDialog(),
+                icon: const Icon(Icons.add),
+                label: const Text('Шинэ категори'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppThemes.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
+              ),
+            ],
           ),
           const SizedBox(height: 24),
+
+          // Search bar
+          SizedBox(
+            width: 400,
+            child: TextField(
+              controller: _searchController,
+              style: TextStyle(color: AppThemes.getTextColor(context)),
+              decoration: InputDecoration(
+                hintText: 'Категори хайх...',
+                hintStyle:
+                    TextStyle(color: AppThemes.getSecondaryTextColor(context)),
+                prefixIcon: Icon(Icons.search,
+                    color: AppThemes.getSecondaryTextColor(context)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                isDense: true,
+              ),
+              onChanged: (value) {
+                if (mounted) {
+                  setState(() {
+                    _searchQuery = value.toLowerCase();
+                  });
+                }
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+
           Expanded(
             child: _buildCategoriesList(),
           ),
@@ -240,72 +358,235 @@ class _CategoriesPageState extends State<CategoriesPage> {
   }
 
   Widget _buildCategoriesList() {
-    if (_categories.isEmpty) {
+    final filteredCategories = _getFilteredCategories();
+
+    if (filteredCategories.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.category,
-              size: 64,
+              Icons.category_outlined,
+              size: 80,
               color: Colors.grey.shade400,
             ),
             const SizedBox(height: 16),
             Text(
-              'No categories yet',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
+              _searchQuery.isEmpty
+                  ? 'Категори байхгүй байна'
+                  : 'Хайлтад тохирох категори олдсонгүй',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade600,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Categories will appear here when you assign them to products',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey.shade500,
-                  ),
+              _searchQuery.isEmpty
+                  ? 'Эхний категорииг үүсгэхийн тулд "Шинэ категори" товчийг дарна уу'
+                  : 'Хайлтын үгээ өөрчилж дахин оролдоно уу',
+              style: TextStyle(
+                color: Colors.grey.shade500,
+              ),
               textAlign: TextAlign.center,
             ),
+            if (_searchQuery.isEmpty) ...[
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => _showCreateCategoryDialog(),
+                icon: const Icon(Icons.add),
+                label: const Text('Анхны категорийг үүсгэх'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppThemes.primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
           ],
         ),
       );
     }
 
-    return ListView.separated(
-      itemCount: _categories.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 8),
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.2,
+      ),
+      itemCount: filteredCategories.length,
       itemBuilder: (context, index) {
-        final category = _categories[index];
-        return Card(
-          elevation: 1,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          child: ListTile(
-            leading: Container(
-              width: 40,
-              height: 40,
+        final category = filteredCategories[index];
+        return _buildCategoryCard(category);
+      },
+    );
+  }
+
+  Widget _buildCategoryCard(CategoryModel category) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppThemes.getCardColor(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppThemes.getBorderColor(context)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Category background image
+          Expanded(
+            flex: 3,
+            child: Container(
+              width: double.infinity,
               decoration: BoxDecoration(
-                color: AppThemes.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(12)),
+                color: Colors.grey.shade100,
               ),
-              child: Icon(
-                Icons.category,
-                color: AppThemes.primaryColor,
-                size: 20,
-              ),
-            ),
-            title: Text(
-              category,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: FutureBuilder<int>(
-              future: _getProductCount(category),
-              builder: (context, snapshot) {
-                final count = snapshot.data ?? 0;
-                return Text('$count products');
-              },
+              child: category.backgroundImageUrl != null
+                  ? ClipRRect(
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(12)),
+                      child: Stack(
+                        children: [
+                          Image.network(
+                            category.backgroundImageUrl!,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return _buildPlaceholderImage();
+                            },
+                          ),
+                          // Overlay for better text readability
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withOpacity(0.3),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _buildPlaceholderImage(),
             ),
           ),
-        );
-      },
+
+          // Category info and actions
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Category name
+                  Text(
+                    category.name,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppThemes.getTextColor(context),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  if (category.description != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      category.description!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppThemes.getSecondaryTextColor(context),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+
+                  const Spacer(),
+
+                  // Action buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => _showEditCategoryDialog(category),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            side: BorderSide(color: AppThemes.primaryColor),
+                          ),
+                          child: Text(
+                            'Засах',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppThemes.primaryColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () => _showDeleteCategoryDialog(category),
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        style: IconButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          backgroundColor: Colors.red.withOpacity(0.1),
+                          padding: const EdgeInsets.all(8),
+                        ),
+                        tooltip: 'Устгах',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderImage() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.image_outlined,
+            size: 32,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Зураг байхгүй',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey.shade500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -348,19 +629,20 @@ class __CreateCategoryDialogState extends State<_CreateCategoryDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Create Category'),
+      title: const Text('Ангиллын үүсгэх'),
       content: Form(
         key: _formKey,
         child: TextFormField(
           controller: _controller,
           decoration: const InputDecoration(
-            labelText: 'Category Name',
+            labelText: 'Ангиллын нэр',
             border: OutlineInputBorder(),
-            hintText: 'e.g., New Arrivals, Best Sellers',
+            hintText:
+                'Жишээ нь, шинээр ирсэн бүтээгдэхүүнүүд, хамгийн сайн загвар',
           ),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return 'Please enter a category name';
+              return 'Ангиллын нэр оруулна уу';
             }
             return null;
           },
@@ -370,7 +652,7 @@ class __CreateCategoryDialogState extends State<_CreateCategoryDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text('Цуцалгах'),
         ),
         ElevatedButton(
           onPressed: () {
@@ -381,7 +663,7 @@ class __CreateCategoryDialogState extends State<_CreateCategoryDialog> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                      'Category "$categoryName" will be available when you assign products to it'),
+                      '"$categoryName" ангиллыг бүтээгдэхүүнүүдээс үүсгэсэн'),
                 ),
               );
             }
@@ -390,7 +672,7 @@ class __CreateCategoryDialogState extends State<_CreateCategoryDialog> {
             backgroundColor: AppThemes.primaryColor,
             foregroundColor: Colors.white,
           ),
-          child: const Text('Create'),
+          child: const Text('Үүсгэх'),
         ),
       ],
     );
@@ -463,14 +745,14 @@ class __RenameCategoryDialogState extends State<_RenameCategoryDialog> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Category renamed to "$newName" successfully'),
+            content: Text('"$newName" ангиллыг амжилттай өөрчлөгдлөө'),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error renaming category: $e')),
+          SnackBar(content: Text('Алдаа гарлаа: $e')),
         );
       }
     } finally {
@@ -485,18 +767,18 @@ class __RenameCategoryDialogState extends State<_RenameCategoryDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Rename Category'),
+      title: const Text('Ангиллын өөрчлөлт'),
       content: Form(
         key: _formKey,
         child: TextFormField(
           controller: _controller,
           decoration: const InputDecoration(
-            labelText: 'Category Name',
+            labelText: 'Ангиллын нэр',
             border: OutlineInputBorder(),
           ),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return 'Please enter a category name';
+              return 'Ангиллын нэр оруулна уу';
             }
             return null;
           },
@@ -506,7 +788,7 @@ class __RenameCategoryDialogState extends State<_RenameCategoryDialog> {
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text('Цуцалгах'),
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _renameCategory,
@@ -520,9 +802,608 @@ class __RenameCategoryDialogState extends State<_RenameCategoryDialog> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Rename'),
+              : const Text('Өөрчлөх'),
         ),
       ],
+    );
+  }
+}
+
+// Create/Edit Category Dialog with Image Management
+class _CreateEditCategoryDialog extends StatefulWidget {
+  final String storeId;
+  final CategoryModel? category; // null for create, non-null for edit
+  final VoidCallback onCategoryChanged;
+
+  const _CreateEditCategoryDialog({
+    super.key,
+    required this.storeId,
+    this.category,
+    required this.onCategoryChanged,
+  });
+
+  @override
+  State<_CreateEditCategoryDialog> createState() =>
+      __CreateEditCategoryDialogState();
+}
+
+class __CreateEditCategoryDialogState extends State<_CreateEditCategoryDialog> {
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final CategoryService _categoryService = CategoryService();
+
+  bool _isLoading = false;
+  XFile? _selectedBackgroundImage;
+  XFile? _selectedIconImage;
+  bool _removeBackgroundImage = false;
+  bool _removeIcon = false;
+
+  bool get isEditing => widget.category != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (isEditing) {
+      _nameController.text = widget.category!.name;
+      _descriptionController.text = widget.category!.description ?? '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickBackgroundImage() async {
+    try {
+      final XFile? image = await _categoryService.pickImage();
+      if (image != null) {
+        // Validate file size (max 5MB)
+        final bytes = await image.readAsBytes();
+        if (bytes.length > 5 * 1024 * 1024) {
+          if (mounted) {
+            PopupUtils.showError(
+              context: context,
+              message: 'Зургийн хэмжээ 5MB-аас бага байх ёстой',
+            );
+          }
+          return;
+        }
+
+        // Validate file type
+        final fileName = image.name.toLowerCase();
+        if (!fileName.endsWith('.jpg') &&
+            !fileName.endsWith('.jpeg') &&
+            !fileName.endsWith('.png') &&
+            !fileName.endsWith('.webp')) {
+          if (mounted) {
+            PopupUtils.showError(
+              context: context,
+              message: 'Зөвхөн JPG, PNG, WEBP файл дэмждэг',
+            );
+          }
+          return;
+        }
+
+        setState(() {
+          _selectedBackgroundImage = image;
+          _removeBackgroundImage = false;
+        });
+
+        if (mounted) {
+          PopupUtils.showSuccess(
+            context: context,
+            message: 'Арын зураг амжилттай сонгогдлоо',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        PopupUtils.showError(
+          context: context,
+          message: 'Зураг сонгоход алдаа гарлаа: $e',
+        );
+      }
+    }
+  }
+
+  Future<void> _pickIconImage() async {
+    try {
+      final XFile? image = await _categoryService.pickImage();
+      if (image != null) {
+        // Validate file size (max 2MB for icons)
+        final bytes = await image.readAsBytes();
+        if (bytes.length > 2 * 1024 * 1024) {
+          if (mounted) {
+            PopupUtils.showError(
+              context: context,
+              message: 'Дүрс тэмдгийн хэмжээ 2MB-аас бага байх ёстой',
+            );
+          }
+          return;
+        }
+
+        // Validate file type
+        final fileName = image.name.toLowerCase();
+        if (!fileName.endsWith('.jpg') &&
+            !fileName.endsWith('.jpeg') &&
+            !fileName.endsWith('.png') &&
+            !fileName.endsWith('.webp')) {
+          if (mounted) {
+            PopupUtils.showError(
+              context: context,
+              message: 'Зөвхөн JPG, PNG, WEBP файл дэмждэг',
+            );
+          }
+          return;
+        }
+
+        setState(() {
+          _selectedIconImage = image;
+          _removeIcon = false;
+        });
+
+        if (mounted) {
+          PopupUtils.showSuccess(
+            context: context,
+            message: 'Дүрс тэмдэг амжилттай сонгогдлоо',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        PopupUtils.showError(
+          context: context,
+          message: 'Зураг сонгохд алдаа гарлаа: $e',
+        );
+      }
+    }
+  }
+
+  Future<void> _saveCategory() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final name = _nameController.text.trim();
+      final description = _descriptionController.text.trim();
+
+      bool success;
+      if (isEditing) {
+        // Update existing category
+        success = await _categoryService.updateCategory(
+          categoryId: widget.category!.id,
+          name: name,
+          description: description.isEmpty ? null : description,
+          newBackgroundImage: _selectedBackgroundImage,
+          newIconImage: _selectedIconImage,
+          removeBackgroundImage: _removeBackgroundImage,
+          removeIcon: _removeIcon,
+        );
+      } else {
+        // Create new category
+        final categoryId = await _categoryService.createCategory(
+          name: name,
+          description: description.isEmpty ? null : description,
+          storeId: widget.storeId,
+          backgroundImage: _selectedBackgroundImage,
+          iconImage: _selectedIconImage,
+        );
+        success = categoryId != null;
+      }
+
+      if (success && mounted) {
+        Navigator.of(context).pop();
+        PopupUtils.showSuccess(
+          context: context,
+          message: isEditing
+              ? '"$name" категорийг амжилттай шинэчлэлээ'
+              : '"$name" категорийг амжилттай үүсгэлээ',
+        );
+        widget.onCategoryChanged();
+      } else if (mounted) {
+        PopupUtils.showError(
+          context: context,
+          message: isEditing
+              ? 'Категорийг шинэчлэхэд алдаа гарлаа'
+              : 'Категори үүсгэхэд алдаа гарлаа',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        PopupUtils.showError(
+          context: context,
+          message: 'Алдаа гарлаа: $e',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Container(
+        width: 600,
+        constraints: const BoxConstraints(maxHeight: 800),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Text(
+              isEditing ? 'Категори засах' : 'Шинэ категори үүсгэх',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Form
+            Expanded(
+              child: SingleChildScrollView(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Category name
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Категорийн нэр *',
+                          border: OutlineInputBorder(),
+                          hintText: 'Жишээ: Эрэгтэй хувцас, Гоо сайхан',
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Категорийн нэр оруулна уу';
+                          }
+                          return null;
+                        },
+                        autofocus: true,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Category description
+                      TextFormField(
+                        controller: _descriptionController,
+                        decoration: const InputDecoration(
+                          labelText: 'Тайлбар (заавал биш)',
+                          border: OutlineInputBorder(),
+                          hintText: 'Категорийн тухай товч тайлбар',
+                        ),
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Background image section
+                      _buildImageSection(
+                        title: 'Арын зураг',
+                        currentImageUrl: isEditing
+                            ? widget.category!.backgroundImageUrl
+                            : null,
+                        selectedImage: _selectedBackgroundImage,
+                        onPickImage: _pickBackgroundImage,
+                        onRemoveImage: () {
+                          setState(() {
+                            _selectedBackgroundImage = null;
+                            _removeBackgroundImage = true;
+                          });
+                        },
+                        isRemoved: _removeBackgroundImage,
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Icon image section
+                      _buildImageSection(
+                        title: 'Дүрс тэмдэг',
+                        currentImageUrl:
+                            isEditing ? widget.category!.iconUrl : null,
+                        selectedImage: _selectedIconImage,
+                        onPickImage: _pickIconImage,
+                        onRemoveImage: () {
+                          setState(() {
+                            _selectedIconImage = null;
+                            _removeIcon = true;
+                          });
+                        },
+                        isRemoved: _removeIcon,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Action buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed:
+                      _isLoading ? null : () => Navigator.of(context).pop(),
+                  child: const Text('Цуцлах'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _saveCategory,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppThemes.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(isEditing ? 'Шинэчлэх' : 'Үүсгэх'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageSection({
+    required String title,
+    required String? currentImageUrl,
+    required XFile? selectedImage,
+    required VoidCallback onPickImage,
+    required VoidCallback onRemoveImage,
+    required bool isRemoved,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Text(
+                title.contains('Арын') ? 'Max 5MB' : 'Max 2MB',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.blue.shade700,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+
+        Container(
+          width: double.infinity,
+          height: 140,
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: selectedImage != null
+                  ? Colors.green.shade300
+                  : Colors.grey.shade300,
+              width: selectedImage != null ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+            color: selectedImage != null
+                ? Colors.green.shade50
+                : Colors.grey.shade50,
+          ),
+          child: selectedImage != null
+              ? _buildSelectedImagePreview(selectedImage!)
+              : currentImageUrl != null && !isRemoved
+                  ? _buildCurrentImagePreview(currentImageUrl)
+                  : _buildImagePlaceholder(),
+        ),
+
+        // File info for selected image
+        if (selectedImage != null) ...[
+          const SizedBox(height: 8),
+          FutureBuilder<int>(
+            future: selectedImage!.readAsBytes().then((bytes) => bytes.length),
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                final sizeInMB =
+                    (snapshot.data! / (1024 * 1024)).toStringAsFixed(2);
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle,
+                          size: 16, color: Colors.green.shade600),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${selectedImage!.name} • ${sizeInMB}MB',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return const SizedBox();
+            },
+          ),
+        ],
+
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onPickImage,
+                icon: Icon(
+                  selectedImage != null ||
+                          (currentImageUrl != null && !isRemoved)
+                      ? Icons.swap_horiz
+                      : Icons.cloud_upload,
+                  size: 16,
+                ),
+                label: Text(
+                  selectedImage != null ||
+                          (currentImageUrl != null && !isRemoved)
+                      ? 'Зураг солих'
+                      : 'Файл сонгох',
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  side: BorderSide(color: AppThemes.primaryColor),
+                  foregroundColor: AppThemes.primaryColor,
+                ),
+              ),
+            ),
+            if (selectedImage != null ||
+                (currentImageUrl != null && !isRemoved)) ...[
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: onRemoveImage,
+                icon: const Icon(Icons.delete_outline, size: 16),
+                label: const Text('Устгах'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: BorderSide(color: Colors.red.shade300),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+              ),
+            ],
+          ],
+        ),
+
+        // Help text
+        const SizedBox(height: 8),
+        Text(
+          'JPG, PNG, WEBP файл дэмждэг',
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey.shade600,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSelectedImagePreview(XFile image) {
+    return FutureBuilder<Uint8List>(
+      future: image.readAsBytes(),
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.memory(
+              snapshot.data!,
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          );
+        } else {
+          return Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: Colors.grey.shade200,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 8),
+                Text(
+                  image.name,
+                  style: const TextStyle(fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildCurrentImagePreview(String imageUrl) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        imageUrl,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: Colors.grey.shade200,
+            child: const Icon(Icons.broken_image, color: Colors.grey),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.image_outlined,
+            size: 32,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Зураг сонгоно уу',
+            style: TextStyle(
+              color: Colors.grey.shade500,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

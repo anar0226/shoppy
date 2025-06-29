@@ -51,12 +51,12 @@ class _ProductsPageState extends State<ProductsPage> {
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
         children: [
-          const SideMenu(selected: 'Products'),
+          const SideMenu(selected: 'Бүтээгдэхүүн'),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const TopNavBar(title: 'Products'),
+                const TopNavBar(title: 'Бүтээгдэхүүн'),
                 Expanded(child: _buildBody()),
               ],
             ),
@@ -72,7 +72,7 @@ class _ProductsPageState extends State<ProductsPage> {
     }
 
     if (_storeId == null) {
-      return const Center(child: Text('You do not have a store yet.'));
+      return const Center(child: Text('Танд одоогоор дэлгүүр байхгүй байна.'));
     }
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -107,11 +107,11 @@ class _ProductsPageState extends State<ProductsPage> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
-                      Text('Products',
+                      Text('Бүтээгдэхүүн',
                           style: TextStyle(
                               fontSize: 28, fontWeight: FontWeight.bold)),
                       SizedBox(height: 4),
-                      Text('Manage your product catalog'),
+                      Text('Бүтээгдэхүүний каталогыг хянах'),
                     ],
                   ),
                   ElevatedButton.icon(
@@ -130,7 +130,7 @@ class _ProductsPageState extends State<ProductsPage> {
                       ),
                     ),
                     icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add product'),
+                    label: const Text('Бүтээгдэхүүн нэмэх'),
                   ),
                 ],
               ),
@@ -141,7 +141,7 @@ class _ProductsPageState extends State<ProductsPage> {
                     width: 260,
                     child: TextField(
                       decoration: InputDecoration(
-                        hintText: 'Search products...',
+                        hintText: 'Бүтээгдэхүүн хайх...',
                         prefixIcon: const Icon(Icons.search),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8)),
@@ -156,7 +156,7 @@ class _ProductsPageState extends State<ProductsPage> {
                       children: [
                         const Icon(Icons.inventory_2_outlined, size: 16),
                         const SizedBox(width: 4),
-                        Text('$productCount products'),
+                        Text('$productCount Бүтээгдэхүүн'),
                         const SizedBox(width: 16),
                         const Icon(Icons.attach_money, size: 16),
                         const SizedBox(width: 4),
@@ -167,11 +167,11 @@ class _ProductsPageState extends State<ProductsPage> {
                 ],
               ),
               const SizedBox(height: 24),
-              const Text('Product Catalog',
+              const Text('Бүтээгдэхүүнүүд',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
               docs.isEmpty
-                  ? const Text('No products yet. Start by adding one!')
+                  ? const Text('Бүтээгдэхүүн байхгүй байна.')
                   : _productTable(docs),
             ],
           ),
@@ -196,12 +196,12 @@ class _ProductsPageState extends State<ProductsPage> {
             fontWeight: FontWeight.w600,
             color: AppThemes.getSecondaryTextColor(context)),
         columns: const [
-          DataColumn(label: Text('Product')),
+          DataColumn(label: Text('Бүтээгдэхүүн')),
           DataColumn(label: Text('SKU')),
-          DataColumn(label: Text('Price')),
-          DataColumn(label: Text('Inventory')),
-          DataColumn(label: Text('Status')),
-          DataColumn(label: Text('Actions')),
+          DataColumn(label: Text('Үнэ')),
+          DataColumn(label: Text('Нөөц')),
+          DataColumn(label: Text('Төлөв')),
+          DataColumn(label: Text('Үйлдэл')),
         ],
         rows: docs.map((doc) {
           final data = doc.data();
@@ -229,7 +229,7 @@ class _ProductsPageState extends State<ProductsPage> {
                 children: [
                   Text(name,
                       style: const TextStyle(fontWeight: FontWeight.w600)),
-                  Text('Created ${_formatDate(data['createdAt'])}',
+                  Text('Үүсгэсэн огноо ${_formatDate(data['createdAt'])}',
                       style: TextStyle(
                           color: AppThemes.getSecondaryTextColor(context),
                           fontSize: 12)),
@@ -245,7 +245,7 @@ class _ProductsPageState extends State<ProductsPage> {
                 color: isActive ? Colors.green.shade200 : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(isActive ? 'active' : 'inactive',
+              child: Text(isActive ? 'актив' : 'инактив',
                   style: TextStyle(
                       fontSize: 12, color: AppThemes.getTextColor(context))),
             )),
@@ -256,12 +256,12 @@ class _ProductsPageState extends State<ProductsPage> {
                   IconButton(
                     icon: const Icon(Icons.edit, color: Colors.blue),
                     onPressed: () => _editProduct(doc.id, data),
-                    tooltip: 'Edit Product',
+                    tooltip: 'Бүтээгдэхүүн өөрчлөх',
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red),
                     onPressed: () => _deleteProduct(doc.id, name),
-                    tooltip: 'Delete Product',
+                    tooltip: 'Бүтээгдэхүүн устгах',
                   ),
                 ],
               ),
@@ -273,7 +273,7 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 
   String _formatCurrency(double value) {
-    return '\$' + value.toStringAsFixed(2);
+    return '₮${value.toStringAsFixed(0)}';
   }
 
   String _formatDate(dynamic timestamp) {
@@ -330,13 +330,13 @@ class _ProductsPageState extends State<ProductsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Product "$productName" deleted successfully')),
+              content: Text('"$productName" бүтээгдэхүүн амжилттай устгалаа')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting product: $e')),
+          SnackBar(content: Text('Алдаа гарлаа: $e')),
         );
       }
     }

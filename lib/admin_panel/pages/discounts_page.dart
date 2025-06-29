@@ -135,7 +135,7 @@ class _DiscountsPageState extends State<DiscountsPage> {
                     width: 260,
                     child: TextField(
                       decoration: InputDecoration(
-                        hintText: 'Search discounts...',
+                        hintText: 'Хөнгөлөлтийн кодыг хайх...',
                         prefixIcon: const Icon(Icons.search),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8)),
@@ -165,12 +165,12 @@ class _DiscountsPageState extends State<DiscountsPage> {
                   ),
                   const SizedBox(width: 12),
                   SizedBox(
-                    width: 150,
+                    width: 180,
                     child: DropdownButtonFormField<String>(
-                      value: 'төрөл',
+                      value: 'бүх төрөл',
                       items: const [
                         DropdownMenuItem(
-                            value: 'All Types', child: Text('All Types')),
+                            value: 'бүх төрөл', child: Text('бүх төрөл')),
                         DropdownMenuItem(
                             value: 'үнэгүй хүргэлт',
                             child: Text('үнэгүй хүргэлт')),

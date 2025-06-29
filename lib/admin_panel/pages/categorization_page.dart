@@ -54,7 +54,7 @@ class _CategorizationPageState extends State<CategorizationPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading store: $e')),
+          SnackBar(content: Text(' Алдаа гарлаа: $e')),
         );
       }
     }
@@ -101,6 +101,18 @@ class _CategorizationPageState extends State<CategorizationPage> {
         },
       ),
     );
+  }
+
+  Future<int> _getProductCount(String categoryName) async {
+    if (_currentStoreId == null) return 0;
+    try {
+      final products = await _productService
+          .getProductsByCategory(_currentStoreId!, categoryName)
+          .first;
+      return products.length;
+    } catch (e) {
+      return 0;
+    }
   }
 
   void _deleteCategory(CategoryModel category) async {
@@ -165,7 +177,7 @@ class _CategorizationPageState extends State<CategorizationPage> {
           Expanded(
             child: Column(
               children: [
-                const TopNavBar(title: 'Categorization Management'),
+                const TopNavBar(title: 'Ангилалын бүртгэл'),
                 Expanded(
                   child: _currentStoreId == null
                       ? const Center(child: CircularProgressIndicator())
@@ -199,7 +211,7 @@ class _CategorizationPageState extends State<CategorizationPage> {
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'Search categories...',
+                      hintText: 'Ангилал оруулах...',
                       prefixIcon: const Icon(Icons.search, color: Colors.grey),
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(
@@ -228,7 +240,7 @@ class _CategorizationPageState extends State<CategorizationPage> {
               ElevatedButton.icon(
                 onPressed: _showCreateCategoryDialog,
                 icon: const Icon(Icons.add),
-                label: const Text('Create Category'),
+                label: const Text('Ангилал оруулах'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppThemes.primaryColor,
                   foregroundColor: Colors.white,
@@ -242,11 +254,11 @@ class _CategorizationPageState extends State<CategorizationPage> {
 
           // Categories list
           Expanded(
-            child: StreamBuilder<List<CategoryModel>>(
-              stream: _searchQuery.isEmpty
+            child: FutureBuilder<List<CategoryModel>>(
+              future: _searchQuery.isEmpty
                   ? _categoryService.getStoreCategories(_currentStoreId!)
                   : _categoryService.searchCategories(
-                      _currentStoreId!, _searchQuery),
+                      query: _searchQuery, storeId: _currentStoreId!),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -264,7 +276,7 @@ class _CategorizationPageState extends State<CategorizationPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Error loading categories',
+                          'Ангилал оруулах үед алдаа гарлаа',
                           style:
                               Theme.of(context).textTheme.titleLarge?.copyWith(
                                     fontWeight: FontWeight.bold,
@@ -308,7 +320,9 @@ class _CategorizationPageState extends State<CategorizationPage> {
           ),
           const SizedBox(height: 16),
           Text(
-            _searchQuery.isEmpty ? 'No categories yet' : 'No categories found',
+            _searchQuery.isEmpty
+                ? 'Одоогоор ангилал алга'
+                : 'Ангилал олдсонгүй',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: Colors.grey.shade600,
                 ),
@@ -316,8 +330,8 @@ class _CategorizationPageState extends State<CategorizationPage> {
           const SizedBox(height: 8),
           Text(
             _searchQuery.isEmpty
-                ? 'Create your first category to organize your products'
-                : 'Try adjusting your search terms',
+                ? 'Эхний ангилал оруулах'
+                : 'Хайлтын үр дүн олдсонгүй',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Colors.grey.shade500,
                 ),
@@ -328,7 +342,7 @@ class _CategorizationPageState extends State<CategorizationPage> {
             ElevatedButton.icon(
               onPressed: _showCreateCategoryDialog,
               icon: const Icon(Icons.add),
-              label: const Text('Create Category'),
+              label: const Text('Ангилал оруулах'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppThemes.primaryColor,
                 foregroundColor: Colors.white,
@@ -387,10 +401,10 @@ class _CategorizationPageState extends State<CategorizationPage> {
                                   fontWeight: FontWeight.bold,
                                 ),
                       ),
-                      if (category.description.isNotEmpty) ...[
+                      if (category.description?.isNotEmpty == true) ...[
                         const SizedBox(height: 4),
                         Text(
-                          category.description,
+                          category.description!,
                           style:
                               Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     color: Colors.grey.shade600,
@@ -402,12 +416,18 @@ class _CategorizationPageState extends State<CategorizationPage> {
                     ],
                   ),
                 ),
-                Text(
-                  '${category.productIds.length} products',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppThemes.primaryColor,
-                        fontWeight: FontWeight.w600,
-                      ),
+                FutureBuilder<int>(
+                  future: _getProductCount(category.name),
+                  builder: (context, snapshot) {
+                    final count = snapshot.data ?? 0;
+                    return Text(
+                      '$count products',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppThemes.primaryColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -418,7 +438,7 @@ class _CategorizationPageState extends State<CategorizationPage> {
                   child: OutlinedButton.icon(
                     onPressed: () => _showManageProductsDialog(category),
                     icon: const Icon(Icons.inventory_2, size: 16),
-                    label: const Text('Manage Products'),
+                    label: const Text('Бүтээгдэхүүнүүд ангилах'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppThemes.primaryColor,
                     ),
@@ -428,13 +448,13 @@ class _CategorizationPageState extends State<CategorizationPage> {
                 OutlinedButton.icon(
                   onPressed: () => _showEditCategoryDialog(category),
                   icon: const Icon(Icons.edit, size: 16),
-                  label: const Text('Edit'),
+                  label: const Text('Засварлах'),
                 ),
                 const SizedBox(width: 12),
                 IconButton(
                   onPressed: () => _deleteCategory(category),
                   icon: const Icon(Icons.delete, color: Colors.red),
-                  tooltip: 'Delete category',
+                  tooltip: 'Ангилал устгах',
                 ),
               ],
             ),
@@ -474,7 +494,7 @@ class _AddEditCategoryDialogState extends State<AddEditCategoryDialog> {
     super.initState();
     if (widget.category != null) {
       _nameController.text = widget.category!.name;
-      _descriptionController.text = widget.category!.description;
+      _descriptionController.text = widget.category!.description ?? '';
     }
   }
 
@@ -495,25 +515,22 @@ class _AddEditCategoryDialogState extends State<AddEditCategoryDialog> {
     try {
       if (widget.category == null) {
         // Create new category
-        final category = CategoryModel(
-          id: '',
+        await _categoryService.createCategory(
           name: _nameController.text.trim(),
-          description: _descriptionController.text.trim(),
+          description: _descriptionController.text.trim().isEmpty
+              ? null
+              : _descriptionController.text.trim(),
           storeId: widget.storeId,
-          productIds: [],
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
         );
-        await _categoryService.createCategory(category);
       } else {
         // Update existing category
-        final updatedCategory = widget.category!.copyWith(
-          name: _nameController.text.trim(),
-          description: _descriptionController.text.trim(),
-          updatedAt: DateTime.now(),
-        );
         await _categoryService.updateCategory(
-            widget.category!.id, updatedCategory);
+          categoryId: widget.category!.id,
+          name: _nameController.text.trim(),
+          description: _descriptionController.text.trim().isEmpty
+              ? null
+              : _descriptionController.text.trim(),
+        );
       }
 
       widget.onSave();
@@ -522,15 +539,15 @@ class _AddEditCategoryDialogState extends State<AddEditCategoryDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(widget.category == null
-                ? 'Category created successfully!'
-                : 'Category updated successfully!'),
+                ? 'Ангилал амжилттай орууллаа!'
+                : 'Ангилал амжилттай засварлалаа!'),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving category: $e')),
+          SnackBar(content: Text('Ангилал оруулах үед алдаа гарлаа: $e')),
         );
       }
     } finally {
@@ -553,7 +570,7 @@ class _AddEditCategoryDialogState extends State<AddEditCategoryDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.category == null ? 'Create Category' : 'Edit Category',
+              widget.category == null ? 'Ангилал оруулах' : 'Ангилал засварлах',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -568,13 +585,13 @@ class _AddEditCategoryDialogState extends State<AddEditCategoryDialog> {
                   TextFormField(
                     controller: _nameController,
                     decoration: const InputDecoration(
-                      labelText: 'Category Name',
+                      labelText: 'Ангилалын нэр',
                       border: OutlineInputBorder(),
-                      hintText: 'e.g., New Arrivals, Best Sellers',
+                      hintText: 'Жишээ нь: шинэ бүтээгдэхүүн',
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a category name';
+                        return 'Ангилалын нэр оруулна уу';
                       }
                       return null;
                     },
@@ -585,9 +602,9 @@ class _AddEditCategoryDialogState extends State<AddEditCategoryDialog> {
                   TextFormField(
                     controller: _descriptionController,
                     decoration: const InputDecoration(
-                      labelText: 'Description (Optional)',
+                      labelText: 'Тодорхойлолт (заавал биш)',
                       border: OutlineInputBorder(),
-                      hintText: 'Brief description of this category',
+                      hintText: 'Ангилалын тодорхойлолт',
                     ),
                     maxLines: 3,
                   ),
@@ -601,7 +618,7 @@ class _AddEditCategoryDialogState extends State<AddEditCategoryDialog> {
                 TextButton(
                   onPressed:
                       _isLoading ? null : () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
+                  child: const Text('Цуцалгах'),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
@@ -616,7 +633,7 @@ class _AddEditCategoryDialogState extends State<AddEditCategoryDialog> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(widget.category == null ? 'Create' : 'Update'),
+                      : Text(widget.category == null ? 'Оруулах' : 'Засварлах'),
                 ),
               ],
             ),
@@ -645,18 +662,16 @@ class ManageProductsDialog extends StatefulWidget {
 }
 
 class _ManageProductsDialogState extends State<ManageProductsDialog> {
-  final CategoryService _categoryService = CategoryService();
   final ProductService _productService = ProductService();
 
   List<ProductModel> _availableProducts = [];
-  List<String> _selectedProductIds = [];
+  Set<String> _selectedProductIds = {};
   bool _isLoading = false;
   bool _isLoadingProducts = true;
 
   @override
   void initState() {
     super.initState();
-    _selectedProductIds = List.from(widget.category.productIds);
     _loadProducts();
   }
 
@@ -666,6 +681,11 @@ class _ManageProductsDialogState extends State<ManageProductsDialog> {
           await _productService.getStoreProducts(widget.storeId).first;
       setState(() {
         _availableProducts = products;
+        // Select products that currently have this category
+        _selectedProductIds = products
+            .where((product) => product.category == widget.category.name)
+            .map((product) => product.id)
+            .toSet();
         _isLoadingProducts = false;
       });
     } catch (e) {
@@ -674,7 +694,7 @@ class _ManageProductsDialogState extends State<ManageProductsDialog> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading products: $e')),
+          SnackBar(content: Text('Бүтээгдэхүүн оруулах үед алдаа гарлаа: $e')),
         );
       }
     }
@@ -686,26 +706,40 @@ class _ManageProductsDialogState extends State<ManageProductsDialog> {
     });
 
     try {
-      // Update the category with new product IDs
-      final updatedCategory = widget.category.copyWith(
-        productIds: _selectedProductIds,
-        updatedAt: DateTime.now(),
-      );
-      await _categoryService.updateCategory(
-          widget.category.id, updatedCategory);
+      // Update each product's category field
+      final batch = FirebaseFirestore.instance.batch();
+
+      for (final product in _availableProducts) {
+        final shouldHaveCategory = _selectedProductIds.contains(product.id);
+        final currentlyHasCategory = product.category == widget.category.name;
+
+        if (shouldHaveCategory && !currentlyHasCategory) {
+          // Assign product to this category
+          final productRef =
+              FirebaseFirestore.instance.collection('products').doc(product.id);
+          batch.update(productRef, {'category': widget.category.name});
+        } else if (!shouldHaveCategory && currentlyHasCategory) {
+          // Remove product from this category
+          final productRef =
+              FirebaseFirestore.instance.collection('products').doc(product.id);
+          batch.update(productRef, {'category': ''});
+        }
+      }
+
+      await batch.commit();
 
       widget.onSave();
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Product assignments updated successfully!')),
+              content: Text('Бүтээгдэхүүн ангилал амжилттай шинэчлэгдлээ!')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating assignments: $e')),
+          SnackBar(content: Text('Ангилал шинэчлэх үед алдаа гарлаа: $e')),
         );
       }
     } finally {
@@ -728,7 +762,7 @@ class _ManageProductsDialogState extends State<ManageProductsDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Manage Products - ${widget.category.name}',
+              'Бүтээгдэхүүнүүд ангилах - ${widget.category.name}',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -738,7 +772,7 @@ class _ManageProductsDialogState extends State<ManageProductsDialog> {
               child: _isLoadingProducts
                   ? const Center(child: CircularProgressIndicator())
                   : _availableProducts.isEmpty
-                      ? const Center(child: Text('No products available'))
+                      ? const Center(child: Text('Бүтээгдэхүүн байхгүй'))
                       : ListView.builder(
                           itemCount: _availableProducts.length,
                           itemBuilder: (context, index) {
@@ -792,7 +826,7 @@ class _ManageProductsDialogState extends State<ManageProductsDialog> {
             ),
             const SizedBox(height: 16),
             Text(
-              '${_selectedProductIds.length} products selected',
+              '${_selectedProductIds.length} бүтээгдэхүүн сонгогдлоо',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Colors.grey.shade600,
                   ),
@@ -804,7 +838,7 @@ class _ManageProductsDialogState extends State<ManageProductsDialog> {
                 TextButton(
                   onPressed:
                       _isLoading ? null : () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
+                  child: const Text('Цуцалгах'),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
@@ -819,7 +853,7 @@ class _ManageProductsDialogState extends State<ManageProductsDialog> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Save'),
+                      : const Text('Хадгалах'),
                 ),
               ],
             ),

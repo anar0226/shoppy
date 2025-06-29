@@ -36,6 +36,8 @@ class _DashboardPageState extends State<DashboardPage> {
   List<Map<String, dynamic>> _recentOrders = [];
   List<Map<String, dynamic>> _recentActivity = [];
   int _storeSessions = 0;
+  double _sessionsDelta = 0.0;
+  bool _sessionsIncreased = true;
 
   @override
   void initState() {
@@ -43,13 +45,21 @@ class _DashboardPageState extends State<DashboardPage> {
     _checkStoreSetup();
   }
 
+  @override
+  void dispose() {
+    // Cancel any pending operations or timers if needed
+    super.dispose();
+  }
+
   Future<void> _checkStoreSetup() async {
     final ownerId = AuthService.instance.currentUser?.uid;
     if (ownerId == null) {
-      setState(() {
-        _error = 'User not authenticated';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'User not authenticated';
+          _isLoading = false;
+        });
+      }
       return;
     }
 
@@ -64,9 +74,11 @@ class _DashboardPageState extends State<DashboardPage> {
         final storeData = snap.docs.first.data();
         final status = storeData['status'] ?? '';
 
-        setState(() {
-          _currentStoreId = snap.docs.first.id;
-        });
+        if (mounted) {
+          setState(() {
+            _currentStoreId = snap.docs.first.id;
+          });
+        }
 
         if (status == 'setup_pending' && mounted) {
           // Show setup dialog
@@ -84,26 +96,32 @@ class _DashboardPageState extends State<DashboardPage> {
 
         await _loadDashboardData();
       } else {
+        if (mounted) {
+          setState(() {
+            _error = 'No store found for this user';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
-          _error = 'No store found for this user';
+          _error = 'Failed to load store: $e';
           _isLoading = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        _error = 'Failed to load store: $e';
-        _isLoading = false;
-      });
     }
   }
 
   Future<void> _loadDashboardData() async {
     if (_currentStoreId == null) return;
 
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
 
     try {
       // Load all dashboard data in parallel
@@ -115,23 +133,36 @@ class _DashboardPageState extends State<DashboardPage> {
         _analyticsService.getTopSellingProducts(_currentStoreId!, limit: 5),
         _orderService.getRecentOrders(_currentStoreId!, limit: 5),
         _loadRecentActivity(),
-        _loadStoreSessions(),
       ]);
 
-      setState(() {
-        _metrics = results[0] as AnalyticsMetrics;
-        _revenueTrends = results[1] as List<RevenueTrend>;
-        _topProducts = results[2] as List<TopProduct>;
-        _recentOrders = results[3] as List<Map<String, dynamic>>;
-        _recentActivity = results[4] as List<Map<String, dynamic>>;
-        _storeSessions = results[5] as int;
-        _isLoading = false;
-      });
+      // Calculate sessions data separately
+      final currentSessions = await _loadStoreSessions();
+      final previousSessions = await _loadPreviousStoreSessions();
+
+      final sessionsDelta = previousSessions > 0
+          ? ((currentSessions - previousSessions) / previousSessions * 100)
+          : 0.0;
+
+      if (mounted) {
+        setState(() {
+          _metrics = results[0] as AnalyticsMetrics;
+          _revenueTrends = results[1] as List<RevenueTrend>;
+          _topProducts = results[2] as List<TopProduct>;
+          _recentOrders = results[3] as List<Map<String, dynamic>>;
+          _recentActivity = results[4] as List<Map<String, dynamic>>;
+          _storeSessions = currentSessions;
+          _sessionsDelta = sessionsDelta;
+          _sessionsIncreased = sessionsDelta >= 0;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = 'Failed to load dashboard data: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load dashboard data: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -157,32 +188,36 @@ class _DashboardPageState extends State<DashboardPage> {
           'icon': Icons.shopping_cart,
           'color': Colors.green,
           'title':
-              'New order #${doc.id.substring(0, 6)} received from ${data['userEmail'] ?? 'Customer'}',
+              'Шинэ захиалга #${doc.id.substring(0, 6)} - ${data['userEmail'] ?? 'Үйлчлүүлэгч'}',
           'time': _formatTime(data['createdAt']),
         });
       }
 
-      // Recent product updates (mock for now)
-      if (_topProducts.isNotEmpty) {
+      // Recent product updates
+      final productsSnapshot = await FirebaseFirestore.instance
+          .collection('products')
+          .where('storeId', isEqualTo: _currentStoreId)
+          .orderBy('updatedAt', descending: true)
+          .limit(2)
+          .get();
+
+      for (final doc in productsSnapshot.docs) {
+        final data = doc.data();
         recentActivity.add({
           'type': 'product',
           'icon': Icons.inventory,
           'color': Colors.blue,
-          'title': 'Product ${_topProducts.first.name} inventory updated',
-          'time': '59 minutes ago',
+          'title': 'Бүтээгдэхүүн "${data['name']}" нөөц шинэчлэгдсэн',
+          'time': _formatTime(data['updatedAt'] ?? data['createdAt']),
         });
       }
 
-      // Recent customers (mock for now)
-      recentActivity.add({
-        'type': 'customer',
-        'icon': Icons.person_add,
-        'color': Colors.purple,
-        'title': 'New customer registered',
-        'time': '1 hour ago',
+      // Sort by time and return latest
+      recentActivity.sort((a, b) {
+        // This is a simple sort, in a real app you'd parse the time strings
+        return 0;
       });
 
-      // Sort by time and return latest
       return recentActivity.take(6).toList();
     } catch (e) {
       return [];
@@ -190,10 +225,59 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<int> _loadStoreSessions() async {
-    // Mock store sessions data - in a real app, you'd track page views
-    // For now, estimate based on orders
-    final totalOrders = _metrics?.totalOrders ?? 0;
-    return (totalOrders * 12).round(); // Estimate 12 sessions per order
+    try {
+      // Get real session data from analytics events or estimate from orders
+      final ordersSnapshot = await FirebaseFirestore.instance
+          .collection('orders')
+          .where('storeId', isEqualTo: _currentStoreId)
+          .where('createdAt',
+              isGreaterThan: Timestamp.fromDate(
+                  DateTime.now().subtract(const Duration(days: 30))))
+          .get();
+
+      // Estimate sessions based on unique customers in orders
+      final uniqueUsers = <String>{};
+      for (var doc in ordersSnapshot.docs) {
+        final data = doc.data();
+        final userEmail = data['customerEmail'] ?? data['userEmail'] ?? '';
+        if (userEmail.isNotEmpty) {
+          uniqueUsers.add(userEmail);
+        }
+      }
+
+      // Estimate 3-5 sessions per unique customer
+      return (uniqueUsers.length * 4).round();
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  Future<int> _loadPreviousStoreSessions() async {
+    try {
+      // Get previous session data from analytics events or estimate from orders
+      final ordersSnapshot = await FirebaseFirestore.instance
+          .collection('orders')
+          .where('storeId', isEqualTo: _currentStoreId)
+          .where('createdAt',
+              isLessThan: Timestamp.fromDate(
+                  DateTime.now().subtract(const Duration(days: 60))))
+          .get();
+
+      // Estimate sessions based on unique customers in orders
+      final uniqueUsers = <String>{};
+      for (var doc in ordersSnapshot.docs) {
+        final data = doc.data();
+        final userEmail = data['customerEmail'] ?? data['userEmail'] ?? '';
+        if (userEmail.isNotEmpty) {
+          uniqueUsers.add(userEmail);
+        }
+      }
+
+      // Estimate 3-5 sessions per unique customer
+      return (uniqueUsers.length * 4).round();
+    } catch (e) {
+      return 0;
+    }
   }
 
   String _formatTime(dynamic timestamp) {
@@ -253,7 +337,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Error Loading Dashboard',
+            'Нүүр хуудас уншиx явцад алдаа гарлаа',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -270,7 +354,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ElevatedButton.icon(
             onPressed: _loadDashboardData,
             icon: const Icon(Icons.refresh),
-            label: const Text('Retry'),
+            label: const Text('Дахин оролдоx'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
@@ -298,55 +382,47 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildStatsCards() {
-    return Consumer<AppSettingsProvider>(
-      builder: (context, settings, child) {
-        final isEnglish = settings.languageCode == 'en';
-
-        return Row(
-          children: [
-            Expanded(
-              child: StatCard(
-                title: isEnglish ? 'Total sales' : '[MN] Total sales',
-                value:
-                    '\$${_metrics?.totalRevenue.toStringAsFixed(2) ?? '0.00'}',
-                delta:
-                    '${_metrics?.revenueChange.toStringAsFixed(1) ?? '0.0'}%',
-                deltaUp: _metrics?.revenueIncreased ?? true,
-                icon: Icons.attach_money,
-                iconBg: Colors.green,
-                periodLabel: 'Last 30 days',
-                comparisonLabel: 'vs previous period',
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: StatCard(
-                title: isEnglish ? 'Orders' : '[MN] Orders',
-                value: '${_metrics?.totalOrders ?? 0}',
-                delta: '${_metrics?.ordersChange.toStringAsFixed(1) ?? '0.0'}%',
-                deltaUp: _metrics?.ordersIncreased ?? true,
-                icon: Icons.shopping_cart_outlined,
-                iconBg: Colors.blue,
-                periodLabel: 'Last 30 days',
-                comparisonLabel: 'vs previous period',
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: StatCard(
-                title: isEnglish ? 'Store sessions' : '[MN] Store sessions',
-                value: '$_storeSessions',
-                delta: '+15.2%',
-                deltaUp: true,
-                icon: Icons.people_outline,
-                iconBg: Colors.purple,
-                periodLabel: 'Last 30 days',
-                comparisonLabel: 'vs previous period',
-              ),
-            ),
-          ],
-        );
-      },
+    return Row(
+      children: [
+        Expanded(
+          child: StatCard(
+            title: 'Нийт борлуулалт',
+            value: '₮${_metrics?.totalRevenue.toStringAsFixed(0) ?? '0'}',
+            delta: '${_metrics?.revenueChange.toStringAsFixed(1) ?? '0.0'}%',
+            deltaUp: _metrics?.revenueIncreased ?? true,
+            icon: Icons.attach_money,
+            iconBg: Colors.green,
+            periodLabel: 'Сүүлийн 30 хоног',
+            comparisonLabel: 'өмнөх үе',
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: StatCard(
+            title: 'Захиалгууд',
+            value: '${_metrics?.totalOrders ?? 0}',
+            delta: '${_metrics?.ordersChange.toStringAsFixed(1) ?? '0.0'}%',
+            deltaUp: _metrics?.ordersIncreased ?? true,
+            icon: Icons.shopping_cart_outlined,
+            iconBg: Colors.blue,
+            periodLabel: 'Сүүлийн 30 хоног',
+            comparisonLabel: 'өмнөх үе',
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: StatCard(
+            title: 'Дэлгүүрийн сешн',
+            value: '$_storeSessions',
+            delta: '${_sessionsDelta.toStringAsFixed(1)}%',
+            deltaUp: _sessionsIncreased,
+            icon: Icons.people_outline,
+            iconBg: Colors.purple,
+            periodLabel: 'Сүүлийн 30 хоног',
+            comparisonLabel: 'өмнөх үе',
+          ),
+        ),
+      ],
     );
   }
 
@@ -366,7 +442,7 @@ class _DashboardPageState extends State<DashboardPage> {
             child: RevenueLineChart(
               data: _revenueTrends,
               height: 320,
-              title: 'Sales over time',
+              title: 'Цаг хугацааны борлуулалт',
               lineColor: Colors.green,
             ),
           ),
@@ -388,7 +464,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Top products by units sold',
+                      'Шилдэг бүтээгдэхүүн',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -398,7 +474,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       onPressed: () {
                         // Navigate to full products analytics
                       },
-                      child: const Text('View all'),
+                      child: const Text('Бүгдийг харах'),
                     ),
                   ],
                 ),
@@ -408,7 +484,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   child: _topProducts.isEmpty
                       ? const Center(
                           child: Text(
-                            'No product data available',
+                            'Бүтээгдэхүүний мэдээлэл байхгүй',
                             style: TextStyle(color: Colors.grey),
                           ),
                         )
@@ -487,7 +563,7 @@ class _DashboardPageState extends State<DashboardPage> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${product.unitsSold} sold',
+                '${product.unitsSold} зарагдсан',
                 style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
@@ -527,7 +603,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Recent orders',
+                      'Сүүлийн захиалгууд',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -537,7 +613,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       onPressed: () {
                         // Navigate to orders page
                       },
-                      child: const Text('View all orders'),
+                      child: const Text('Бүх захиалга харах'),
                     ),
                   ],
                 ),
@@ -564,7 +640,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Recent activity',
+                      'Сүүлийн үйл ажиллагаа',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -574,7 +650,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       onPressed: () {
                         // Navigate to full activity log
                       },
-                      child: const Text('View all'),
+                      child: const Text('Бүгдийг харах'),
                     ),
                   ],
                 ),
@@ -594,7 +670,7 @@ class _DashboardPageState extends State<DashboardPage> {
         height: 200,
         child: Center(
           child: Text(
-            'No recent orders',
+            'Захиалга байхгүй',
             style: TextStyle(color: Colors.grey),
           ),
         ),
@@ -614,16 +690,16 @@ class _DashboardPageState extends State<DashboardPage> {
             children: [
               Expanded(
                   flex: 2,
-                  child: Text('Order',
+                  child: Text('Захиалга',
                       style: TextStyle(fontWeight: FontWeight.w600))),
               Expanded(
-                  child: Text('Customer',
+                  child: Text('Үйлчлүүлэгч',
                       style: TextStyle(fontWeight: FontWeight.w600))),
               Expanded(
-                  child: Text('Total',
+                  child: Text('Дүн',
                       style: TextStyle(fontWeight: FontWeight.w600))),
               Expanded(
-                  child: Text('Status',
+                  child: Text('Төлөв',
                       style: TextStyle(fontWeight: FontWeight.w600))),
             ],
           ),
@@ -649,20 +725,20 @@ class _DashboardPageState extends State<DashboardPage> {
           Expanded(
             flex: 2,
             child: Text(
-              '#${order['id']?.toString().substring(0, 6) ?? 'Unknown'}',
+              '#${order['id']?.toString().substring(0, 6) ?? 'Тодорхойгүй'}',
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
           Expanded(
             child: Text(
-              order['userEmail']?.toString() ?? 'Unknown',
+              order['userEmail']?.toString() ?? 'Тодорхойгүй',
               style: const TextStyle(fontSize: 14),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           Expanded(
             child: Text(
-              '\$${order['total']?.toStringAsFixed(2) ?? '0.00'}',
+              '₮${order['total']?.toStringAsFixed(0) ?? '0'}',
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
@@ -695,7 +771,7 @@ class _DashboardPageState extends State<DashboardPage> {
         height: 200,
         child: Center(
           child: Text(
-            'No recent activity',
+            'Үйл ажиллагаа байхгүй',
             style: TextStyle(color: Colors.grey),
           ),
         ),

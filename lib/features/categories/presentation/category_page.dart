@@ -7,6 +7,7 @@ import 'package:avii/features/products/models/product_model.dart'
     show ProductModel, ProductVariant;
 import 'package:avii/features/products/presentation/product_page.dart';
 import 'package:avii/features/home/presentation/main_scaffold.dart';
+import '../../../core/services/rating_service.dart';
 
 /// Model representing a tappable sub-category card.
 class SubCategory {
@@ -623,6 +624,9 @@ class _CategoryPageState extends State<CategoryPage> {
           upperSnap.docs.map((d) => ProductModel.fromFirestore(d)).toList();
     }
 
+    // Get actual rating data instead of hardcoded values
+    final ratingData = await RatingService().getStoreRating(storeId);
+
     final storeData = StoreData(
       id: storeModel.id,
       name: storeModel.name,
@@ -630,8 +634,8 @@ class _CategoryPageState extends State<CategoryPage> {
       heroImageUrl:
           storeModel.banner.isNotEmpty ? storeModel.banner : storeModel.logo,
       backgroundColor: const Color(0xFF01BCE7),
-      rating: 4.9,
-      reviewCount: '25',
+      rating: ratingData.rating,
+      reviewCount: ratingData.reviewCountDisplay,
       collections: const [],
       categories: const ['All'],
       productCount: products.length,

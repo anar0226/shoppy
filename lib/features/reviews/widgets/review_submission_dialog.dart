@@ -33,17 +33,71 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
     super.dispose();
   }
 
+  void _showPopupMessage({
+    required String title,
+    required String message,
+    required bool isSuccess,
+  }) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: Row(
+            children: [
+              Icon(
+                isSuccess ? Icons.check_circle : Icons.error,
+                color: isSuccess ? Colors.green : Colors.red,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isSuccess ? Colors.green : Colors.red,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: const TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                if (isSuccess) {
+                  // Close the review dialog after success popup is dismissed
+                  Navigator.of(context).pop(true);
+                }
+              },
+              child: const Text('Хаах'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _submitReview() async {
     if (_rating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Үнэлгээ сонгоно уу')),
+      _showPopupMessage(
+        title: 'Алдаа',
+        message: '1-5 хооронд үнэлгээ сонгоно уу',
+        isSuccess: false,
       );
       return;
     }
 
     if (_titleController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Үнэлгээний гарчиг оруулна уу')),
+      _showPopupMessage(
+        title: 'Алдаа',
+        message: 'Үнэлгээний гарчиг оруулна уу',
+        isSuccess: false,
       );
       return;
     }
@@ -61,12 +115,10 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
 
       if (success) {
         if (mounted) {
-          Navigator.of(context).pop(true); // Return true to indicate success
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Үнэлгээ амжилттай илгээгдлээ'),
-              backgroundColor: Colors.green,
-            ),
+          _showPopupMessage(
+            title: 'Амжилттай',
+            message: 'Үнэлгээ амжилттай илгээгдлээ',
+            isSuccess: true,
           );
         }
       } else {
@@ -74,11 +126,10 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Үнэлгээ илгээх үед алдаа гарлаа: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        _showPopupMessage(
+          title: 'Алдаа',
+          message: 'Үнэлгээ илгээх үед алдаа гарлаа: ${e.toString()}',
+          isSuccess: false,
         );
       }
     } finally {
@@ -163,7 +214,7 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
             TextField(
               controller: _titleController,
               decoration: const InputDecoration(
-                hintText: 'Таны үнэлгээг тодорхойлох...',
+                hintText: 'Үнэлгээний гарчиг оруулна уу',
                 border: OutlineInputBorder(),
               ),
               maxLength: 100,
@@ -183,7 +234,7 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
             TextField(
               controller: _commentController,
               decoration: const InputDecoration(
-                hintText: 'Таны үнэлгээг тодорхойлох...',
+                hintText: 'Та үнэлгээгээ тодорхойлно уу...',
                 border: OutlineInputBorder(),
               ),
               maxLines: 4,
@@ -205,7 +256,7 @@ class _ReviewSubmissionDialogState extends State<ReviewSubmissionDialog> {
                         color: Colors.green.shade600, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      'худалдан авагдсан',
+                      'Баталгаажсан дэлгүүр',
                       style: TextStyle(
                         color: Colors.green.shade600,
                         fontWeight: FontWeight.w600,

@@ -137,7 +137,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Push мэдэгдэлээр мэдэгдэх боломжтой',
+                        'Push мэдэгдэл',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade600,
@@ -151,10 +151,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           if (!isGranted) {
                             return const NotificationPermissionWidget(
                               showAsCard: false,
-                              customTitle:
-                                  'Push мэдэгдэлээр мэдэгдэх боломжтой',
-                              customDescription:
-                                  'Tap to enable instant notifications on your device',
+                              customTitle: 'Push мэдэгдэл',
+                              customDescription: 'Push мэдэгдэл',
                             );
                           }
                           return Container(
@@ -171,7 +169,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'Push мэдэгдэлээр мэдэгдэх боломжтой',
+                                    'Push мэдэгдэл',
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: Colors.green.shade700,

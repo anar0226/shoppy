@@ -16,6 +16,7 @@ import 'package:avii/features/stores/presentation/store_screen.dart'
 import 'package:avii/features/products/presentation/product_page.dart';
 import 'widgets/seller_card.dart';
 import 'package:avii/features/reviews/services/reviews_service.dart';
+import '../../../core/services/rating_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -1022,6 +1023,9 @@ class _HomeScreenState extends State<HomeScreen> {
           .where((name) => name.isNotEmpty),
     );
 
+    // Get actual rating data instead of hardcoded values
+    final ratingData = await RatingService().getStoreRating(storeId);
+
     // Build StoreData for legacy StoreScreen
     final storeData = StoreData(
       id: storeModel.id,
@@ -1030,8 +1034,8 @@ class _HomeScreenState extends State<HomeScreen> {
       heroImageUrl:
           storeModel.banner.isNotEmpty ? storeModel.banner : storeModel.logo,
       backgroundColor: const Color(0xFF01BCE7),
-      rating: 4.9,
-      reviewCount: '25',
+      rating: ratingData.rating,
+      reviewCount: ratingData.reviewCountDisplay,
       collections: collections,
       categories: categoryNames,
       productCount: products.length,

@@ -4,9 +4,62 @@ import '../widgets/side_menu.dart';
 import '../../features/settings/themes/app_themes.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../auth/auth_service.dart';
+import '../../core/utils/type_utils.dart';
 
-class OrdersPage extends StatelessWidget {
+class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
+
+  @override
+  State<OrdersPage> createState() => _OrdersPageState();
+}
+
+class _OrdersPageState extends State<OrdersPage> {
+  // Statistics variables
+  int totalOrders = 0;
+  double totalRevenue = 0.0;
+  int uniqueCustomers = 0;
+
+  void _calculateStatistics(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    final newTotalOrders = docs.length;
+    double newTotalRevenue = 0.0;
+    Set<String> customerEmails = {};
+
+    for (var doc in docs) {
+      final data = doc.data();
+      // Calculate total revenue
+      final orderTotal =
+          TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
+      newTotalRevenue += orderTotal;
+
+      // Count unique customers
+      final customerEmail = data['customerEmail'] as String? ??
+          data['userEmail'] as String? ??
+          data['customerId'] as String? ??
+          '';
+      if (customerEmail.isNotEmpty) {
+        customerEmails.add(customerEmail);
+      }
+    }
+
+    final newUniqueCustomers = customerEmails.length;
+
+    // Only update state if values have actually changed
+    if (totalOrders != newTotalOrders ||
+        totalRevenue != newTotalRevenue ||
+        uniqueCustomers != newUniqueCustomers) {
+      totalOrders = newTotalOrders;
+      totalRevenue = newTotalRevenue;
+      uniqueCustomers = newUniqueCustomers;
+
+      // Schedule state update for next frame to avoid rebuilding during build
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() {});
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,12 +67,12 @@ class OrdersPage extends StatelessWidget {
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
         children: [
-          const SideMenu(selected: 'Orders'),
+          const SideMenu(selected: 'Захиалгууд'),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const TopNavBar(title: 'Orders'),
+                const TopNavBar(title: 'Захиалгууд'),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
@@ -32,12 +85,12 @@ class OrdersPage extends StatelessWidget {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: const [
-                                Text('Orders',
+                                Text('Захиалгууд',
                                     style: TextStyle(
                                         fontSize: 28,
                                         fontWeight: FontWeight.bold)),
                                 SizedBox(height: 4),
-                                Text('Manage your customer orders'),
+                                Text('Хэрэглэгчийн захиалгуудыг хянах'),
                               ],
                             ),
                             ElevatedButton.icon(
@@ -51,7 +104,7 @@ class OrdersPage extends StatelessWidget {
                                 ),
                               ),
                               icon: const Icon(Icons.add, size: 18),
-                              label: const Text('Create order'),
+                              label: const Text('Захиалга үүсгэх'),
                             ),
                           ],
                         ),
@@ -66,7 +119,7 @@ class OrdersPage extends StatelessWidget {
                                     width: 260,
                                     child: TextField(
                                       decoration: InputDecoration(
-                                        hintText: 'Search orders…',
+                                        hintText: 'Захиалга хайх...',
                                         prefixIcon: const Icon(Icons.search),
                                         border: OutlineInputBorder(
                                             borderRadius:
@@ -79,11 +132,20 @@ class OrdersPage extends StatelessWidget {
                                   SizedBox(
                                     width: 180,
                                     child: DropdownButtonFormField<String>(
-                                      value: 'All Status',
+                                      value: 'бүх төлөв',
                                       items: const [
                                         DropdownMenuItem(
-                                            value: 'All Status',
-                                            child: Text('All Status')),
+                                            value: 'бүх төлөв',
+                                            child: Text('бүх төлөв')),
+                                        DropdownMenuItem(
+                                            value: 'захиалсан',
+                                            child: Text('захиалсан')),
+                                        DropdownMenuItem(
+                                            value: 'хүргэгдсэн',
+                                            child: Text('хүргэгдсэн')),
+                                        DropdownMenuItem(
+                                            value: 'цуцлагдсан',
+                                            child: Text('цуцлагдсан')),
                                       ],
                                       onChanged: (_) {},
                                       decoration: InputDecoration(
@@ -98,24 +160,26 @@ class OrdersPage extends StatelessWidget {
                               ),
                             ),
                             Row(
-                              children: const [
-                                Icon(Icons.shopping_cart_outlined, size: 16),
-                                SizedBox(width: 4),
-                                Text('3 orders'),
-                                SizedBox(width: 16),
-                                Icon(Icons.attach_money, size: 16),
-                                SizedBox(width: 4),
-                                Text('\$483.49 revenue'),
-                                SizedBox(width: 16),
-                                Icon(Icons.person_outline, size: 16),
-                                SizedBox(width: 4),
-                                Text('3 customers'),
+                              children: [
+                                const Icon(Icons.shopping_cart_outlined,
+                                    size: 16),
+                                const SizedBox(width: 4),
+                                Text('$totalOrders захиалга'),
+                                const SizedBox(width: 16),
+                                const Icon(Icons.attach_money, size: 16),
+                                const SizedBox(width: 4),
+                                Text(
+                                    '₮${totalRevenue.toStringAsFixed(0)} орлого'),
+                                const SizedBox(width: 16),
+                                const Icon(Icons.person_outline, size: 16),
+                                const SizedBox(width: 4),
+                                Text('$uniqueCustomers хэрэглэгч'),
                               ],
                             ),
                           ],
                         ),
                         const SizedBox(height: 24),
-                        const Text('Order Management',
+                        const Text('Захиалгын хянах',
                             style: TextStyle(
                                 fontSize: 22, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 12),
@@ -143,30 +207,61 @@ class OrdersPage extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return Center(child: Text('Error: \\${snapshot.error}'));
+          return Center(child: Text('Алдаа: ${snapshot.error}'));
         }
 
         final docs = snapshot.data?.docs ?? [];
 
+        // Calculate statistics when data changes
+        _calculateStatistics(docs);
+
         List<DataRow> rows = docs.map((doc) {
           final data = doc.data();
           final id = doc.id;
-          final customer = data['customerName'] ?? 'Unknown';
-          final email = data['customerEmail'] ?? '';
-          final date = (data['date'] as Timestamp?)?.toDate() ?? DateTime.now();
-          final total = data['total'] ?? 0;
-          final status = data['status'] ?? 'Pending';
+          final customer = data['customerName'] ?? 'Үл мэдэгдэх';
+          final email = data['customerEmail'] ?? data['userEmail'] ?? '';
+          final date = (data['createdAt'] as Timestamp?)?.toDate() ??
+              (data['date'] as Timestamp?)?.toDate() ??
+              DateTime.now();
+          final total =
+              TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
+          final status = data['status'] ?? 'placed';
+
+          // Translate status to Mongolian
+          String getStatusText(String status) {
+            switch (status.toLowerCase()) {
+              case 'placed':
+              case 'pending':
+                return 'захиалсан';
+              case 'paid':
+                return 'төлөгдсөн';
+              case 'shipped':
+              case 'delivering':
+                return 'хүргэж байна';
+              case 'delivered':
+                return 'хүргэгдсэн';
+              case 'cancelled':
+                return 'цуцлагдсан';
+              default:
+                return 'захиалсан';
+            }
+          }
 
           Color badgeColor(String status) {
-            switch (status) {
-              case 'Paid':
+            switch (status.toLowerCase()) {
+              case 'paid':
+              case 'delivered':
                 return Colors.green.shade200;
-              case 'Pending':
-                return Colors.yellow.shade600;
-              case 'Shipped':
-                return Colors.blue.shade300;
+              case 'placed':
+              case 'pending':
+                return Colors.orange.shade200;
+              case 'shipped':
+              case 'delivering':
+                return Colors.blue.shade200;
+              case 'cancelled':
+                return Colors.red.shade200;
               default:
-                return Colors.grey;
+                return Colors.grey.shade200;
             }
           }
 
@@ -187,9 +282,12 @@ class OrdersPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('#$id',
+                  Text('#${id.substring(0, 8)}...',
                       style: const TextStyle(fontWeight: FontWeight.w600)),
-                  Text('Order ID: $id'),
+                  Text('Захиалгын дугаар',
+                      style: TextStyle(
+                          color: AppThemes.getSecondaryTextColor(context),
+                          fontSize: 12)),
                 ],
               )
             ])),
@@ -204,15 +302,15 @@ class OrdersPage extends StatelessWidget {
                         fontSize: 12)),
               ],
             )),
-            DataCell(Text('${date.month}/${date.day}/${date.year}')),
-            DataCell(Text('\$${total.toStringAsFixed(2)}')),
+            DataCell(Text('${date.year}/${date.month}/${date.day}')),
+            DataCell(Text('₮${total.toStringAsFixed(0)}')),
             DataCell(Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 color: badgeColor(status),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(status,
+              child: Text(getStatusText(status),
                   style: TextStyle(
                       fontSize: 12, color: AppThemes.getTextColor(context))),
             )),
@@ -238,13 +336,31 @@ class OrdersPage extends StatelessWidget {
             headingTextStyle: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: AppThemes.getSecondaryTextColor(context)),
-            columns: const [
-              DataColumn(label: Text('Order')),
-              DataColumn(label: Text('Customer')),
-              DataColumn(label: Text('Date')),
-              DataColumn(label: Text('Total')),
-              DataColumn(label: Text('Status')),
-              DataColumn(label: Text('Actions')),
+            columns: [
+              DataColumn(
+                  label: Text('Захиалга',
+                      style: TextStyle(
+                          color: AppThemes.getSecondaryTextColor(context)))),
+              DataColumn(
+                  label: Text('Хэрэглэгч',
+                      style: TextStyle(
+                          color: AppThemes.getSecondaryTextColor(context)))),
+              DataColumn(
+                  label: Text('Огноо',
+                      style: TextStyle(
+                          color: AppThemes.getSecondaryTextColor(context)))),
+              DataColumn(
+                  label: Text('Нийт дүн',
+                      style: TextStyle(
+                          color: AppThemes.getSecondaryTextColor(context)))),
+              DataColumn(
+                  label: Text('Төлөв',
+                      style: TextStyle(
+                          color: AppThemes.getSecondaryTextColor(context)))),
+              DataColumn(
+                  label: Text('Үйлдэл',
+                      style: TextStyle(
+                          color: AppThemes.getSecondaryTextColor(context)))),
             ],
             rows: rows,
           ),

@@ -7,6 +7,9 @@ import 'package:avii/features/addresses/providers/address_provider.dart';
 import 'package:avii/features/discounts/models/discount_model.dart';
 import 'package:avii/features/discounts/services/discount_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+// import 'qpay_checkout_page.dart'; // Removed - using bank transfers
+import '../../../core/utils/popup_utils.dart';
 
 class CheckoutPage extends StatefulWidget {
   final String email;
@@ -107,13 +110,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
         _discountError = null;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
+      PopupUtils.showSuccess(
+        context: context,
+        message:
             'Хөнгөлөлт амжилттай! хөнгөлөлсөн үнэ: \$${_discountAmount.toStringAsFixed(2)}',
-          ),
-          backgroundColor: Colors.green,
-        ),
       );
     } catch (e) {
       setState(() {
@@ -132,6 +132,55 @@ class _CheckoutPageState extends State<CheckoutPage> {
       _discountCodeController.clear();
       _discountError = null;
     });
+  }
+
+  void _showBankTransferInstructions(Map<String, dynamic> orderData,
+      String customerEmail, Map<String, dynamic> deliveryAddress) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Банкны шилжүүлэг'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Дараах данс руу шилжүүлэг хийнэ үү:'),
+            const SizedBox(height: 16),
+            const Text('Банк: Худалдаа Хөгжлийн Банк (TDB)',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('Данс: 123456789012'),
+            const Text('Данс эзэн: Shoppy Marketplace'),
+            const SizedBox(height: 16),
+            Text('Дүн: \$${orderData['total'].toStringAsFixed(2)}',
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 16),
+            const Text('Шилжүүлгийн утга: Захиалгын дугаар, таны нэр'),
+            const SizedBox(height: 16),
+            const Text(
+                'Анхааруулга: Шилжүүлэг хийсний дараа баримтын зургийг бидэнтэй хуваалцана уу.',
+                style: TextStyle(fontSize: 12, color: Colors.orange)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Хаах'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              PopupUtils.showSuccess(
+                context: context,
+                message:
+                    'Захиалга үүсгэгдлээ. Банкны шилжүүлэг хийснийхээ дараа холбогдоно уу.',
+              );
+            },
+            child: const Text('Ойлголоо'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -234,6 +283,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       onPressed: () async {
+                        // Check if user is authenticated
+                        final user = FirebaseAuth.instance.currentUser;
+                        if (user == null) {
+                          PopupUtils.showError(
+                            context: context,
+                            message: 'Please log in to continue with payment',
+                          );
+                          return;
+                        }
+
+                        // Check if shipping address is provided
+                        final addressProvider = Provider.of<AddressProvider>(
+                            context,
+                            listen: false);
+                        if (addressProvider.addresses.isEmpty) {
+                          PopupUtils.showError(
+                            context: context,
+                            message: 'Хүргэлтийн хаяг оруулна уу',
+                          );
+                          return;
+                        }
+
                         // Increment discount usage if discount was applied
                         if (_appliedDiscount != null) {
                           try {
@@ -243,13 +314,44 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             // Handle error silently for now
                           }
                         }
-                        // TODO: Implement payment processing
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Захиалга амжилттай боллоо!'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
+
+                        // Prepare order data for QPay
+                        final orderData = {
+                          'items': [
+                            {
+                              'name': widget.item.name,
+                              'variant': widget.item.variant,
+                              'price': widget.item.price,
+                              'imageUrl': widget.item.imageUrl,
+                            }
+                          ],
+                          'subtotal': widget.subtotal,
+                          'shipping': _appliedDiscount?.type ==
+                                  DiscountType.freeShipping
+                              ? 0
+                              : widget.shippingCost,
+                          'tax': widget.tax,
+                          'total': _finalTotal,
+                          'discountAmount': _discountAmount,
+                          'discountCode': _appliedDiscount?.code,
+                        };
+
+                        // Get shipping address
+                        final shippingAddress =
+                            addressProvider.defaultAddress ??
+                                addressProvider.addresses.first;
+                        final deliveryAddress = {
+                          'fullAddress': shippingAddress.formatted(),
+                          'firstName': shippingAddress.firstName,
+                          'lastName': shippingAddress.lastName,
+                          'line1': shippingAddress.line1,
+                          'apartment': shippingAddress.apartment,
+                          'phone': shippingAddress.phone,
+                        };
+
+                        // Show bank transfer instructions
+                        _showBankTransferInstructions(
+                            orderData, user.email ?? '', deliveryAddress);
                       },
                       child: Text(
                         'Төлөх дүн: \$${_finalTotal.toStringAsFixed(2)}',

@@ -8,6 +8,7 @@ import 'package:avii/features/products/models/product_model.dart'
     show ProductModel, ProductVariant;
 import '../../features/home/presentation/main_scaffold.dart';
 import 'package:avii/features/categories/presentation/final_category_page.dart';
+import '../../core/services/rating_service.dart';
 
 class ShirtsTopsCategoryPage extends StatefulWidget {
   const ShirtsTopsCategoryPage({super.key});
@@ -375,6 +376,9 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
           upperSnap.docs.map((d) => ProductModel.fromFirestore(d)).toList();
     }
 
+    // Get actual rating data instead of hardcoded values
+    final ratingData = await RatingService().getStoreRating(storeModel.id);
+
     final storeData = StoreData(
       id: storeModel.id,
       name: storeModel.name,
@@ -382,8 +386,8 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
       heroImageUrl:
           storeModel.banner.isNotEmpty ? storeModel.banner : storeModel.logo,
       backgroundColor: const Color(0xFF01BCE7),
-      rating: 4.9,
-      reviewCount: '25',
+      rating: ratingData.rating,
+      reviewCount: ratingData.reviewCountDisplay,
       collections: const [],
       categories: const ['All'],
       productCount: products.length,

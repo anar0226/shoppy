@@ -2,9 +2,47 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'qpay_service.dart';
+// import 'qpay_service.dart'; // Removed - using bank transfers now
 import 'ubcab_service.dart';
 import '../utils/type_utils.dart';
+
+/// Bank Transfer Payment Result (placeholder for TDB integration)
+class BankTransferPaymentResult {
+  final bool success;
+  final String? error;
+  final BankTransferInvoice? invoice;
+
+  const BankTransferPaymentResult({
+    required this.success,
+    this.error,
+    this.invoice,
+  });
+
+  factory BankTransferPaymentResult.success(BankTransferInvoice invoice) {
+    return BankTransferPaymentResult(success: true, invoice: invoice);
+  }
+
+  factory BankTransferPaymentResult.error(String error) {
+    return BankTransferPaymentResult(success: false, error: error);
+  }
+}
+
+/// Bank Transfer Invoice (placeholder for TDB integration)
+class BankTransferInvoice {
+  final String id;
+  final String orderId;
+  final double amount;
+  final String status;
+  final DateTime createdAt;
+
+  const BankTransferInvoice({
+    required this.id,
+    required this.orderId,
+    required this.amount,
+    required this.status,
+    required this.createdAt,
+  });
+}
 
 /// Order Fulfillment Status
 enum FulfillmentStatus {
@@ -28,26 +66,23 @@ class OrderFulfillmentService {
   factory OrderFulfillmentService() => _instance;
   OrderFulfillmentService._internal();
 
-  final QPayService _qpayService = QPayService();
   final UBCabService _ubcabService = UBCabService();
 
   /// Initialize the fulfillment service
   Future<void> initialize({
-    // QPay Configuration
-    required String qpayUsername,
-    required String qpayPassword,
-    QPayEnvironment qpayEnvironment = QPayEnvironment.sandbox,
+    // Bank Transfer Configuration (placeholder for TDB integration)
+    required String
+        qpayUsername, // Placeholder - will be removed when TDB is integrated
+    required String
+        qpayPassword, // Placeholder - will be removed when TDB is integrated
 
     // UBCab Configuration
     required String ubcabApiKey,
     required String ubcabMerchantId,
     bool ubcabProduction = false,
   }) async {
-    await _qpayService.initialize(
-      username: qpayUsername,
-      password: qpayPassword,
-      environment: qpayEnvironment,
-    );
+    // Bank transfer setup - no initialization needed for now
+    debugPrint('Using bank transfer payment method');
 
     await _ubcabService.initialize(
       apiKey: ubcabApiKey,
@@ -150,8 +185,8 @@ class OrderFulfillmentService {
         .set(orderRecord);
   }
 
-  /// Process payment with QPay
-  Future<QPayPaymentResult> _processPayment(
+  /// Process payment with Bank Transfer (placeholder for TDB integration)
+  Future<BankTransferPaymentResult> _processPayment(
     String orderId,
     Map<String, dynamic> orderData,
     String customerEmail,
@@ -169,16 +204,17 @@ class OrderFulfillmentService {
         storeDoc.exists ? storeDoc.data()!['name'] ?? 'Store' : 'Store';
     final itemsCount = (orderData['items'] as List).length;
 
-    return await _qpayService.createInvoice(
+    // Create bank transfer invoice (placeholder for TDB integration)
+    final invoiceId = '${orderId}_${DateTime.now().millisecondsSinceEpoch}';
+    final invoice = BankTransferInvoice(
+      id: invoiceId,
       orderId: orderId,
       amount: (orderData['total'] as num).toDouble(),
-      customerName:
-          user.displayName ?? user.email?.split('@').first ?? 'Customer',
-      customerEmail: customerEmail,
-      description: '$itemsCount item(s) from $storeName',
-      currency: 'MNT',
-      expiry: const Duration(hours: 2), // 2 hour expiry for payment
+      status: 'pending',
+      createdAt: DateTime.now(),
     );
+
+    return BankTransferPaymentResult.success(invoice);
   }
 
   /// Request delivery from UBCab
@@ -295,31 +331,22 @@ class OrderFulfillmentService {
         .update(updateData);
   }
 
-  /// Handle QPay payment webhook
+  /// Handle bank transfer payment confirmation (placeholder for TDB integration)
   Future<void> handlePaymentWebhook(Map<String, dynamic> webhookData) async {
     try {
-      final success = await _qpayService.processCallback(webhookData);
+      // For bank transfers, we'll manually confirm payments
+      // This will be replaced with TDB webhook integration
+      final invoiceId = webhookData['invoice_id']?.toString();
+      final orderId = webhookData['order_id']?.toString();
 
-      if (success) {
-        final invoiceId = webhookData['invoice_id']?.toString();
-        if (invoiceId != null) {
-          // Find order by invoice ID
-          final orderQuery = await FirebaseFirestore.instance
-              .collection('orders')
-              .where('paymentInvoiceId', isEqualTo: invoiceId)
-              .limit(1)
-              .get();
+      if (orderId != null) {
+        await _updateOrderStatus(orderId, FulfillmentStatus.paymentConfirmed);
 
-          if (orderQuery.docs.isNotEmpty) {
-            final orderId = orderQuery.docs.first.id;
-            await _updateOrderStatus(
-                orderId, FulfillmentStatus.paymentConfirmed);
-
-            // Automatically proceed with delivery if payment is confirmed
-            await _continueOrderFulfillment(orderId);
-          }
-        }
+        // Automatically proceed with delivery if payment is confirmed
+        await _continueOrderFulfillment(orderId);
       }
+
+      debugPrint('Bank transfer payment confirmed for order: $orderId');
     } catch (e) {
       debugPrint('Payment webhook error: $e');
     }
@@ -488,7 +515,7 @@ class OrderFulfillmentResult {
   final bool success;
   final String message;
   final String? orderId;
-  final QPayInvoice? paymentInvoice;
+  final BankTransferInvoice? paymentInvoice;
   final String? deliveryTrackingId;
   final String? error;
 
@@ -503,7 +530,7 @@ class OrderFulfillmentResult {
 
   factory OrderFulfillmentResult.success({
     required String orderId,
-    required QPayInvoice paymentInvoice,
+    required BankTransferInvoice paymentInvoice,
     required String deliveryTrackingId,
   }) {
     return OrderFulfillmentResult(

@@ -16,6 +16,7 @@ import 'dart:async';
 import 'package:avii/features/stores/models/store_model.dart';
 import 'package:avii/features/stores/presentation/store_screen.dart';
 import 'package:avii/features/home/presentation/main_scaffold.dart';
+import '../../../core/services/rating_service.dart';
 
 class ProductPage extends StatefulWidget {
   final ProductModel product;
@@ -1544,6 +1545,9 @@ class _ProductPageState extends State<ProductPage> {
             .where((name) => name.isNotEmpty),
       );
 
+      // Get actual rating data instead of hardcoded values
+      final ratingData = await RatingService().getStoreRating(storeModel.id);
+
       // Build StoreData for StoreScreen
       final storeData = StoreData(
         id: storeModel.id,
@@ -1552,8 +1556,8 @@ class _ProductPageState extends State<ProductPage> {
         heroImageUrl:
             storeModel.banner.isNotEmpty ? storeModel.banner : storeModel.logo,
         backgroundColor: const Color(0xFF01BCE7),
-        rating: 4.9,
-        reviewCount: '25',
+        rating: ratingData.rating,
+        reviewCount: ratingData.reviewCountDisplay,
         collections: collections,
         categories: categoryNames,
         productCount: products.length,

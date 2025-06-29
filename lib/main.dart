@@ -29,6 +29,34 @@ import 'core/utils/type_utils.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'features/reviews/widgets/review_submission_dialog.dart';
 
+import 'core/services/order_fulfillment_service.dart';
+import 'core/utils/popup_utils.dart';
+import 'features/auth/presentation/profile_completion_page.dart';
+
+/// Initialize payment services (Bank Transfer and Order Fulfillment)
+Future<void> _initializePaymentServices() async {
+  try {
+    // Initialize Order Fulfillment Service
+    final fulfillmentService = OrderFulfillmentService();
+    await fulfillmentService.initialize(
+      // Temporary bank transfer setup - will be replaced with TDB API
+      qpayUsername: 'bank_transfer', // Placeholder for bank transfer
+      qpayPassword: 'bank_transfer', // Placeholder for bank transfer
+
+      // UBCab Configuration
+      ubcabApiKey: 'test_ubcab_key', // Replace with actual UBCab API key
+      ubcabMerchantId: 'test_merchant_id', // Replace with actual merchant ID
+      ubcabProduction: false,
+    );
+
+    debugPrint('✅ Payment services initialized successfully');
+  } catch (e) {
+    debugPrint('❌ Failed to initialize payment services: $e');
+    // Don't throw error to allow app to continue running
+    // Payment functionality will show error messages when used
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -38,7 +66,8 @@ Future<void> main() async {
   // Register FCM background message handler
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-  // QPay will be initialized when needed (no global initialization required)
+  // Initialize QPay service for payment processing
+  await _initializePaymentServices();
 
   runApp(const ShopUBApp());
 }
@@ -144,6 +173,7 @@ class _ShopUBAppState extends State<ShopUBApp> {
             '/orders': (_) => const OrdersScreen(),
             '/account': (_) => ProfilePage(),
             '/saved': (_) => const SavedScreen(),
+            '/profile-completion': (_) => const ProfileCompletionPage(),
           },
           onGenerateRoute: (settings) {
             // Handle store routes
@@ -383,8 +413,9 @@ class _SearchScreenState extends State<SearchScreen> {
         _isSearching = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Хайлт хийхэд алдаа гарлаа: $e')),
+        PopupUtils.showError(
+          context: context,
+          message: 'Хайлт хийхэд алдаа гарлаа: $e',
         );
       }
     }
@@ -1001,8 +1032,9 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Дэлгүүр нээхэд алдаа гарлаа: $e')),
+      PopupUtils.showError(
+        context: context,
+        message: 'Дэлгүүр нээхэд алдаа гарлаа: $e',
       );
     }
   }
@@ -1041,8 +1073,9 @@ class _SearchScreenState extends State<SearchScreen> {
             MaterialPageRoute(builder: (_) => const MenCategoryPage()),
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${category.name} удахгүй!')),
+          PopupUtils.showInfo(
+            context: context,
+            message: '${category.name} удахгүй!',
           );
         }
       },
@@ -1239,8 +1272,9 @@ class OrdersScreen extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Захиалга хайх!')),
+                  PopupUtils.showInfo(
+                    context: context,
+                    message: 'Захиалга хайх!',
                   );
                 },
                 child: Container(
@@ -1266,8 +1300,9 @@ class OrdersScreen extends StatelessWidget {
               const SizedBox(width: 12),
               GestureDetector(
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Нэмэлт сонголт!')),
+                  PopupUtils.showInfo(
+                    context: context,
+                    message: 'Нэмэлт сонголт!',
                   );
                 },
                 child: Container(

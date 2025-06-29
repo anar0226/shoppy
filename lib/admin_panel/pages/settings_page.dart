@@ -44,26 +44,27 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const TopNavBar(title: 'Settings'),
+                const TopNavBar(title: 'Тохиргоо'),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Inventory Settings',
+                        const Text('Бүтээгдэхүүн бүртгэл',
                             style: TextStyle(
                                 fontSize: 22, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 16),
                         _buildSwitchTile(
-                          title: 'Low stock alerts',
-                          subtitle: 'Get alerts when stock is low',
+                          title: 'бага нөөц алэрт',
+                          subtitle:
+                              'Бүтээгдэхүүний нөөц бага байх үед анхааруулах',
                           value: _lowStockAlerts,
                           onChanged: (v) => setState(() => _lowStockAlerts = v),
                         ),
                         const SizedBox(height: 12),
                         _buildNumberField(
-                          label: 'Low stock threshold',
+                          label: 'бага нөөц босго',
                           controller: _thresholdCtrl,
                           onChanged: (v) => setState(() {
                             _lowStockThreshold =
@@ -71,20 +72,20 @@ class _SettingsPageState extends State<SettingsPage> {
                           }),
                         ),
                         const SizedBox(height: 32),
-                        const Text('Notification Settings',
+                        const Text('Мэдэгдэл тохируулалт',
                             style: TextStyle(
                                 fontSize: 22, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 16),
                         _buildSwitchTile(
-                          title: 'Email Notifications',
-                          subtitle: 'Receive general email notifications',
+                          title: 'Имэйл мэдэгдэл',
+                          subtitle: 'Үнэлгээний талаар мэдэглэл авах',
                           value: _emailNotif,
                           onChanged: (v) => setState(() => _emailNotif = v),
                         ),
                         const SizedBox(height: 12),
                         _buildSwitchTile(
-                          title: 'Order Notifications',
-                          subtitle: 'Get notified about new orders',
+                          title: 'Захиалгын мэдэгдэл',
+                          subtitle: 'Шинэ захиалгын талаар мэдэглэл авах',
                           value: _orderNotif,
                           onChanged: (v) => setState(() => _orderNotif = v),
                         ),
@@ -97,9 +98,9 @@ class _SettingsPageState extends State<SettingsPage> {
                           value: _language,
                           items: const [
                             DropdownMenuItem(
-                                value: 'English', child: Text('English')),
+                                value: 'English', child: Text('Англи')),
                             DropdownMenuItem(
-                                value: 'Mongolian', child: Text('Mongolian')),
+                                value: 'Mongolian', child: Text('Монгол')),
                           ],
                           onChanged: (v) => setState(() => _language = v!),
                         ),
@@ -111,10 +112,10 @@ class _SettingsPageState extends State<SettingsPage> {
                               // TODO: Persist settings to Firestore if desired
                               ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                      content: Text(
-                                          'Settings saved (not persisted).')));
+                                      content:
+                                          Text('Тохируулалт хадгалагдлаа')));
                             },
-                            child: const Text('Save Settings'),
+                            child: const Text('Хадгалах'),
                           ),
                         )
                       ],

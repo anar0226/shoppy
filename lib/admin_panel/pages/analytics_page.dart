@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:provider/provider.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/top_nav_bar.dart';
 import '../widgets/stat_card.dart';
@@ -8,7 +7,6 @@ import '../widgets/charts/charts.dart';
 import '../../features/analytics/analytics.dart';
 import '../../features/orders/services/order_service.dart';
 import '../auth/auth_service.dart';
-import '../../features/settings/providers/app_settings_provider.dart';
 import '../../features/settings/themes/app_themes.dart';
 
 class AnalyticsPage extends StatefulWidget {
@@ -23,7 +21,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   final OrderService _orderService = OrderService();
 
   // State variables
-  String _selectedPeriod = 'Last 30 days';
+  String _selectedPeriod = 'сүүлийн 30 хоног';
   bool _isLoading = true;
   String? _error;
   String? _currentStoreId;
@@ -119,9 +117,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   String _getPeriodForAPI() {
     switch (_selectedPeriod) {
-      case 'Last 7 days':
+      case 'сүүлийн 7 хоног':
         return 'last7days';
-      case 'Last 30 days':
+      case 'сүүлийн 30 хоног':
       default:
         return 'last30days';
     }
@@ -151,7 +149,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Analytics data exported successfully'),
+            content: Text('Аналитик мэдээлэл амжилттай экспортлагдлаа'),
             backgroundColor: Colors.green,
           ),
         );
@@ -160,7 +158,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Export failed: $e'),
+            content: Text('Экспорт алдаа гарлаа: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -207,7 +205,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Error Loading Analytics',
+            'Аналитик мэдээлэл оруулах үед алдаа гарлаа',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -224,7 +222,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           ElevatedButton.icon(
             onPressed: _loadAnalyticsData,
             icon: const Icon(Icons.refresh),
-            label: const Text('Retry'),
+            label: const Text('Дахин оруулах'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
@@ -263,27 +261,27 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Analytics',
+              'Аналитик мэдээлэл',
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 4),
-            Text('Track your store performance and insights'),
+            Text('Дэлгүүрийн үзүүлэлтүүдийг шалгах'),
           ],
         ),
         Row(
           children: [
             SizedBox(
-              width: 140,
+              width: 180,
               child: DropdownButtonFormField<String>(
                 value: _selectedPeriod,
                 items: const [
                   DropdownMenuItem(
-                    value: 'Last 30 days',
-                    child: Text('Last 30 days'),
+                    value: 'сүүлийн 30 хоног',
+                    child: Text('сүүлийн 30 хоног'),
                   ),
                   DropdownMenuItem(
-                    value: 'Last 7 days',
-                    child: Text('Last 7 days'),
+                    value: 'сүүлийн 7 хоног',
+                    child: Text('сүүлийн 7 хоног'),
                   ),
                 ],
                 onChanged: _handlePeriodChange,
@@ -299,7 +297,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             OutlinedButton.icon(
               onPressed: _exportData,
               icon: const Icon(Icons.download_outlined, size: 18),
-              label: const Text('Export'),
+              label: const Text('Экспорт'),
               style: OutlinedButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -319,44 +317,44 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       runSpacing: 24,
       children: [
         StatCard(
-          title: 'Total Revenue',
+          title: 'Нийт орлого',
           value: '\$${_metrics!.totalRevenue.toStringAsFixed(2)}',
           delta: '${_metrics!.revenueChange.toStringAsFixed(1)}%',
           deltaUp: _metrics!.revenueIncreased,
           icon: Icons.attach_money,
           iconBg: Colors.green,
           periodLabel: _selectedPeriod,
-          comparisonLabel: 'vs previous period',
+          comparisonLabel: 'өмнөх үе',
         ),
         StatCard(
-          title: 'Orders',
+          title: 'Захиалгын тоо',
           value: _metrics!.totalOrders.toString(),
           delta: '${_metrics!.ordersChange.toStringAsFixed(1)}%',
           deltaUp: _metrics!.ordersIncreased,
           icon: Icons.shopping_cart_outlined,
           iconBg: Colors.blue,
           periodLabel: _selectedPeriod,
-          comparisonLabel: 'vs previous period',
+          comparisonLabel: 'өмнөх үе',
         ),
         StatCard(
-          title: 'Customers',
+          title: 'Хэрэглэгчид',
           value: _metrics!.totalCustomers.toString(),
           delta: '${_metrics!.customersChange.toStringAsFixed(1)}%',
           deltaUp: _metrics!.customersIncreased,
           icon: Icons.person_outline,
           iconBg: Colors.purple,
           periodLabel: _selectedPeriod,
-          comparisonLabel: 'vs previous period',
+          comparisonLabel: 'өмнөх үе',
         ),
         StatCard(
-          title: 'Avg Order Value',
+          title: 'Дзахиалгын дундаж үнэ',
           value: '\$${_metrics!.averageOrderValue.toStringAsFixed(2)}',
           delta: '${_metrics!.averageOrderValueChange.toStringAsFixed(1)}%',
           deltaUp: _metrics!.averageOrderValueIncreased,
           icon: Icons.bar_chart,
           iconBg: Colors.orange,
           periodLabel: _selectedPeriod,
-          comparisonLabel: 'vs previous period',
+          comparisonLabel: 'өмнөх үе',
         ),
       ],
     );
@@ -373,7 +371,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       child: RevenueLineChart(
         data: _revenueTrends,
         height: 320,
-        title: 'Revenue Trend',
+        title: 'орлогын трэнд',
         lineColor: Colors.green,
       ),
     );
@@ -396,7 +394,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Top Products',
+                  'Шилдэг бүтээгдэхүүнүүд',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 16),
@@ -409,7 +407,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     child: Padding(
                       padding: EdgeInsets.all(20),
                       child: Text(
-                        'No product sales data available',
+                        'Бүтээгдэхүүнүүд бүртгэлгүй байна',
                         style: TextStyle(color: Colors.grey),
                       ),
                     ),
@@ -436,7 +434,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     height: 280,
                     child: Center(
                       child: Text(
-                        'No customer data available',
+                        'Хэрэглэгчид бүртгэлгүй байна',
                         style: TextStyle(color: Colors.grey),
                       ),
                     ),
@@ -462,7 +460,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             child: OrderTrendBarChart(
               data: _orderTrends,
               height: 280,
-              title: 'Order Trends',
+              title: 'Захиалгын трэнд',
               barColor: Colors.blue,
             ),
           ),
@@ -480,13 +478,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 ? ConversionFunnelChart(
                     funnel: _conversionFunnel!,
                     height: 280,
-                    title: 'Conversion Funnel',
+                    title: 'Хөрвүүлэх хувь',
                   )
                 : const SizedBox(
                     height: 280,
                     child: Center(
                       child: Text(
-                        'No conversion data available',
+                        'Хөрвүүлэх хувь бүртгэлгүй байна',
                         style: TextStyle(color: Colors.grey),
                       ),
                     ),
