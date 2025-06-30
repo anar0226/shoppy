@@ -212,7 +212,7 @@ class NotificationService {
       ownerId: ownerId,
       title: 'New Order Received',
       message:
-          'Order #${orderId.substring(0, 6)} from $customerEmail (\$${total.toStringAsFixed(2)})',
+          'Order #${orderId.substring(0, 6)} from $customerEmail (₮${total.toStringAsFixed(2)})',
       type: NotificationType.order,
       data: {'orderId': orderId, 'total': total},
     );

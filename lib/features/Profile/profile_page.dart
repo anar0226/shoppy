@@ -15,6 +15,7 @@ import 'package:avii/features/auth/providers/auth_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:avii/features/stores/models/store_model.dart';
 import 'package:avii/features/following/following_screen.dart';
+import 'package:avii/core/constants/assets.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -172,8 +173,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ? (userAvatarUrl.startsWith('http')
                             ? NetworkImage(userAvatarUrl)
                             : FileImage(File(userAvatarUrl))) as ImageProvider
-                        : const AssetImage(
-                            'assets/images/placeholders/ASAP.jpg'),
+                        : const AssetImage(AppAssets.defaultProfilePicture),
                   ),
                 ),
               ],

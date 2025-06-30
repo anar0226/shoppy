@@ -131,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
               .map((p) => SellerProduct(
                     id: p.id,
                     imageUrl: p.images.isNotEmpty ? p.images.first : '',
-                    price: '\$${p.price.toStringAsFixed(2)}',
+                    price: '₮${p.price.toStringAsFixed(2)}',
                   ))
               .toList();
 
@@ -173,6 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
             reviews: reviewCount,
             products: sellerProducts,
             backgroundImageUrl: customBackgroundUrl ?? storeModel.banner,
+            storeLogoUrl: storeModel.logo, // Add store logo URL
             isAssetBg: false,
           ));
         } catch (e) {
@@ -197,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 .map((p) => SellerProduct(
                       id: p.id,
                       imageUrl: p.images.isNotEmpty ? p.images.first : '',
-                      price: '\$${p.price.toStringAsFixed(2)}',
+                      price: '₮${p.price.toStringAsFixed(2)}',
                     ))
                 .toList();
 
@@ -238,6 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
               reviews: fallbackReviewCount,
               products: sellerProducts,
               backgroundImageUrl: storeModel.banner,
+              storeLogoUrl: storeModel.logo, // Add store logo URL
               isAssetBg: false,
             ));
           }
@@ -484,7 +486,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   child: const Text(
-                    '\$0.00',
+                    '₮0.00',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
@@ -878,6 +880,7 @@ class _HomeScreenState extends State<HomeScreen> {
       products: seller.products,
       storeId: seller.storeId,
       backgroundImageUrl: seller.backgroundImageUrl,
+      storeLogoUrl: seller.storeLogoUrl, // Pass the store logo URL
       onShopAllTap: () => _openStore(context, seller.storeId),
     );
   }
@@ -1083,6 +1086,7 @@ class SellerData {
   final int reviews;
   final List<SellerProduct> products;
   final String? backgroundImageUrl;
+  final String? storeLogoUrl; // Added store logo URL field
   final bool isAssetBg;
 
   SellerData({
@@ -1093,6 +1097,7 @@ class SellerData {
     required this.reviews,
     required this.products,
     this.backgroundImageUrl,
+    this.storeLogoUrl, // Added store logo URL parameter
     this.isAssetBg = false,
   });
 }

@@ -23,7 +23,9 @@ class SavedScreen extends StatelessWidget {
               const _Header(),
               Expanded(
                 child: auth.user == null
-                    ? const Center(child: Text('Sign in to view saved items'))
+                    ? const Center(
+                        child: Text(
+                            'Та аккаунт үүсгэсний хадгаласан бараанууд харагдана'))
                     : StreamBuilder<DocumentSnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('users')
@@ -58,7 +60,7 @@ class _Header extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16.0),
       child: Center(
-        child: Text('Saved',
+        child: Text('Хадгалсан бараанууд',
             style: Theme.of(context)
                 .textTheme
                 .titleLarge
@@ -87,15 +89,15 @@ class _EmptyState extends StatelessWidget {
                 size: 40, color: Colors.black45),
           ),
           const SizedBox(height: 24),
-          const Text('No saved items yet',
+          const Text('Хадгалсан бараа алга',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          const Text('Tap the heart on any item to save it',
+          const Text('Таны хадгаласан бараанууд энд харагдана',
               style: TextStyle(color: Colors.black54)),
           const SizedBox(height: 16),
           TextButton(
             onPressed: () => Navigator.pushReplacementNamed(context, '/home'),
-            child: const Text('Go shopping',
+            child: const Text('нүүр хуудаслүү буцах',
                 style: TextStyle(color: Color(0xFF6A5AE0))),
           )
         ],
@@ -207,7 +209,7 @@ class _SavedCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-          Text('\$${product.price.toStringAsFixed(2)}',
+          Text('₮${product.price.toStringAsFixed(2)}',
               style: const TextStyle(fontWeight: FontWeight.bold)),
         ],
       ),

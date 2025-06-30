@@ -256,19 +256,18 @@ class PlatformStats {
   }
 
   // Helper getters for UI display
-  String get formattedRevenue => '\$${totalRevenue.toStringAsFixed(2)}';
-  String get formattedCommission =>
-      '\$${platformCommission.toStringAsFixed(2)}';
+  String get formattedRevenue => '₮${totalRevenue.toStringAsFixed(2)}';
+  String get formattedCommission => '₮${platformCommission.toStringAsFixed(2)}';
   String get successRatePercent =>
       '${notificationSuccessRate.toStringAsFixed(1)}%';
 
   // New commission helper getters
   String get formattedPendingCommissions =>
-      '\$${pendingCommissions.toStringAsFixed(2)}';
+      '₮${pendingCommissions.toStringAsFixed(2)}';
   String get formattedPaidCommissions =>
-      '\$${paidCommissions.toStringAsFixed(2)}';
+      '₮${paidCommissions.toStringAsFixed(2)}';
   String get formattedAverageCommission =>
-      '\$${averageCommissionPerTransaction.toStringAsFixed(2)}';
+      '₮${averageCommissionPerTransaction.toStringAsFixed(2)}';
   double get commissionCollectionRate {
     if (totalCommissionTransactions == 0) return 0;
     return ((totalCommissionTransactions - pendingCommissionTransactions) /

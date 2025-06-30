@@ -26,7 +26,9 @@ class _StorefrontPageState extends State<StorefrontPage> {
   List<ProductModel> _allProducts = [];
   List<String> _selectedProductIds = [];
   String? _backgroundImageUrl;
+  String? _profileImageUrl;
   bool _isUploadingImage = false;
+  bool _isUploadingProfileImage = false;
   bool _isSaving = false;
   double _storeRating = 0.0;
   int _reviewCount = 0;
@@ -110,6 +112,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
           _allProducts = products;
           _selectedProductIds = selectedProductIds;
           _backgroundImageUrl = backgroundImage;
+          _profileImageUrl = store.logo;
           _storeRating = storeRating;
           _reviewCount = reviewCount;
           _isLoading = false;
@@ -166,6 +169,51 @@ class _StorefrontPageState extends State<StorefrontPage> {
     }
   }
 
+  Future<void> _selectProfileImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 400,
+        maxHeight: 400,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        setState(() {
+          _isUploadingProfileImage = true;
+        });
+
+        final imageUrl = await ImageUploadService.uploadImageFile(
+          image,
+          'stores/${_storeModel!.id}/profile_${DateTime.now().millisecondsSinceEpoch}',
+        );
+
+        // Update the store logo in Firestore
+        await FirebaseFirestore.instance
+            .collection('stores')
+            .doc(_storeModel!.id)
+            .update({'logo': imageUrl});
+
+        setState(() {
+          _profileImageUrl = imageUrl;
+          _storeModel = _storeModel!.copyWith(logo: imageUrl);
+          _isUploadingProfileImage = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated!')),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isUploadingProfileImage = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error uploading profile picture: $e')),
+      );
+    }
+  }
+
   Future<void> _saveSellerCardSettings() async {
     if (_storeModel == null) return;
 
@@ -213,107 +261,6 @@ class _StorefrontPageState extends State<StorefrontPage> {
     });
   }
 
-  Future<void> _previewStoreScreen() async {
-    if (_storeModel == null) return;
-
-    try {
-      // Load collections for this store
-      final collectionsSnapshot = await FirebaseFirestore.instance
-          .collection('collections')
-          .where('storeId', isEqualTo: _storeModel!.id)
-          .where('isActive', isEqualTo: true)
-          .get();
-
-      final collections = collectionsSnapshot.docs
-          .map((doc) => StoreCollection(
-                id: doc.id,
-                name: doc.data()['name'] ?? '',
-                imageUrl: doc.data()['backgroundImage'] ?? '',
-              ))
-          .toList();
-
-      // Load managed categories for this store
-      final categoriesSnapshot = await FirebaseFirestore.instance
-          .collection('store_categories')
-          .where('storeId', isEqualTo: _storeModel!.id)
-          .where('isActive', isEqualTo: true)
-          .orderBy('sortOrder', descending: false)
-          .orderBy('createdAt', descending: false)
-          .get();
-
-      final categoryNames = <String>['All'];
-      categoryNames.addAll(
-        categoriesSnapshot.docs
-            .map((doc) => doc.data()['name'] as String? ?? '')
-            .where((name) => name.isNotEmpty),
-      );
-
-      // Build StoreData for the preview
-      final storeData = StoreData(
-        id: _storeModel!.id,
-        name: _storeModel!.name,
-        displayName: _storeModel!.name.toUpperCase(),
-        heroImageUrl: _storeModel!.banner.isNotEmpty
-            ? _storeModel!.banner
-            : _storeModel!.logo,
-        backgroundColor: const Color(0xFF01BCE7),
-        rating: _storeRating > 0 ? _storeRating : 0.0,
-        reviewCount: _reviewCount > 0 ? _reviewCount.toString() : '0',
-        collections: collections,
-        categories: categoryNames,
-        productCount: _allProducts.length,
-        products: _allProducts
-            .map((p) => StoreProduct(
-                  id: p.id,
-                  name: p.name,
-                  imageUrl: p.images.isNotEmpty ? p.images.first : '',
-                  price: p.price,
-                  category: _getProductCategory(p.id, categoriesSnapshot.docs),
-                ))
-            .toList(),
-        showFollowButton: false, // Hide follow button in preview
-        hasNotification: false,
-      );
-
-      // Navigate to store screen preview
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => Scaffold(
-              appBar: AppBar(
-                title: Text('Store Preview - ${_storeModel!.name}'),
-                backgroundColor: AppThemes.primaryColor,
-                foregroundColor: Colors.white,
-                leading: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                actions: [
-                  TextButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.edit, color: Colors.white),
-                    label: const Text(
-                      'Back to Edit',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-              body: StoreScreen(storeData: storeData),
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading store preview: $e')),
-        );
-      }
-    }
-  }
-
   String _getProductCategory(
       String productId, List<QueryDocumentSnapshot> categoryDocs) {
     for (final doc in categoryDocs) {
@@ -336,7 +283,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
           Expanded(
             child: Column(
               children: [
-                const TopNavBar(title: 'Seller Card Management'),
+                const TopNavBar(title: 'Store Settings'),
                 Expanded(
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
@@ -363,385 +310,189 @@ class _StorefrontPageState extends State<StorefrontPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Storefront Management',
+                'Store Settings',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
               ),
-              Row(
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _previewStoreScreen,
-                    icon: const Icon(Icons.preview),
-                    label: const Text('Preview Store'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppThemes.primaryColor,
-                      side: BorderSide(color: AppThemes.primaryColor),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    onPressed: _isSaving ? null : _saveSellerCardSettings,
-                    icon: _isSaving
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save),
-                    label: Text(_isSaving ? 'Saving...' : 'Save Changes'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppThemes.primaryColor,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
+              ElevatedButton.icon(
+                onPressed: _isSaving ? null : _saveSellerCardSettings,
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save),
+                label: Text(_isSaving ? 'Saving...' : 'Save Changes'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppThemes.primaryColor,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 32),
 
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Left side - Previews
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Seller Card Preview',
-                          style:
-                              Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                        ),
-                        Tooltip(
-                          message:
-                              'This is how your store appears on the home screen',
-                          child: Icon(
-                            Icons.info_outline,
-                            size: 20,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildSellerCardPreview(),
-                    const SizedBox(height: 24),
-                    Card(
-                      color: Colors.blue.shade50,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.preview,
-                              size: 48,
-                              color: AppThemes.primaryColor,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Full Store Preview',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'See how your complete store page looks to customers',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey.shade600),
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: _previewStoreScreen,
-                              icon: const Icon(Icons.launch),
-                              label: const Text('Open Store Preview'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppThemes.primaryColor,
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 32),
-
-              // Right side - Customization options
-              Expanded(
-                flex: 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Customization',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildCustomizationOptions(),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          // Single column layout with store settings
+          _buildStoreSettings(),
         ],
       ),
     );
   }
 
-  Widget _buildSellerCardPreview() {
-    if (_storeModel == null) return const SizedBox();
-
-    final selectedProducts = _allProducts
-        .where((product) => _selectedProductIds.contains(product.id))
-        .take(4)
-        .toList();
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        image: _backgroundImageUrl != null
-            ? DecorationImage(
-                image: NetworkImage(_backgroundImageUrl!),
-                fit: BoxFit.cover,
-                colorFilter: ColorFilter.mode(
-                  Colors.white.withOpacity(0.7),
-                  BlendMode.lighten,
-                ),
-              )
-            : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Seller Info
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.black87,
-                child: Text(
-                  _storeModel!.name.isNotEmpty
-                      ? _storeModel!.name[0].toUpperCase()
-                      : 'S',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _storeModel!.name,
-                      style: const TextStyle(
+  Widget _buildStoreSettings() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Profile Picture Section
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Store Profile Picture',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.black87,
+                      ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'This picture will be displayed as your store\'s profile picture on the seller cards and throughout the app.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    // Current profile picture preview
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.grey.shade200,
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: _profileImageUrl != null &&
+                                _profileImageUrl!.isNotEmpty
+                            ? Image.network(
+                                _profileImageUrl!,
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: Colors.grey.shade300,
+                                    child: Icon(
+                                      Icons.store,
+                                      color: Colors.grey.shade600,
+                                      size: 40,
+                                    ),
+                                  );
+                                },
+                              )
+                            : Container(
+                                color: Colors.grey.shade300,
+                                child: Icon(
+                                  Icons.store,
+                                  color: Colors.grey.shade600,
+                                  size: 40,
+                                ),
+                              ),
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Text(
-                          _storeRating > 0
-                              ? _storeRating.toStringAsFixed(1)
-                              : '0.0',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: Colors.black87,
+                    const SizedBox(width: 20),
+                    // Upload buttons
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: _isUploadingProfileImage
+                                    ? null
+                                    : _selectProfileImage,
+                                icon: _isUploadingProfileImage
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.upload),
+                                label: Text(_profileImageUrl != null &&
+                                        _profileImageUrl!.isNotEmpty
+                                    ? 'Change Picture'
+                                    : 'Upload Picture'),
+                              ),
+                              if (_profileImageUrl != null &&
+                                  _profileImageUrl!.isNotEmpty) ...[
+                                const SizedBox(width: 12),
+                                TextButton.icon(
+                                  onPressed: () async {
+                                    try {
+                                      // Remove profile picture by setting logo to empty string
+                                      await FirebaseFirestore.instance
+                                          .collection('stores')
+                                          .doc(_storeModel!.id)
+                                          .update({'logo': ''});
+
+                                      setState(() {
+                                        _profileImageUrl = '';
+                                        _storeModel =
+                                            _storeModel!.copyWith(logo: '');
+                                      });
+
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                'Profile picture removed')),
+                                      );
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text(
+                                                'Error removing picture: $e')),
+                                      );
+                                    }
+                                  },
+                                  icon: const Icon(Icons.delete,
+                                      color: Colors.red),
+                                  label: const Text('Remove',
+                                      style: TextStyle(color: Colors.red)),
+                                ),
+                              ],
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.star, color: Colors.black87, size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          '($_reviewCount)',
-                          style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 12,
+                          const SizedBox(height: 8),
+                          Text(
+                            'Recommended: Square image, 400x400px or larger',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey.shade600,
+                                    ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const Icon(
-                Icons.more_horiz,
-                color: Colors.black54,
-                size: 24,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // Products Grid
-          if (selectedProducts.isNotEmpty)
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 1,
-              ),
-              itemCount: selectedProducts.length,
-              itemBuilder: (context, index) {
-                return _buildPreviewProductCard(selectedProducts[index]);
-              },
-            )
-          else
-            Container(
-              height: 200,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: Colors.grey.shade300, style: BorderStyle.solid),
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add_shopping_cart, size: 48, color: Colors.grey),
-                    SizedBox(height: 8),
-                    Text(
-                      'Select up to 4 products\nto feature on your card',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          const SizedBox(height: 20),
-
-          // Shop All Button
-          const Row(
-            children: [
-              Text(
-                'Shop all',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              Spacer(),
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Color(0xFFF0F0F0),
-                child: Icon(
-                  Icons.arrow_forward,
-                  size: 20,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPreviewProductCard(ProductModel product) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F8F8),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Stack(
-        children: [
-          // Product Image
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image.network(
-              product.images.isNotEmpty ? product.images.first : '',
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.image, size: 50, color: Colors.grey),
-                );
-              },
+              ],
             ),
           ),
-
-          // Price Tag
-          Positioned(
-            top: 8,
-            left: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '\$${product.price.toStringAsFixed(0)}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
-          ),
-
-          // Heart Icon
-          Positioned(
-            bottom: 8,
-            right: 8,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.favorite_border,
-                size: 16,
-                color: Colors.black54,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 20),
+        _buildCustomizationOptions(),
+      ],
     );
   }
 
@@ -960,7 +711,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        '\$${product.price.toStringAsFixed(0)}',
+                                        '₮${product.price.toStringAsFixed(0)}',
                                         style: TextStyle(
                                           fontSize: 11,
                                           color: Colors.grey.shade600,

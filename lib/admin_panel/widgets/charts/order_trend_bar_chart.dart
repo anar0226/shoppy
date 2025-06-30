@@ -90,7 +90,7 @@ class _OrderTrendBarChartState extends State<OrderTrendBarChart> {
                             ),
                             TextSpan(
                               text:
-                                  'Revenue: \$${(data['revenue'] as double).toStringAsFixed(2)}',
+                                  'Revenue: ₮${(data['revenue'] as double).toStringAsFixed(2)}',
                               style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 12,

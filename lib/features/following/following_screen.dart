@@ -169,7 +169,7 @@ class _EmptyFollowing extends StatelessWidget {
           const SizedBox(height: 16),
           TextButton(
             onPressed: () => Navigator.pushReplacementNamed(context, '/home'),
-            child: const Text('Discover',
+            child: const Text('нүүр хуудаслуу буцах',
                 style: TextStyle(color: Color(0xFF6A5AE0))),
           )
         ],
@@ -202,7 +202,7 @@ class _FollowedStoresGrid extends StatelessWidget {
           .map((p) => SellerProduct(
                 id: p.id,
                 imageUrl: p.images.isNotEmpty ? p.images.first : '',
-                price: '\$${p.price.toStringAsFixed(2)}',
+                price: '₮${p.price.toStringAsFixed(2)}',
               ))
           .toList();
 
@@ -218,6 +218,7 @@ class _FollowedStoresGrid extends StatelessWidget {
         reviews: ratingData.reviewCount,
         products: sellerProducts,
         backgroundImageUrl: store.banner,
+        storeLogoUrl: store.logo, // Add store logo URL
         isAssetBg: false,
       ));
     }
@@ -322,6 +323,7 @@ class _SellerCardWithNav extends StatelessWidget {
       reviews: seller.reviews,
       products: seller.products,
       storeId: seller.storeId,
+      storeLogoUrl: seller.storeLogoUrl, // Pass store logo URL
       onShopAllTap: () => _openStore(context, seller.storeId),
     );
   }

@@ -200,7 +200,8 @@ class _OrdersPageState extends State<OrdersPage> {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('orders')
-          .where('ownerId', isEqualTo: AuthService.instance.currentUser?.uid)
+          .where('vendorId', isEqualTo: AuthService.instance.currentUser?.uid)
+          .orderBy('createdAt', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -218,8 +219,16 @@ class _OrdersPageState extends State<OrdersPage> {
         List<DataRow> rows = docs.map((doc) {
           final data = doc.data();
           final id = doc.id;
-          final customer = data['customerName'] ?? 'Үл мэдэгдэх';
           final email = data['customerEmail'] ?? data['userEmail'] ?? '';
+
+          // Get customer name with fallback logic
+          String customer = data['customerName'] ?? '';
+          if (customer.isEmpty) {
+            // Fallback to email username or placeholder
+            customer =
+                email.isNotEmpty ? email.split('@').first : 'Үл мэдэгдэх';
+          }
+
           final date = (data['createdAt'] as Timestamp?)?.toDate() ??
               (data['date'] as Timestamp?)?.toDate() ??
               DateTime.now();

@@ -216,7 +216,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Та захиалга, xямдрал болон бусад зүйлийн талаар мэдэгдэл хүлээн авах болно',
+                          'Та захиалга, xямдрал болон бусад зүйлийн талаар мэдэгдэл хүлээн авах боломжтой',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[500],

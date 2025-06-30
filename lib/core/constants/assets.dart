@@ -29,6 +29,8 @@ class AppAssets {
   static const String cartIcon = '$_iconsPath/cart.png';
   static const String heartIcon = '$_iconsPath/heart.png';
   static const String shareIcon = '$_iconsPath/share.png';
+  static const String defaultProfilePicture =
+      '$_iconsPath/DefaultProfilePicture.png';
 
   // Banners
   static const String homeBanner = '$_bannersPath/home_banner.png';

@@ -59,7 +59,7 @@ class _RevenueLineChartState extends State<RevenueLineChart> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Total: \$${widget.data.fold<double>(0, (sum, d) => sum + d.revenue).toStringAsFixed(2)}',
+            'Total: ₮${widget.data.fold<double>(0, (sum, d) => sum + d.revenue).toStringAsFixed(2)}',
             style: const TextStyle(
               fontSize: 14,
               color: Colors.grey,
@@ -252,11 +252,11 @@ class _RevenueLineChartState extends State<RevenueLineChart> {
 
   String _formatCurrency(double value) {
     if (value >= 1000000) {
-      return '\$${(value / 1000000).toStringAsFixed(1)}M';
+      return '₮${(value / 1000000).toStringAsFixed(1)}M';
     } else if (value >= 1000) {
-      return '\$${(value / 1000).toStringAsFixed(1)}K';
+      return '₮${(value / 1000).toStringAsFixed(1)}K';
     } else {
-      return '\$${value.toStringAsFixed(0)}';
+      return '₮${value.toStringAsFixed(0)}';
     }
   }
 }

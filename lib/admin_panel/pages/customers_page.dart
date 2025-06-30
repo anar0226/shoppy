@@ -265,7 +265,15 @@ class _CustomersPageState extends State<CustomersPage> {
       final customerEmail = data['customerEmail'] as String? ??
           data['userEmail'] as String? ??
           '';
-      final customerName = data['customerName'] as String? ?? 'Үл мэдэгдэх';
+
+      // Get customer name with fallback logic
+      String customerName = data['customerName'] as String? ?? '';
+      if (customerName.isEmpty) {
+        // Fallback to email username or placeholder
+        customerName = customerEmail.isNotEmpty
+            ? customerEmail.split('@').first
+            : 'Үл мэдэгдэх';
+      }
 
       if (customerEmail.isNotEmpty) {
         if (!customerData.containsKey(customerEmail)) {

@@ -51,7 +51,7 @@ class PayoutRequest {
       amount: (data['amount'] ?? 0).toDouble(),
       platformFee: (data['platformFee'] ?? 0).toDouble(),
       netAmount: (data['netAmount'] ?? 0).toDouble(),
-      currency: data['currency'] ?? 'USD',
+      currency: data['currency'] ?? 'MNT',
       status: PayoutStatus.values.firstWhere(
         (s) => s.name == data['status'],
         orElse: () => PayoutStatus.pending,

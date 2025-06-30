@@ -8,7 +8,11 @@ import 'package:avii/features/discounts/models/discount_model.dart';
 import 'package:avii/features/discounts/services/discount_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-// import 'qpay_checkout_page.dart'; // Removed - using bank transfers
+import 'package:avii/features/orders/services/order_service.dart';
+import 'package:avii/features/cart/models/cart_item.dart';
+import 'package:avii/features/stores/models/store_model.dart';
+import 'package:avii/features/products/models/product_model.dart';
+// import 'qpay_checkout_page.dart'; // Removed - using direct order creation
 import '../../../core/utils/popup_utils.dart';
 
 class CheckoutPage extends StatefulWidget {
@@ -17,7 +21,7 @@ class CheckoutPage extends StatefulWidget {
   final double subtotal;
   final double shippingCost;
   final double tax;
-  final CheckoutItem item;
+  final List<CheckoutItem> items; // Changed from single item to list
 
   const CheckoutPage({
     super.key,
@@ -26,7 +30,7 @@ class CheckoutPage extends StatefulWidget {
     required this.subtotal,
     required this.shippingCost,
     required this.tax,
-    required this.item,
+    required this.items, // Changed from item to items
   });
 
   @override
@@ -36,10 +40,12 @@ class CheckoutPage extends StatefulWidget {
 class _CheckoutPageState extends State<CheckoutPage> {
   final _discountCodeController = TextEditingController();
   final _discountService = DiscountService();
+  final _orderService = OrderService();
 
   DiscountModel? _appliedDiscount;
   bool _isApplyingDiscount = false;
   String? _discountError;
+  bool _isProcessingOrder = false;
 
   double get _discountAmount {
     if (_appliedDiscount == null) return 0.0;
@@ -78,6 +84,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
     });
 
     try {
+      // Check if cart has products from multiple stores
+      final uniqueStoreIds = widget.items
+          .map((item) => item.storeId)
+          .where((storeId) => storeId != null)
+          .toSet();
+
+      if (uniqueStoreIds.length > 1) {
+        setState(() {
+          _discountError =
+              'Хөнгөлөлтийн код зөвхөн нэг дэлгүүрийн бүтээгдэхүүнд хэрэглэж болно';
+        });
+        return;
+      }
+
       // Find the discount by code
       final discountQuery = await FirebaseFirestore.instance
           .collection('discounts')
@@ -88,7 +108,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
       if (discountQuery.docs.isEmpty) {
         setState(() {
-          _discountError = 'Invalid discount code';
+          _discountError = 'Буруу хөнгөлөлтийн код';
         });
         return;
       }
@@ -96,10 +116,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
       final discountDoc = discountQuery.docs.first;
       final discount = DiscountModel.fromFirestore(discountDoc);
 
+      // Check if discount belongs to one of the stores in the cart
+      if (uniqueStoreIds.isNotEmpty &&
+          !uniqueStoreIds.contains(discount.storeId)) {
+        setState(() {
+          _discountError =
+              'Энэ хөнгөлөлтийн код таны сагсны бүтээгдэхүүнд хэрэглэж болохгүй';
+        });
+        return;
+      }
+
       // Check if discount has reached usage limit
       if (discount.currentUseCount >= discount.maxUseCount) {
         setState(() {
-          _discountError = 'This discount code has reached its usage limit';
+          _discountError =
+              'Энэ хөнгөлөлтийн код ашиглах хязгаартаа хүрсэн байна';
         });
         return;
       }
@@ -113,7 +144,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       PopupUtils.showSuccess(
         context: context,
         message:
-            'Хөнгөлөлт амжилттай! хөнгөлөлсөн үнэ: \$${_discountAmount.toStringAsFixed(2)}',
+            'Хөнгөлөлт амжилттай! хөнгөлөлсөн үнэ: ₮${_discountAmount.toStringAsFixed(2)}',
       );
     } catch (e) {
       setState(() {
@@ -134,53 +165,140 @@ class _CheckoutPageState extends State<CheckoutPage> {
     });
   }
 
-  void _showBankTransferInstructions(Map<String, dynamic> orderData,
-      String customerEmail, Map<String, dynamic> deliveryAddress) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Банкны шилжүүлэг'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Дараах данс руу шилжүүлэг хийнэ үү:'),
-            const SizedBox(height: 16),
-            const Text('Банк: Худалдаа Хөгжлийн Банк (TDB)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            const Text('Данс: 123456789012'),
-            const Text('Данс эзэн: Shoppy Marketplace'),
-            const SizedBox(height: 16),
-            Text('Дүн: \$${orderData['total'].toStringAsFixed(2)}',
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 16),
-            const Text('Шилжүүлгийн утга: Захиалгын дугаар, таны нэр'),
-            const SizedBox(height: 16),
-            const Text(
-                'Анхааруулга: Шилжүүлэг хийсний дараа баримтын зургийг бидэнтэй хуваалцана уу.',
-                style: TextStyle(fontSize: 12, color: Colors.orange)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Хаах'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              PopupUtils.showSuccess(
-                context: context,
-                message:
-                    'Захиалга үүсгэгдлээ. Банкны шилжүүлэг хийснийхээ дараа холбогдоно уу.',
-              );
-            },
-            child: const Text('Ойлголоо'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _createOrder(
+    Map<String, dynamic> orderData,
+    String customerEmail,
+    Map<String, dynamic> deliveryAddress,
+  ) async {
+    setState(() {
+      _isProcessingOrder = true;
+    });
+
+    try {
+      final user = FirebaseAuth.instance.currentUser!;
+
+      // Get default store ID - using a placeholder for now
+      // In a real app, this would be determined by the cart items
+      const String defaultStoreId = 'default-store';
+
+      // Try to get store from Firestore, create a default one if it doesn't exist
+      StoreModel store;
+      try {
+        final storeDoc = await FirebaseFirestore.instance
+            .collection('stores')
+            .doc(defaultStoreId)
+            .get();
+
+        if (storeDoc.exists) {
+          store = StoreModel.fromFirestore(storeDoc);
+        } else {
+          // Create a default store
+          final defaultStoreData = {
+            'name': 'Shoppy Store',
+            'description': 'Default store for testing',
+            'banner': '',
+            'logo': '',
+            'isActive': true,
+            'createdAt': FieldValue.serverTimestamp(),
+          };
+
+          await FirebaseFirestore.instance
+              .collection('stores')
+              .doc(defaultStoreId)
+              .set(defaultStoreData);
+
+          store = StoreModel(
+            id: defaultStoreId,
+            name: 'Shoppy Store',
+            description: 'Default store for testing',
+            banner: '',
+            logo: '',
+            ownerId: 'default-owner',
+            status: 'active',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+            settings: {},
+          );
+        }
+      } catch (e) {
+        // Fallback store
+        store = StoreModel(
+          id: defaultStoreId,
+          name: 'Shoppy Store',
+          description: 'Default store for testing',
+          banner: '',
+          logo: '',
+          ownerId: 'default-owner',
+          status: 'active',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+          settings: {},
+        );
+      }
+
+      // Convert checkout items to cart items
+      final cartItems = widget.items
+          .map((item) => CartItem(
+                product: ProductModel(
+                  id: 'checkout-product-${DateTime.now().millisecondsSinceEpoch}-${widget.items.indexOf(item)}',
+                  storeId: defaultStoreId,
+                  name: item.name,
+                  description: 'Product from checkout',
+                  price: item.price,
+                  images: [item.imageUrl],
+                  category: 'General',
+                  stock: 1,
+                  variants: [],
+                  isActive: true,
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                ),
+                quantity: 1,
+                variant: item.variant.isNotEmpty ? item.variant : null,
+              ))
+          .toList();
+
+      // Create the order using OrderService
+      await _orderService.createOrder(
+        user: user,
+        subtotal: widget.subtotal,
+        shipping: _appliedDiscount?.type == DiscountType.freeShipping
+            ? 0
+            : widget.shippingCost,
+        tax: widget.tax,
+        cart: cartItems,
+        store: store,
+      );
+
+      // Show success message
+      PopupUtils.showSuccess(
+        context: context,
+        message:
+            'Захиалга амжилттай үүсгэгдлээ! Таны захиалгыг боловсруулж байна.',
+      );
+
+      // Navigate to orders page after a short delay
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/orders',
+            (route) => route.isFirst,
+          );
+        }
+      });
+    } catch (e) {
+      // Show error message
+      PopupUtils.showError(
+        context: context,
+        message: 'Захиалга үүсгэхэд алдаа гарлаа: $e',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessingOrder = false;
+        });
+      }
+    }
   }
 
   @override
@@ -233,7 +351,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 const SizedBox(height: 12),
                 _paymentOptionTile(
                     title: '4 хуваан төлөx',
-                    subtitle: '\$${(_finalTotal / 4).toStringAsFixed(2)}',
+                    subtitle: '₮${(_finalTotal / 4).toStringAsFixed(2)}',
                     selected: false),
                 const SizedBox(height: 24),
 
@@ -282,85 +400,97 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      onPressed: () async {
-                        // Check if user is authenticated
-                        final user = FirebaseAuth.instance.currentUser;
-                        if (user == null) {
-                          PopupUtils.showError(
-                            context: context,
-                            message: 'Please log in to continue with payment',
-                          );
-                          return;
-                        }
+                      onPressed: _isProcessingOrder
+                          ? null
+                          : () async {
+                              // Check if user is authenticated
+                              final user = FirebaseAuth.instance.currentUser;
+                              if (user == null) {
+                                PopupUtils.showError(
+                                  context: context,
+                                  message:
+                                      'Please log in to continue with payment',
+                                );
+                                return;
+                              }
 
-                        // Check if shipping address is provided
-                        final addressProvider = Provider.of<AddressProvider>(
-                            context,
-                            listen: false);
-                        if (addressProvider.addresses.isEmpty) {
-                          PopupUtils.showError(
-                            context: context,
-                            message: 'Хүргэлтийн хаяг оруулна уу',
-                          );
-                          return;
-                        }
+                              // Check if shipping address is provided
+                              final addressProvider =
+                                  Provider.of<AddressProvider>(context,
+                                      listen: false);
+                              if (addressProvider.addresses.isEmpty) {
+                                PopupUtils.showError(
+                                  context: context,
+                                  message: 'Хүргэлтийн хаяг оруулна уу',
+                                );
+                                return;
+                              }
 
-                        // Increment discount usage if discount was applied
-                        if (_appliedDiscount != null) {
-                          try {
-                            await _discountService
-                                .incrementUsageCount(_appliedDiscount!.id);
-                          } catch (e) {
-                            // Handle error silently for now
-                          }
-                        }
+                              // Increment discount usage if discount was applied
+                              if (_appliedDiscount != null) {
+                                try {
+                                  await _discountService.incrementUsageCount(
+                                      _appliedDiscount!.id);
+                                } catch (e) {
+                                  // Handle error silently for now
+                                }
+                              }
 
-                        // Prepare order data for QPay
-                        final orderData = {
-                          'items': [
-                            {
-                              'name': widget.item.name,
-                              'variant': widget.item.variant,
-                              'price': widget.item.price,
-                              'imageUrl': widget.item.imageUrl,
-                            }
-                          ],
-                          'subtotal': widget.subtotal,
-                          'shipping': _appliedDiscount?.type ==
-                                  DiscountType.freeShipping
-                              ? 0
-                              : widget.shippingCost,
-                          'tax': widget.tax,
-                          'total': _finalTotal,
-                          'discountAmount': _discountAmount,
-                          'discountCode': _appliedDiscount?.code,
-                        };
+                              // Prepare order data for QPay
+                              final orderData = {
+                                'items': widget.items
+                                    .map((item) => {
+                                          'name': item.name,
+                                          'variant': item.variant,
+                                          'price': item.price,
+                                          'imageUrl': item.imageUrl,
+                                        })
+                                    .toList(),
+                                'subtotal': widget.subtotal,
+                                'shipping': _appliedDiscount?.type ==
+                                        DiscountType.freeShipping
+                                    ? 0
+                                    : widget.shippingCost,
+                                'tax': widget.tax,
+                                'total': _finalTotal,
+                                'discountAmount': _discountAmount,
+                                'discountCode': _appliedDiscount?.code,
+                              };
 
-                        // Get shipping address
-                        final shippingAddress =
-                            addressProvider.defaultAddress ??
-                                addressProvider.addresses.first;
-                        final deliveryAddress = {
-                          'fullAddress': shippingAddress.formatted(),
-                          'firstName': shippingAddress.firstName,
-                          'lastName': shippingAddress.lastName,
-                          'line1': shippingAddress.line1,
-                          'apartment': shippingAddress.apartment,
-                          'phone': shippingAddress.phone,
-                        };
+                              // Get shipping address
+                              final shippingAddress =
+                                  addressProvider.defaultAddress ??
+                                      addressProvider.addresses.first;
+                              final deliveryAddress = {
+                                'fullAddress': shippingAddress.formatted(),
+                                'firstName': shippingAddress.firstName,
+                                'lastName': shippingAddress.lastName,
+                                'line1': shippingAddress.line1,
+                                'apartment': shippingAddress.apartment,
+                                'phone': shippingAddress.phone,
+                              };
 
-                        // Show bank transfer instructions
-                        _showBankTransferInstructions(
-                            orderData, user.email ?? '', deliveryAddress);
-                      },
-                      child: Text(
-                        'Төлөх дүн: \$${_finalTotal.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
+                              // Create the order directly
+                              await _createOrder(
+                                  orderData, user.email ?? '', deliveryAddress);
+                            },
+                      child: _isProcessingOrder
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              'Төлөх дүн: ₮${_finalTotal.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
                   ),
                 ),
@@ -415,35 +545,43 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Widget _orderItemRow() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: widget.item.imageUrl.startsWith('http')
-              ? Image.network(widget.item.imageUrl,
-                  width: 64, height: 64, fit: BoxFit.cover)
-              : Image.asset(widget.item.imageUrl,
-                  width: 64, height: 64, fit: BoxFit.cover),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(widget.item.name.toUpperCase(),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis),
-              Text(widget.item.variant,
-                  style: const TextStyle(color: Colors.grey)),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text('\$${widget.item.price.toStringAsFixed(2)}',
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-      ],
+    return Column(
+      children: widget.items
+          .map((item) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: item.imageUrl.startsWith('http')
+                          ? Image.network(item.imageUrl,
+                              width: 64, height: 64, fit: BoxFit.cover)
+                          : Image.asset(item.imageUrl,
+                              width: 64, height: 64, fit: BoxFit.cover),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item.name.toUpperCase(),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                          Text(item.variant,
+                              style: const TextStyle(color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('₮${item.price.toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ))
+          .toList(),
     );
   }
 
@@ -554,7 +692,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           Text(
             label == 'Shipping' && value == 0
                 ? 'FREE'
-                : '\$${value.toStringAsFixed(2)}',
+                : '₮${value.toStringAsFixed(2)}',
             style: TextStyle(
                 fontSize: isTotal ? 18 : 16,
                 fontWeight: isTotal ? FontWeight.bold : FontWeight.normal),

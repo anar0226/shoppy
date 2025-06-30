@@ -67,7 +67,7 @@ class _DashboardPageState extends State<DashboardPage> {
         });
         commissionData = Map<String, dynamic>.from(result.data);
       } catch (commissionError) {
-        print('Error loading commission data: $commissionError');
+        // Error loading commission data
         // Fallback to basic calculation if commission system isn't set up yet
         commissionData = {
           'summary': {
@@ -128,7 +128,7 @@ class _DashboardPageState extends State<DashboardPage> {
         });
       }
     } catch (e) {
-      print('Error loading platform stats: $e');
+      // Error loading platform stats
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -415,7 +415,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                     fontWeight: FontWeight.w600),
                               ),
                               Text(
-                                '$orders orders • \$${revenue.toStringAsFixed(2)} revenue',
+                                '$orders orders • ₮${revenue.toStringAsFixed(2)} revenue',
                                 style: TextStyle(
                                     fontSize: 12, color: Colors.grey.shade600),
                               ),
@@ -423,7 +423,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         ),
                         Text(
-                          '\$${commission.toStringAsFixed(2)}',
+                          '₮${commission.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.green,

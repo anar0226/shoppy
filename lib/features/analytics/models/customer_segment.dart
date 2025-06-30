@@ -42,9 +42,9 @@ class CustomerSegment {
   }
 
   String get formattedPercentage => '${percentage.toStringAsFixed(1)}%';
-  String get formattedRevenue => '\$${totalRevenue.toStringAsFixed(2)}';
+  String get formattedRevenue => '₮${totalRevenue.toStringAsFixed(2)}';
   String get formattedAverageOrderValue =>
-      '\$${averageOrderValue.toStringAsFixed(2)}';
+      '₮${averageOrderValue.toStringAsFixed(2)}';
 }
 
 enum CustomerSegmentType {

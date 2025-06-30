@@ -52,8 +52,8 @@ class TopProduct {
   }
 
   // Helper methods for UI display
-  String get formattedRevenue => '\$${revenue.toStringAsFixed(2)}';
-  String get formattedPrice => '\$${price.toStringAsFixed(2)}';
+  String get formattedRevenue => '₮${revenue.toStringAsFixed(2)}';
+  String get formattedPrice => '₮${price.toStringAsFixed(2)}';
   String get unitsSoldText => '$unitsSold sold';
   String get conversionRateText => '${conversionRate.toStringAsFixed(1)}%';
 
@@ -108,7 +108,7 @@ class CategoryPerformance {
     };
   }
 
-  String get formattedRevenue => '\$${totalRevenue.toStringAsFixed(2)}';
-  String get formattedAveragePrice => '\$${averagePrice.toStringAsFixed(2)}';
+  String get formattedRevenue => '₮${totalRevenue.toStringAsFixed(2)}';
+  String get formattedAveragePrice => '₮${averagePrice.toStringAsFixed(2)}';
   String get conversionRateText => '${conversionRate.toStringAsFixed(1)}%';
 }

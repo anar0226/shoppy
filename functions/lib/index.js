@@ -195,7 +195,7 @@ exports.checkQPayPaymentStatus = functions.https.onCall(async (data, context) =>
 });
 // Function to create order after successful payment
 exports.createOrder = functions.https.onCall(async (data, context) => {
-    var _a;
+    var _a, _b, _c, _d;
     try {
         // Verify user is authenticated
         if (!context.auth) {
@@ -215,10 +215,36 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
             throw new functions.https.HttpsError('not-found', 'Store not found');
         }
         const vendorId = (_a = storeDoc.data()) === null || _a === void 0 ? void 0 : _a.ownerId;
+        // Get customer name from user profile
+        let customerName = 'Үйлчлүүлэгч';
+        try {
+            const userDoc = await admin.firestore().collection('users').doc(context.auth.uid).get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                customerName = (userData === null || userData === void 0 ? void 0 : userData.displayName) ||
+                    (userData === null || userData === void 0 ? void 0 : userData.firstName) ||
+                    (userData === null || userData === void 0 ? void 0 : userData.name) ||
+                    context.auth.token.name ||
+                    ((_b = context.auth.token.email) === null || _b === void 0 ? void 0 : _b.split('@')[0]) ||
+                    'Үйлчлүүлэгч';
+            }
+            else {
+                customerName = context.auth.token.name ||
+                    ((_c = context.auth.token.email) === null || _c === void 0 ? void 0 : _c.split('@')[0]) ||
+                    'Үйлчлүүлэгч';
+            }
+        }
+        catch (e) {
+            // Fallback if user data fetch fails
+            customerName = context.auth.token.name ||
+                ((_d = context.auth.token.email) === null || _d === void 0 ? void 0 : _d.split('@')[0]) ||
+                'Үйлчлүүлэгч';
+        }
         // Create order document
         const orderData = {
             userId: context.auth.uid,
             userEmail: email || context.auth.token.email,
+            customerName: customerName,
             items: items,
             total: total,
             subtotal: subtotal,
@@ -794,7 +820,7 @@ exports.processScheduledPayouts = functions.pubsub.schedule('0 10 * * *')
                             amount: payoutAmount,
                             platformFee,
                             netAmount,
-                            currency: 'USD',
+                            currency: 'MNT',
                             status: 'scheduled',
                             method: schedule.method,
                             bankAccount: schedule.bankAccount,

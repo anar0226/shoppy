@@ -20,6 +20,7 @@ import 'features/home/domain/models.dart';
 import 'features/home/presentation/widgets/seller_card.dart';
 import 'features/saved/saved_screen.dart';
 import 'features/orders/presentation/order_detail_page.dart';
+import 'features/orders/presentation/order_tracking_page.dart';
 import 'search/women/women_category_page.dart';
 import 'search/men/men_category_page.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -49,9 +50,9 @@ Future<void> _initializePaymentServices() async {
       ubcabProduction: false,
     );
 
-    debugPrint('✅ Payment services initialized successfully');
+    // Payment services initialized successfully
   } catch (e) {
-    debugPrint('❌ Failed to initialize payment services: $e');
+    // Failed to initialize payment services
     // Don't throw error to allow app to continue running
     // Payment functionality will show error messages when used
   }
@@ -142,7 +143,7 @@ class _ShopUBAppState extends State<ShopUBApp> {
         );
       }
     } catch (e) {
-      debugPrint('Error navigating to product: $e');
+      // Error navigating to product
     }
   }
 
@@ -385,30 +386,30 @@ class _SearchScreenState extends State<SearchScreen> {
 
     try {
       final results = <SearchResult>[];
-      print('🔍 Searching for: "$query"');
+      // Searching for query
 
       // Search products
       if (_selectedFilter == 'Бүгд' || _selectedFilter == 'Бүтээгдэхүүн') {
         final productResults = await _searchProducts(query);
         results.addAll(productResults);
-        print('📦 Found ${productResults.length} products');
+        // Found products
       }
 
       // Search stores
       if (_selectedFilter == 'Бүгд' || _selectedFilter == 'Дэлгүүр') {
         final storeResults = await _searchStores(query);
         results.addAll(storeResults);
-        print('🏪 Found ${storeResults.length} stores');
+        // Found stores
       }
 
-      print('📊 Total results: ${results.length}');
+      // Total results processed
 
       setState(() {
         _searchResults = results;
         _isSearching = false;
       });
     } catch (e) {
-      print('❌ Search error: $e');
+      // Search error occurred
       setState(() {
         _isSearching = false;
       });
@@ -453,7 +454,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ));
           }
         } catch (e) {
-          print('Error processing product ${doc.id}: $e');
+          // Error processing product
         }
       }
 
@@ -484,7 +485,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ));
             }
           } catch (e) {
-            print('Error processing product ${doc.id}: $e');
+            // Error processing product
           }
         }
       }
@@ -522,13 +523,13 @@ class _SearchScreenState extends State<SearchScreen> {
                 }
               }
             } catch (e) {
-              print('Error processing product ${doc.id}: $e');
+              // Error processing product
             }
           }
         }
       }
     } catch (e) {
-      print('Error searching products: $e');
+      // Error searching products
     }
 
     // Remove duplicates and limit results
@@ -573,7 +574,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ));
           }
         } catch (e) {
-          print('Error processing store ${doc.id}: $e');
+          // Error processing store
         }
       }
 
@@ -603,7 +604,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ));
             }
           } catch (e) {
-            print('Error processing store ${doc.id}: $e');
+            // Error processing store
           }
         }
       }
@@ -637,13 +638,13 @@ class _SearchScreenState extends State<SearchScreen> {
                 }
               }
             } catch (e) {
-              print('Error processing store ${doc.id}: $e');
+              // Error processing store
             }
           }
         }
       }
     } catch (e) {
-      print('Error searching stores: $e');
+      // Error searching stores
     }
 
     // Remove duplicates and limit results
@@ -1353,7 +1354,7 @@ class OrdersScreen extends StatelessWidget {
           ),
           SizedBox(height: 8),
           Text(
-            'Таны анхны захиалгыг хийж эхлээрэй!',
+            'Таны захиалсан бараанууд энд харагдана',
             style: TextStyle(
               color: Colors.grey,
             ),
@@ -1422,18 +1423,21 @@ class OrdersScreen extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    // Store profile picture
+                    // Store profile picture (square format)
                     Container(
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(8),
                         color: Colors.grey.shade200,
                       ),
-                      child: storeImage.isNotEmpty
-                          ? ClipOval(
-                              child: Image.network(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: storeImage.isNotEmpty
+                            ? Image.network(
                                 storeImage,
+                                width: 40,
+                                height: 40,
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) {
                                   return Icon(
@@ -1442,13 +1446,13 @@ class OrdersScreen extends StatelessWidget {
                                     size: 20,
                                   );
                                 },
+                              )
+                            : Icon(
+                                Icons.store,
+                                color: Colors.grey.shade600,
+                                size: 20,
                               ),
-                            )
-                          : Icon(
-                              Icons.store,
-                              color: Colors.grey.shade600,
-                              size: 20,
-                            ),
+                      ),
                     ),
                     const SizedBox(width: 12),
 
@@ -1503,7 +1507,7 @@ class OrdersScreen extends StatelessWidget {
             ),
             itemBuilder: (context, index) {
               final item = items[index];
-              return _buildProductItem(context, item, order.id, storeId);
+              return _buildProductItem(context, item, order.id, storeId, order);
             },
           ),
         ],
@@ -1512,7 +1516,7 @@ class OrdersScreen extends StatelessWidget {
   }
 
   Widget _buildProductItem(BuildContext context, Map<String, dynamic> item,
-      String orderId, String storeId) {
+      String orderId, String storeId, QueryDocumentSnapshot order) {
     final productName = item['name'] ?? 'Бүтээгдэхүүн';
     final price = TypeUtils.safeCastDouble(item['price'], defaultValue: 0.0);
     final quantity = TypeUtils.safeCastInt(item['quantity'], defaultValue: 1);
@@ -1615,26 +1619,65 @@ class OrdersScreen extends StatelessWidget {
                 ],
                 const SizedBox(height: 8),
 
-                // Review button - moved to where variant was
-                GestureDetector(
-                  onTap: () =>
-                      _navigateToReview(context, productId, orderId, storeId),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'Үнэлгээ',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                // Action buttons
+                Row(
+                  children: [
+                    // Track Order button
+                    GestureDetector(
+                      onTap: () => _navigateToOrderTracking(context, order),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.track_changes,
+                              size: 16,
+                              color: Colors.blue.shade700,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Хянах',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+
+                    const SizedBox(width: 8),
+
+                    // Review button
+                    GestureDetector(
+                      onTap: () => _navigateToReview(
+                          context, productId, orderId, storeId),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Үнэлгээ',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1669,6 +1712,16 @@ class OrdersScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
+            // Track order option
+            ListTile(
+              leading: const Icon(Icons.track_changes, color: Colors.black87),
+              title: const Text('Захиалга хянах'),
+              onTap: () {
+                Navigator.pop(context);
+                _navigateToOrderTracking(context, order);
+              },
+            ),
+
             // Receipt option
             ListTile(
               leading: const Icon(Icons.receipt_long, color: Colors.black87),
@@ -1690,6 +1743,16 @@ class OrdersScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _navigateToOrderTracking(
+      BuildContext context, QueryDocumentSnapshot order) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OrderTrackingPage(order: order),
       ),
     );
   }

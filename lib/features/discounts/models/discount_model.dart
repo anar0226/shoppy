@@ -84,7 +84,7 @@ class DiscountModel {
       case DiscountType.percentage:
         return '${value.toStringAsFixed(1)}%';
       case DiscountType.fixedAmount:
-        return '\$${value.toStringAsFixed(2)}';
+        return '₮${value.toStringAsFixed(2)}';
     }
   }
 

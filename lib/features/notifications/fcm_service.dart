@@ -56,9 +56,9 @@ class FCMService {
       _setupMessageListeners();
 
       _isInitialized = true;
-      debugPrint('✅ FCM Service initialized successfully');
+      // FCM Service initialized successfully
     } catch (e) {
-      debugPrint('❌ Error initializing FCM Service: $e');
+      // Error initializing FCM Service
     }
   }
 
@@ -132,10 +132,10 @@ class FCMService {
       _currentToken = await _firebaseMessaging.getToken();
       if (_currentToken != null) {
         await _saveTokenToFirestore(_currentToken!);
-        debugPrint('📱 FCM Token: $_currentToken');
+        // FCM Token retrieved
       }
     } catch (e) {
-      debugPrint('❌ Error getting FCM token: $e');
+      // Error getting FCM token
     }
   }
 
@@ -166,9 +166,9 @@ class FCMService {
         'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
       });
 
-      debugPrint('💾 FCM token saved to Firestore');
+      // FCM token saved to Firestore
     } catch (e) {
-      debugPrint('❌ Error saving FCM token: $e');
+      // Error saving FCM token
     }
   }
 
@@ -189,7 +189,7 @@ class FCMService {
 
   /// Handle foreground messages
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    debugPrint('🔔 Foreground message received: ${message.messageId}');
+    // Foreground message received
 
     final notification = message.notification;
     final data = message.data;
@@ -209,7 +209,7 @@ class FCMService {
 
   /// Handle background message tap
   void _handleBackgroundMessageTap(RemoteMessage message) {
-    debugPrint('🔔 Background message tapped: ${message.messageId}');
+    // Background message tapped
     _navigateFromNotification(message.data);
   }
 
@@ -218,7 +218,7 @@ class FCMService {
     final RemoteMessage? initialMessage =
         await _firebaseMessaging.getInitialMessage();
     if (initialMessage != null) {
-      debugPrint('🔔 Initial message: ${initialMessage.messageId}');
+      // Initial message received
       _navigateFromNotification(initialMessage.data);
     }
   }
@@ -227,7 +227,7 @@ class FCMService {
   void _onTokenRefresh(String token) {
     _currentToken = token;
     _saveTokenToFirestore(token);
-    debugPrint('🔄 FCM token refreshed: $token');
+    // FCM token refreshed
   }
 
   /// Show local notification
@@ -283,7 +283,7 @@ class FCMService {
         final data = jsonDecode(response.payload!) as Map<String, dynamic>;
         _navigateFromNotification(data);
       } catch (e) {
-        debugPrint('❌ Error parsing notification payload: $e');
+        // Error parsing notification payload
       }
     }
   }
@@ -305,7 +305,7 @@ class FCMService {
         'timestamp': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      debugPrint('❌ Error processing notification data: $e');
+      // Error processing notification data
     }
   }
 
@@ -354,7 +354,7 @@ class FCMService {
         'timestamp': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      debugPrint('❌ Error tracking notification tap: $e');
+      // Error tracking notification tap
     }
   }
 
@@ -373,7 +373,7 @@ class FCMService {
           .get();
 
       if (!userDoc.exists) {
-        debugPrint('❌ User not found: $userId');
+        // User not found
         return;
       }
 
@@ -381,7 +381,7 @@ class FCMService {
       final fcmToken = userData['fcmToken'] as String?;
 
       if (fcmToken == null || fcmToken.isEmpty) {
-        debugPrint('❌ No FCM token found for user: $userId');
+        // No FCM token found for user
         return;
       }
 
@@ -404,9 +404,9 @@ class FCMService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      debugPrint('📤 Push notification queued for user: $userId');
+      // Push notification queued for user
     } catch (e) {
-      debugPrint('❌ Error sending push notification: $e');
+      // Error sending push notification
     }
   }
 
@@ -455,9 +455,9 @@ class FCMService {
   Future<void> subscribeToTopic(String topic) async {
     try {
       await _firebaseMessaging.subscribeToTopic(topic);
-      debugPrint('✅ Subscribed to topic: $topic');
+      // Subscribed to topic
     } catch (e) {
-      debugPrint('❌ Error subscribing to topic: $e');
+      // Error subscribing to topic
     }
   }
 
@@ -465,16 +465,16 @@ class FCMService {
   Future<void> unsubscribeFromTopic(String topic) async {
     try {
       await _firebaseMessaging.unsubscribeFromTopic(topic);
-      debugPrint('✅ Unsubscribed from topic: $topic');
+      // Unsubscribed from topic
     } catch (e) {
-      debugPrint('❌ Error unsubscribing from topic: $e');
+      // Error unsubscribing from topic
     }
   }
 
   /// Clear notification badges (iOS)
   Future<void> clearBadge() async {
     // Badge clearing functionality will be implemented later
-    debugPrint('📛 Badge clearing requested');
+    // Badge clearing requested
   }
 
   /// Dispose resources
@@ -486,7 +486,7 @@ class FCMService {
 // Background message handler (must be top-level function)
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint('🔔 Background message received: ${message.messageId}');
+  // Background message received
 
   // Process background message
   // Add any background processing logic here

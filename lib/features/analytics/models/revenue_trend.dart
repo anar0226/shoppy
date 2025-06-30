@@ -42,7 +42,7 @@ class RevenueTrend {
   }
 
   // Helper methods for chart formatting
-  String get formattedRevenue => '\$${revenue.toStringAsFixed(2)}';
+  String get formattedRevenue => '₮${revenue.toStringAsFixed(2)}';
   String get shortPeriod {
     if (period.length > 10) {
       // For monthly data like "2024-01", return "Jan"

@@ -80,7 +80,7 @@ void showEditProfilePopup(
                 const SizedBox(height: 16),
                 // Info text
                 const Text(
-                  "Your photo and display name will be shown with content you post to the app.",
+                  "Профайл зургаа эсвэл нэрээ өөрчлөх үү?",
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.black54),
                 ),

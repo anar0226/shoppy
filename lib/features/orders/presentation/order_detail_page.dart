@@ -18,7 +18,7 @@ class OrderDetailPage extends StatelessWidget {
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Review your order'),
+        title: const Text('Та захиалгаа шалгана уу'),
       ),
       body: SafeArea(
         child: Padding(

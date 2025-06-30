@@ -16,66 +16,44 @@ class SuperAdminAuthServiceDebug {
   // Debug version of login with detailed logging
   Future<bool> loginDebug(String email, String password) async {
     try {
-      debugPrint('🔍 DEBUG: Starting login process...');
-      debugPrint('🔍 DEBUG: Email: $email');
+      // Starting login process
 
       // Step 1: Firebase Auth
-      debugPrint('🔍 DEBUG: Step 1 - Attempting Firebase Auth login...');
       final credential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
       if (credential.user == null) {
-        debugPrint('❌ DEBUG: Firebase Auth returned null user');
+        // Firebase Auth returned null user
         return false;
       }
 
       final user = credential.user!;
-      debugPrint('✅ DEBUG: Firebase Auth successful');
-      debugPrint('🔍 DEBUG: User UID: ${user.uid}');
-      debugPrint('🔍 DEBUG: User Email: ${user.email}');
+      // Firebase Auth successful
 
       // Step 2: Firestore Document Check
-      debugPrint('🔍 DEBUG: Step 2 - Checking Firestore document...');
-      debugPrint('🔍 DEBUG: Looking for document: super_admins/${user.uid}');
 
       final userDoc =
           await _firestore.collection('super_admins').doc(user.uid).get();
 
-      debugPrint('🔍 DEBUG: Document exists: ${userDoc.exists}');
-
       if (!userDoc.exists) {
-        debugPrint(
-            '❌ DEBUG: No super_admins document found for UID: ${user.uid}');
-        debugPrint(
-            '❌ DEBUG: Expected document ID: rbA5yLk0vadvSWarOpzYW1bRRUz1');
-        debugPrint('❌ DEBUG: Actual UID: ${user.uid}');
-        debugPrint(
-            '❌ DEBUG: UIDs match: ${user.uid == "rbA5yLk0vadvSWarOpzYW1bRRUz1"}');
+        // No super_admins document found
         await _auth.signOut();
         return false;
       }
 
       // Step 3: Document Data Check
       final data = userDoc.data();
-      debugPrint('🔍 DEBUG: Document data: $data');
-
       final isActive = data?['isActive'];
-      debugPrint('🔍 DEBUG: isActive value: $isActive');
-      debugPrint('🔍 DEBUG: isActive type: ${isActive.runtimeType}');
-      debugPrint('🔍 DEBUG: isActive == true: ${isActive == true}');
-      debugPrint('🔍 DEBUG: isActive ?? false: ${isActive ?? false}');
 
       if (!(isActive ?? false)) {
-        debugPrint('❌ DEBUG: isActive check failed');
-        debugPrint('❌ DEBUG: isActive value: $isActive');
-        debugPrint('❌ DEBUG: isActive is not true');
+        // isActive check failed
         await _auth.signOut();
         return false;
       }
 
-      debugPrint('✅ DEBUG: All checks passed - login successful!');
+      // All checks passed - login successful
 
       // Log admin activity (optional for debug)
       try {
@@ -88,16 +66,14 @@ class SuperAdminAuthServiceDebug {
           },
           'timestamp': FieldValue.serverTimestamp(),
         });
-        debugPrint('✅ DEBUG: Activity logged successfully');
+        // Activity logged successfully
       } catch (e) {
-        debugPrint('⚠️ DEBUG: Failed to log activity: $e');
+        // Failed to log activity
       }
 
       return true;
     } catch (e) {
-      debugPrint('❌ DEBUG: Login failed with error: $e');
-      debugPrint('❌ DEBUG: Error type: ${e.runtimeType}');
-      debugPrint('❌ DEBUG: Error details: ${e.toString()}');
+      // Login failed
       return false;
     }
   }
@@ -106,12 +82,12 @@ class SuperAdminAuthServiceDebug {
   Future<bool> isAuthenticated() async {
     final user = _auth.currentUser;
     if (user == null) {
-      debugPrint('🔍 DEBUG: No current user');
+      // No current user
       return false;
     }
 
     try {
-      debugPrint('🔍 DEBUG: Checking authentication for user: ${user.uid}');
+      // Checking authentication for user
 
       // Check if user has super admin role
       final userDoc =
@@ -120,13 +96,9 @@ class SuperAdminAuthServiceDebug {
       final exists = userDoc.exists;
       final isActive = userDoc.data()?['isActive'] ?? false;
 
-      debugPrint('🔍 DEBUG: Document exists: $exists');
-      debugPrint('🔍 DEBUG: isActive: $isActive');
-      debugPrint('🔍 DEBUG: Authentication result: ${exists && isActive}');
-
       return exists && isActive;
     } catch (e) {
-      debugPrint('❌ DEBUG: Authentication check failed: $e');
+      // Authentication check failed
       return false;
     }
   }

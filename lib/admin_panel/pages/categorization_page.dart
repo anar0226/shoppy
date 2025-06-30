@@ -783,7 +783,7 @@ class _ManageProductsDialogState extends State<ManageProductsDialog> {
                             return CheckboxListTile(
                               title: Text(product.name),
                               subtitle:
-                                  Text('\$${product.price.toStringAsFixed(2)}'),
+                                  Text('₮${product.price.toStringAsFixed(2)}'),
                               secondary: product.images.isNotEmpty
                                   ? ClipRRect(
                                       borderRadius: BorderRadius.circular(4),

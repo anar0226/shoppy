@@ -85,7 +85,7 @@ class FirestoreStoreScreen extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(p.name,
                           maxLines: 1, overflow: TextOverflow.ellipsis),
-                      Text('\$${p.price.toStringAsFixed(2)}',
+                      Text('₮${p.price.toStringAsFixed(2)}',
                           style: const TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   );

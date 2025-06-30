@@ -735,7 +735,7 @@ class _AddEditCollectionDialogState extends State<AddEditCollectionDialog> {
                               return CheckboxListTile(
                                 title: Text(product.name),
                                 subtitle: Text(
-                                    '\$${product.price.toStringAsFixed(2)}'),
+                                    '₮${product.price.toStringAsFixed(2)}'),
                                 value: isSelected,
                                 onChanged: (selected) {
                                   setState(() {

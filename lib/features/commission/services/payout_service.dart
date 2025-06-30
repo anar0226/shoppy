@@ -59,7 +59,7 @@ class PayoutService {
         amount: amount,
         platformFee: platformFee,
         netAmount: netAmount,
-        currency: 'USD',
+        currency: 'MNT',
         status: PayoutStatus.pending,
         method: method,
         bankAccount: bankAccount,

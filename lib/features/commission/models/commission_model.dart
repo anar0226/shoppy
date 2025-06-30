@@ -213,9 +213,9 @@ class CommissionTransaction {
   double get commissionPercentage =>
       orderTotal > 0 ? (commissionAmount / orderTotal) * 100 : 0;
   String get formattedCommissionAmount =>
-      '\$${commissionAmount.toStringAsFixed(2)}';
-  String get formattedVendorAmount => '\$${vendorAmount.toStringAsFixed(2)}';
-  String get formattedOrderTotal => '\$${orderTotal.toStringAsFixed(2)}';
+      '₮${commissionAmount.toStringAsFixed(2)}';
+  String get formattedVendorAmount => '₮${vendorAmount.toStringAsFixed(2)}';
+  String get formattedOrderTotal => '₮${orderTotal.toStringAsFixed(2)}';
   bool get isPaid => status == CommissionStatus.paid;
   bool get isPending => status == CommissionStatus.pending;
 }
@@ -273,11 +273,11 @@ class CommissionSummary {
 
   // Helper methods
   String get formattedTotalCommission =>
-      '\$${totalCommissionEarned.toStringAsFixed(2)}';
+      '₮${totalCommissionEarned.toStringAsFixed(2)}';
   String get formattedPendingCommissions =>
-      '\$${pendingCommissions.toStringAsFixed(2)}';
+      '₮${pendingCommissions.toStringAsFixed(2)}';
   String get formattedPaidCommissions =>
-      '\$${paidCommissions.toStringAsFixed(2)}';
+      '₮${paidCommissions.toStringAsFixed(2)}';
   double get averageCommissionPerTransaction =>
       totalTransactions > 0 ? totalCommissionEarned / totalTransactions : 0;
 }

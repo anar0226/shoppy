@@ -45,6 +45,8 @@ class _ProductPageState extends State<ProductPage> {
   bool _isFavorite = false;
   String _storeName = '';
   String _storeLogoUrl = '';
+  double _storeRating = 0.0;
+  int _storeReviewCount = 0;
   List<Map<String, dynamic>> _reviews = [];
   int _reviewCount = 0;
   double _avgRating = 0;
@@ -61,6 +63,8 @@ class _ProductPageState extends State<ProductPage> {
 
     _storeName = widget.storeName;
     _storeLogoUrl = widget.storeLogoUrl;
+    _storeRating = widget.storeRating;
+    _storeReviewCount = widget.storeRatingCount;
 
     // Extract variant information from product
     _extractVariantInfo();
@@ -126,12 +130,41 @@ class _ProductPageState extends State<ProductPage> {
           .get();
       if (doc.exists) {
         final store = StoreModel.fromFirestore(doc);
+
+        // Get actual store rating from reviews
+        double storeRating = 0.0;
+        int storeReviewCount = 0;
+
+        try {
+          final reviewsSnapshot = await FirebaseFirestore.instance
+              .collection('stores')
+              .doc(widget.product.storeId)
+              .collection('reviews')
+              .where('status', isEqualTo: 'active')
+              .get();
+
+          if (reviewsSnapshot.docs.isNotEmpty) {
+            final reviews = reviewsSnapshot.docs;
+            final totalRating = reviews.fold<double>(0, (sum, doc) {
+              final data = doc.data();
+              return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+            });
+            storeRating = totalRating / reviews.length;
+            storeReviewCount = reviews.length;
+          }
+        } catch (e) {
+          // If store reviews fail, keep default values
+        }
+
         if (mounted) {
           setState(() {
             if (_storeName.isEmpty) _storeName = store.name;
             if (_storeLogoUrl.isEmpty) {
               _storeLogoUrl = store.logo.isNotEmpty ? store.logo : store.banner;
             }
+            // Update the local state variables with actual store data
+            _storeRating = storeRating;
+            _storeReviewCount = storeReviewCount;
           });
         }
       }
@@ -336,7 +369,9 @@ class _ProductPageState extends State<ProductPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          widget.storeRating.toStringAsFixed(1),
+                          _storeRating > 0
+                              ? _storeRating.toStringAsFixed(1)
+                              : '0.0',
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 12,
@@ -347,7 +382,7 @@ class _ProductPageState extends State<ProductPage> {
                         const Icon(Icons.star, size: 12, color: Colors.black),
                         const SizedBox(width: 4),
                         Text(
-                          '(${_formatCount(widget.storeRatingCount)})',
+                          '(${_formatCount(_storeReviewCount)})',
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.black54,
@@ -430,7 +465,7 @@ class _ProductPageState extends State<ProductPage> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    _buildStarRating(widget.product.reviewStars.round()),
+                    _buildStarRating(_avgRating.round()),
                     const SizedBox(width: 8),
                     Text(
                       '$_reviewCount Үнэлгээ',
@@ -626,7 +661,7 @@ class _ProductPageState extends State<ProductPage> {
     final addressProvider = Provider.of<AddressProvider>(context);
     final defaultAddress = addressProvider.defaultAddress;
 
-    String shippingText = 'Enter your address';
+    String shippingText = 'Xүргэх xаягаа оруулна yy';
     if (defaultAddress != null) {
       // Use the actual address line instead of the formatted string that starts with name
       String addressLine = defaultAddress.line1;
@@ -1190,14 +1225,18 @@ class _ProductPageState extends State<ProductPage> {
           subtotal: widget.product.price * _quantity,
           shippingCost: 0,
           tax: (widget.product.price * _quantity) * 0.0825,
-          item: CheckoutItem(
-            imageUrl: widget.product.images.isNotEmpty
-                ? widget.product.images.first
-                : '',
-            name: widget.product.name,
-            variant: variantText,
-            price: widget.product.price,
-          ),
+          items: [
+            CheckoutItem(
+              // Wrap in list for consistency
+              imageUrl: widget.product.images.isNotEmpty
+                  ? widget.product.images.first
+                  : '',
+              name: widget.product.name,
+              variant: variantText,
+              price: widget.product.price,
+              storeId: widget.product.storeId, // Include storeId for validation
+            )
+          ],
         ),
       ),
     );
@@ -1545,8 +1584,10 @@ class _ProductPageState extends State<ProductPage> {
             .where((name) => name.isNotEmpty),
       );
 
-      // Get actual rating data instead of hardcoded values
-      final ratingData = await RatingService().getStoreRating(storeModel.id);
+      // Use the current store rating data
+      final rating = _storeRating > 0 ? _storeRating : 0.0;
+      final reviewCount =
+          _storeReviewCount > 0 ? _storeReviewCount.toString() : '0';
 
       // Build StoreData for StoreScreen
       final storeData = StoreData(
@@ -1556,8 +1597,8 @@ class _ProductPageState extends State<ProductPage> {
         heroImageUrl:
             storeModel.banner.isNotEmpty ? storeModel.banner : storeModel.logo,
         backgroundColor: const Color(0xFF01BCE7),
-        rating: ratingData.rating,
-        reviewCount: ratingData.reviewCountDisplay,
+        rating: rating,
+        reviewCount: reviewCount,
         collections: collections,
         categories: categoryNames,
         productCount: products.length,

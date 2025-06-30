@@ -239,10 +239,35 @@ export const createOrder = functions.https.onCall(async (data, context) => {
     }
     const vendorId = storeDoc.data()?.ownerId;
 
+    // Get customer name from user profile
+    let customerName = 'Үйлчлүүлэгч';
+    try {
+      const userDoc = await admin.firestore().collection('users').doc(context.auth.uid).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        customerName = userData?.displayName || 
+                     userData?.firstName || 
+                     userData?.name || 
+                     context.auth.token.name || 
+                     context.auth.token.email?.split('@')[0] || 
+                     'Үйлчлүүлэгч';
+      } else {
+        customerName = context.auth.token.name || 
+                     context.auth.token.email?.split('@')[0] || 
+                     'Үйлчлүүлэгч';
+      }
+    } catch (e) {
+      // Fallback if user data fetch fails
+      customerName = context.auth.token.name || 
+                   context.auth.token.email?.split('@')[0] || 
+                   'Үйлчлүүлэгч';
+    }
+
     // Create order document
     const orderData = {
       userId: context.auth.uid,
       userEmail: email || context.auth.token.email,
+      customerName: customerName, // Add customer name
       items: items,
       total: total,
       subtotal: subtotal,
@@ -907,7 +932,7 @@ export const processScheduledPayouts = functions.pubsub.schedule('0 10 * * *')
                 amount: payoutAmount,
                 platformFee,
                 netAmount,
-                currency: 'USD',
+                currency: 'MNT',
                 status: 'scheduled',
                 method: schedule.method,
                 bankAccount: schedule.bankAccount,

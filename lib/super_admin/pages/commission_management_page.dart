@@ -173,7 +173,7 @@ class _CommissionManagementPageState extends State<CommissionManagementPage>
         Expanded(
           child: _buildSummaryCard(
             'Average Commission',
-            '\$${_summary?.averageCommissionPerTransaction.toStringAsFixed(2) ?? '0.00'}',
+            '₮${_summary?.averageCommissionPerTransaction.toStringAsFixed(2) ?? '0.00'}',
             Icons.trending_up,
             Colors.purple,
             'Per transaction',
@@ -389,11 +389,11 @@ class _CommissionRulesTab extends StatelessWidget {
                         : '\$${rule.value.toStringAsFixed(2)}'),
                 const SizedBox(width: 24),
                 _buildRuleDetail(
-                    'Min Order', '\$${rule.minOrderValue.toStringAsFixed(2)}'),
+                    'Min Order', '₮${rule.minOrderValue.toStringAsFixed(2)}'),
                 if (rule.maxCommission != double.infinity) ...[
                   const SizedBox(width: 24),
                   _buildRuleDetail('Max Commission',
-                      '\$${rule.maxCommission.toStringAsFixed(2)}'),
+                      '₮${rule.maxCommission.toStringAsFixed(2)}'),
                 ],
               ],
             ),
@@ -831,7 +831,7 @@ class _CommissionPayoutsTabState extends State<_CommissionPayoutsTab> {
         Expanded(
           child: _buildAnalyticsCard(
             'Total Payouts',
-            '\$${analytics.totalPayouts.toStringAsFixed(2)}',
+            '₮${analytics.totalPayouts.toStringAsFixed(2)}',
             Icons.account_balance_wallet,
             Colors.blue,
           ),
@@ -840,7 +840,7 @@ class _CommissionPayoutsTabState extends State<_CommissionPayoutsTab> {
         Expanded(
           child: _buildAnalyticsCard(
             'Pending',
-            '\$${analytics.pendingPayouts.toStringAsFixed(2)}',
+            '₮${analytics.pendingPayouts.toStringAsFixed(2)}',
             Icons.schedule,
             Colors.orange,
           ),
@@ -849,7 +849,7 @@ class _CommissionPayoutsTabState extends State<_CommissionPayoutsTab> {
         Expanded(
           child: _buildAnalyticsCard(
             'Completed',
-            '\$${analytics.completedPayouts.toStringAsFixed(2)}',
+            '₮${analytics.completedPayouts.toStringAsFixed(2)}',
             Icons.check_circle,
             Colors.green,
           ),
@@ -867,7 +867,7 @@ class _CommissionPayoutsTabState extends State<_CommissionPayoutsTab> {
         Expanded(
           child: _buildAnalyticsCard(
             'Platform Fees',
-            '\$${analytics.platformFeesCollected.toStringAsFixed(2)}',
+            '₮${analytics.platformFeesCollected.toStringAsFixed(2)}',
             Icons.monetization_on,
             Colors.teal,
           ),
@@ -1031,15 +1031,15 @@ class _CommissionPayoutsTabState extends State<_CommissionPayoutsTab> {
               children: [
                 Expanded(
                   child: _buildPayoutDetail(
-                      'Amount', '\$${payout.amount.toStringAsFixed(2)}'),
+                      'Amount', '₮${payout.amount.toStringAsFixed(2)}'),
                 ),
                 Expanded(
                   child: _buildPayoutDetail('Platform Fee',
-                      '\$${payout.platformFee.toStringAsFixed(2)}'),
+                      '₮${payout.platformFee.toStringAsFixed(2)}'),
                 ),
                 Expanded(
                   child: _buildPayoutDetail(
-                      'Net Amount', '\$${payout.netAmount.toStringAsFixed(2)}'),
+                      'Net Amount', '₮${payout.netAmount.toStringAsFixed(2)}'),
                 ),
                 Expanded(
                   child:
@@ -1198,7 +1198,7 @@ class _CommissionPayoutsTabState extends State<_CommissionPayoutsTab> {
       builder: (context) => AlertDialog(
         title: const Text('Approve Payout'),
         content: Text(
-            'Approve payout of \$${payout.netAmount.toStringAsFixed(2)} to vendor?'),
+            'Approve payout of ₮${payout.netAmount.toStringAsFixed(2)} to vendor?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -1240,7 +1240,7 @@ class _CommissionPayoutsTabState extends State<_CommissionPayoutsTab> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Reject payout of \$${payout.netAmount.toStringAsFixed(2)}?'),
+            Text('Reject payout of ₮${payout.netAmount.toStringAsFixed(2)}?'),
             const SizedBox(height: 16),
             TextField(
               controller: reasonController,
@@ -1296,12 +1296,11 @@ class _CommissionPayoutsTabState extends State<_CommissionPayoutsTab> {
             children: [
               _buildDetailRow('Vendor ID', payout.vendorId),
               _buildDetailRow('Store ID', payout.storeId),
+              _buildDetailRow('Amount', '₮${payout.amount.toStringAsFixed(2)}'),
               _buildDetailRow(
-                  'Amount', '\$${payout.amount.toStringAsFixed(2)}'),
+                  'Platform Fee', '₮${payout.platformFee.toStringAsFixed(2)}'),
               _buildDetailRow(
-                  'Platform Fee', '\$${payout.platformFee.toStringAsFixed(2)}'),
-              _buildDetailRow(
-                  'Net Amount', '\$${payout.netAmount.toStringAsFixed(2)}'),
+                  'Net Amount', '₮${payout.netAmount.toStringAsFixed(2)}'),
               _buildDetailRow('Method', payout.method.displayName),
               _buildDetailRow('Status', payout.status.displayName),
               _buildDetailRow('Requested', payout.requestDate.toString()),

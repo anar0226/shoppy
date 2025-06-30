@@ -68,7 +68,7 @@ class _ProfileCompletionPageState extends State<ProfileCompletionPage> {
               const SizedBox(height: 16),
 
               Text(
-                'Хэрэглэгчийн профайлаа бөглөснөөр илүү сайн үйлчилгээ авах боломжтой',
+                'Та профайлаа бөглөснөөр илүү сайн үйлчилгээ авах боломжтой',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey.shade600,

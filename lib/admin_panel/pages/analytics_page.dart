@@ -318,7 +318,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       children: [
         StatCard(
           title: 'Нийт орлого',
-          value: '\$${_metrics!.totalRevenue.toStringAsFixed(2)}',
+          value: '₮${_metrics!.totalRevenue.toStringAsFixed(2)}',
           delta: '${_metrics!.revenueChange.toStringAsFixed(1)}%',
           deltaUp: _metrics!.revenueIncreased,
           icon: Icons.attach_money,
@@ -348,7 +348,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         ),
         StatCard(
           title: 'Дзахиалгын дундаж үнэ',
-          value: '\$${_metrics!.averageOrderValue.toStringAsFixed(2)}',
+          value: '₮${_metrics!.averageOrderValue.toStringAsFixed(2)}',
           delta: '${_metrics!.averageOrderValueChange.toStringAsFixed(1)}%',
           deltaUp: _metrics!.averageOrderValueIncreased,
           icon: Icons.bar_chart,

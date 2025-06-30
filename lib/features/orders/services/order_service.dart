@@ -34,6 +34,28 @@ class OrderService {
             })
         .toList();
 
+    // Get customer name from user profile or fallback to display name or email
+    String customerName = 'Үйлчлүүлэгч';
+    try {
+      final userDoc = await _db.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        final userData = userDoc.data();
+        customerName = userData?['displayName'] ??
+            userData?['firstName'] ??
+            userData?['name'] ??
+            user.displayName ??
+            user.email?.split('@').first ??
+            'Үйлчлүүлэгч';
+      } else {
+        customerName =
+            user.displayName ?? user.email?.split('@').first ?? 'Үйлчлүүлэгч';
+      }
+    } catch (e) {
+      // Fallback if user data fetch fails
+      customerName =
+          user.displayName ?? user.email?.split('@').first ?? 'Үйлчлүүлэгч';
+    }
+
     final orderData = {
       'status': 'placed',
       'createdAt': FieldValue.serverTimestamp(),
@@ -45,8 +67,10 @@ class OrderService {
       'items': items,
       'storeId': store.id,
       'storeName': store.name,
+      'vendorId': store.ownerId, // Add vendor ID for admin panel queries
       'userId': user.uid,
       'userEmail': user.email ?? '',
+      'customerName': customerName, // Add customer name
       // Enhanced fields for analytics
       'analytics': {
         'month': '${now.year}-${now.month.toString().padLeft(2, '0')}',

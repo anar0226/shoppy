@@ -79,7 +79,20 @@ class CartBottomSheet extends StatelessWidget {
                     }
 
                     final shippingAddr = addrProvider.addresses.first;
-                    final first = cart.items.first;
+
+                    // Convert all cart items to checkout items
+                    final checkoutItems = cart.items
+                        .map((cartItem) => CheckoutItem(
+                              imageUrl: cartItem.product.images.isNotEmpty
+                                  ? cartItem.product.images.first
+                                  : '',
+                              name: cartItem.product.name,
+                              variant: cartItem.variant ?? 'Standard',
+                              price: cartItem.product.price,
+                              storeId: cartItem.product
+                                  .storeId, // Include storeId for validation
+                            ))
+                        .toList();
 
                     Navigator.push(
                       context,
@@ -91,14 +104,7 @@ class CartBottomSheet extends StatelessWidget {
                           subtotal: cart.subtotal,
                           shippingCost: 0,
                           tax: cart.subtotal * 0.0825,
-                          item: CheckoutItem(
-                            imageUrl: first.product.images.isNotEmpty
-                                ? first.product.images.first
-                                : '',
-                            name: first.product.name,
-                            variant: first.variant ?? 'Standard',
-                            price: first.product.price,
-                          ),
+                          items: checkoutItems, // Pass all items
                         ),
                       ),
                     );
@@ -129,7 +135,7 @@ class CartBottomSheet extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         const Text('Нийт дүн', style: TextStyle(color: Colors.white)),
-        Text('\$${subtotal.toStringAsFixed(2)}',
+        Text('₮${subtotal.toStringAsFixed(2)}',
             style: const TextStyle(color: Colors.white)),
       ],
     );
@@ -206,14 +212,14 @@ class CartBottomSheet extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('\$${item.product.price.toStringAsFixed(2)}',
+              Text('₮${item.product.price.toStringAsFixed(2)}',
                   style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold)),
               if (originalPrice != null) ...[
                 const SizedBox(height: 4),
-                Text('\$${originalPrice.toStringAsFixed(2)}',
+                Text('₮${originalPrice.toStringAsFixed(2)}',
                     style: const TextStyle(
                         color: Colors.white54,
                         decoration: TextDecoration.lineThrough,

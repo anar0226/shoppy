@@ -125,12 +125,12 @@ class UploadDebugService {
     debugPrint('🏪 Stores: ${results['stores']}');
     debugPrint('🌐 Network: ${results['network']}');
 
-    if (results.containsKey('error')) {
-      debugPrint('❌ Main Error: ${results['error']}');
-    }
-
-    if (results.containsKey('generalError')) {
-      debugPrint('❌ General Error: ${results['generalError']}');
+    if (results['error'] != null) {
+      // Main Error occurred
+    } else if (results['generalError'] != null) {
+      // General Error occurred
+    } else {
+      // No errors occurred
     }
 
     debugPrint('=== END DIAGNOSTICS ===');

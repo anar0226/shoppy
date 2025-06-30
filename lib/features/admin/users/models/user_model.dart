@@ -145,7 +145,7 @@ class UserModel {
 
   String get statusText => isActive ? 'Active' : 'Inactive';
 
-  String get formattedTotalSpent => '\$${stats.totalSpent.toStringAsFixed(2)}';
+  String get formattedTotalSpent => '₮${stats.totalSpent.toStringAsFixed(2)}';
 
   bool get isRelevantUser =>
       stats.totalOrders > 0 || followerStoreIds.isNotEmpty;

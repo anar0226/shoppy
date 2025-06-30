@@ -210,5 +210,5 @@ class TrafficSource {
 
   String get formattedPercentage => '${percentage.toStringAsFixed(1)}%';
   String get formattedConversionRate => '${conversionRate.toStringAsFixed(1)}%';
-  String get formattedRevenue => '\$${revenue.toStringAsFixed(2)}';
+  String get formattedRevenue => '₮${revenue.toStringAsFixed(2)}';
 }

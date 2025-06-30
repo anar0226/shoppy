@@ -11,6 +11,7 @@ class SellerCard extends StatelessWidget {
   final VoidCallback? onShopAllTap;
   final String? storeId;
   final String? backgroundImageUrl;
+  final String? storeLogoUrl; // Added store logo URL parameter
 
   const SellerCard({
     super.key,
@@ -22,6 +23,7 @@ class SellerCard extends StatelessWidget {
     this.onShopAllTap,
     this.storeId,
     this.backgroundImageUrl,
+    this.storeLogoUrl, // Added store logo URL parameter
   });
 
   void _showOptionsMenu(BuildContext context) {
@@ -134,16 +136,56 @@ class SellerCard extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        CircleAvatar(
-                          radius: 24,
-                          backgroundColor: const Color(0xFF444444),
-                          child: Text(
-                            profileLetter,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 22,
-                            ),
+                        // Square store profile picture
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: const Color(0xFF444444),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: storeLogoUrl != null &&
+                                    storeLogoUrl!.isNotEmpty
+                                ? Image.network(
+                                    storeLogoUrl!,
+                                    width: 48,
+                                    height: 48,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 48,
+                                        height: 48,
+                                        color: const Color(0xFF444444),
+                                        child: Center(
+                                          child: Text(
+                                            profileLetter,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 22,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : Container(
+                                    width: 48,
+                                    height: 48,
+                                    color: const Color(0xFF444444),
+                                    child: Center(
+                                      child: Text(
+                                        profileLetter,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 22,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                           ),
                         ),
                         const SizedBox(width: 16),
