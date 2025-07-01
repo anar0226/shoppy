@@ -14,6 +14,7 @@ import 'package:avii/features/stores/models/store_model.dart';
 import 'package:avii/features/products/models/product_model.dart';
 // import 'qpay_checkout_page.dart'; // Removed - using direct order creation
 import '../../../core/utils/popup_utils.dart';
+import '../../../admin_panel/services/notification_service.dart';
 
 class CheckoutPage extends StatefulWidget {
   final String email;
@@ -177,43 +178,48 @@ class _CheckoutPageState extends State<CheckoutPage> {
     try {
       final user = FirebaseAuth.instance.currentUser!;
 
-      // Get default store ID - using a placeholder for now
-      // In a real app, this would be determined by the cart items
-      const String defaultStoreId = 'default-store';
+      // Get the actual store ID from the first item (assuming single store checkout)
+      final storeId = widget.items.first.storeId ?? 'shoppy-store';
 
-      // Try to get store from Firestore, create a default one if it doesn't exist
+      // Get the actual store from Firestore
       StoreModel store;
       try {
         final storeDoc = await FirebaseFirestore.instance
             .collection('stores')
-            .doc(defaultStoreId)
+            .doc(storeId)
             .get();
 
         if (storeDoc.exists) {
           store = StoreModel.fromFirestore(storeDoc);
         } else {
-          // Create a default store
+          // Get current user to use as store owner
+          final currentUser = FirebaseAuth.instance.currentUser;
+          final ownerId = currentUser?.uid ?? 'default-owner';
+
+          // Create a default store with current user as owner
           final defaultStoreData = {
             'name': 'Shoppy Store',
             'description': 'Default store for testing',
             'banner': '',
             'logo': '',
+            'ownerId': ownerId,
             'isActive': true,
             'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
           };
 
           await FirebaseFirestore.instance
               .collection('stores')
-              .doc(defaultStoreId)
+              .doc(storeId)
               .set(defaultStoreData);
 
           store = StoreModel(
-            id: defaultStoreId,
+            id: storeId,
             name: 'Shoppy Store',
             description: 'Default store for testing',
             banner: '',
             logo: '',
-            ownerId: 'default-owner',
+            ownerId: ownerId,
             status: 'active',
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
@@ -221,14 +227,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
           );
         }
       } catch (e) {
-        // Fallback store
+        // Fallback store with current user as owner
+        final currentUser = FirebaseAuth.instance.currentUser;
+        final ownerId = currentUser?.uid ?? 'default-owner';
+
         store = StoreModel(
-          id: defaultStoreId,
+          id: storeId,
           name: 'Shoppy Store',
           description: 'Default store for testing',
           banner: '',
           logo: '',
-          ownerId: 'default-owner',
+          ownerId: ownerId,
           status: 'active',
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
@@ -236,30 +245,38 @@ class _CheckoutPageState extends State<CheckoutPage> {
         );
       }
 
-      // Convert checkout items to cart items
-      final cartItems = widget.items
-          .map((item) => CartItem(
-                product: ProductModel(
-                  id: 'checkout-product-${DateTime.now().millisecondsSinceEpoch}-${widget.items.indexOf(item)}',
-                  storeId: defaultStoreId,
-                  name: item.name,
-                  description: 'Product from checkout',
-                  price: item.price,
-                  images: [item.imageUrl],
-                  category: 'General',
-                  stock: 1,
-                  variants: [],
-                  isActive: true,
-                  createdAt: DateTime.now(),
-                  updatedAt: DateTime.now(),
-                ),
-                quantity: 1,
-                variant: item.variant.isNotEmpty ? item.variant : null,
-              ))
-          .toList();
+      // Convert checkout items to cart items using actual product IDs
+      final cartItems = <CartItem>[];
+
+      for (int i = 0; i < widget.items.length; i++) {
+        final item = widget.items[i];
+
+        // Create a product from checkout item data
+        final product = ProductModel(
+          id: 'product-${DateTime.now().millisecondsSinceEpoch}-$i',
+          storeId: storeId,
+          name: item.name,
+          description: 'Product from checkout',
+          price: item.price,
+          images: [item.imageUrl],
+          category: item.category ?? 'General',
+          stock: 1,
+          variants: [],
+          isActive: true,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+
+        cartItems.add(CartItem(
+          product: product,
+          quantity:
+              1, // Default quantity to 1 since CheckoutItem doesn't have quantity
+          variant: item.variant.isNotEmpty ? item.variant : null,
+        ));
+      }
 
       // Create the order using OrderService
-      await _orderService.createOrder(
+      final orderId = await _orderService.createOrder(
         user: user,
         subtotal: widget.subtotal,
         shipping: _appliedDiscount?.type == DiscountType.freeShipping
@@ -269,6 +286,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
         cart: cartItems,
         store: store,
       );
+
+      // Notify store owner about new order
+      try {
+        await NotificationService().notifyNewOrder(
+          storeId: store.id,
+          ownerId: store.ownerId,
+          orderId: orderId,
+          customerEmail: user.email ?? 'Unknown Customer',
+          total: _finalTotal,
+        );
+      } catch (e) {
+        print('Failed to send notification: $e');
+        // Don't fail the order creation if notification fails
+      }
 
       // Show success message
       PopupUtils.showSuccess(

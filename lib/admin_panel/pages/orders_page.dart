@@ -19,6 +19,17 @@ class _OrdersPageState extends State<OrdersPage> {
   double totalRevenue = 0.0;
   int uniqueCustomers = 0;
 
+  // Search and filter variables
+  String _searchQuery = '';
+  String _selectedStatus = 'бүх төлөв';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _calculateStatistics(
       List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
     final newTotalOrders = docs.length;
@@ -59,6 +70,49 @@ class _OrdersPageState extends State<OrdersPage> {
         });
       }
     }
+  }
+
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _filterOrders(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> orders) {
+    return orders.where((order) {
+      final data = order.data();
+      final orderId = order.id.toLowerCase();
+      final customerEmail = (data['customerEmail'] ?? data['userEmail'] ?? '')
+          .toString()
+          .toLowerCase();
+      final customerName =
+          (data['customerName'] ?? '').toString().toLowerCase();
+      final status = (data['status'] ?? '').toString().toLowerCase();
+
+      // Search filter
+      bool matchesSearch = true;
+      if (_searchQuery.isNotEmpty) {
+        final searchLower = _searchQuery.toLowerCase();
+        matchesSearch = orderId.contains(searchLower) ||
+            customerEmail.contains(searchLower) ||
+            customerName.contains(searchLower);
+      }
+
+      // Status filter
+      bool matchesStatus = true;
+      if (_selectedStatus != 'бүх төлөв') {
+        String targetStatus = '';
+        switch (_selectedStatus) {
+          case 'захиалсан':
+            targetStatus = 'placed';
+            break;
+          case 'хүргэгдсэн':
+            targetStatus = 'delivered';
+            break;
+          case 'цуцлагдсан':
+            targetStatus = 'cancelled';
+            break;
+        }
+        matchesStatus = status == targetStatus;
+      }
+
+      return matchesSearch && matchesStatus;
+    }).toList();
   }
 
   @override
@@ -118,6 +172,12 @@ class _OrdersPageState extends State<OrdersPage> {
                                   SizedBox(
                                     width: 260,
                                     child: TextField(
+                                      controller: _searchController,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _searchQuery = value;
+                                        });
+                                      },
                                       decoration: InputDecoration(
                                         hintText: 'Захиалга хайх...',
                                         prefixIcon: const Icon(Icons.search),
@@ -132,7 +192,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                   SizedBox(
                                     width: 180,
                                     child: DropdownButtonFormField<String>(
-                                      value: 'бүх төлөв',
+                                      value: _selectedStatus,
                                       items: const [
                                         DropdownMenuItem(
                                             value: 'бүх төлөв',
@@ -147,7 +207,13 @@ class _OrdersPageState extends State<OrdersPage> {
                                             value: 'цуцлагдсан',
                                             child: Text('цуцлагдсан')),
                                       ],
-                                      onChanged: (_) {},
+                                      onChanged: (String? newValue) {
+                                        if (newValue != null) {
+                                          setState(() {
+                                            _selectedStatus = newValue;
+                                          });
+                                        }
+                                      },
                                       decoration: InputDecoration(
                                         border: OutlineInputBorder(
                                             borderRadius:
@@ -213,10 +279,13 @@ class _OrdersPageState extends State<OrdersPage> {
 
         final docs = snapshot.data?.docs ?? [];
 
-        // Calculate statistics when data changes
-        _calculateStatistics(docs);
+        // Apply search and status filters
+        final filteredDocs = _filterOrders(docs);
 
-        List<DataRow> rows = docs.map((doc) {
+        // Calculate statistics when data changes
+        _calculateStatistics(filteredDocs);
+
+        List<DataRow> rows = filteredDocs.map((doc) {
           final data = doc.data();
           final id = doc.id;
           final email = data['customerEmail'] ?? data['userEmail'] ?? '';

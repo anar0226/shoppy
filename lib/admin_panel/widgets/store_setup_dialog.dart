@@ -16,6 +16,10 @@ class StoreSetupDialog extends StatefulWidget {
 class _StoreSetupDialogState extends State<StoreSetupDialog> {
   final _formKey = GlobalKey<FormState>();
   final _storeNameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _facebookCtrl = TextEditingController();
+  final _instagramCtrl = TextEditingController();
+  final _refundPolicyCtrl = TextEditingController();
   final _picker = ImagePicker();
   XFile? _logoFile;
   bool _loading = false;
@@ -24,11 +28,31 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
   @override
   void dispose() {
     _storeNameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _facebookCtrl.dispose();
+    _instagramCtrl.dispose();
+    _refundPolicyCtrl.dispose();
     super.dispose();
+  }
+
+  String? _validateContactInfo() {
+    if (_phoneCtrl.text.trim().isEmpty &&
+        _facebookCtrl.text.trim().isEmpty &&
+        _instagramCtrl.text.trim().isEmpty) {
+      return 'Дор хаяж нэг холбогдох арга заавал оруулна уу';
+    }
+    return null;
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Validate contact information
+    final contactError = _validateContactInfo();
+    if (contactError != null) {
+      setState(() => _error = contactError);
+      return;
+    }
 
     setState(() {
       _loading = true;
@@ -49,13 +73,17 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
         logoUrl = await storageRef.getDownloadURL();
       }
 
-      // Update store document
+      // Update store document with new fields
       await FirebaseFirestore.instance
           .collection('stores')
           .doc(widget.storeId)
           .update({
         'name': _storeNameCtrl.text.trim(),
         'logo': logoUrl,
+        'phone': _phoneCtrl.text.trim(),
+        'facebook': _facebookCtrl.text.trim(),
+        'instagram': _instagramCtrl.text.trim(),
+        'refundPolicy': _refundPolicyCtrl.text.trim(),
         'status': 'active',
         'updatedAt': Timestamp.now(),
       });
@@ -148,6 +176,57 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                                   overflow: TextOverflow.ellipsis),
                             ),
                         ],
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Холбогдох мэдээлэл',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Дор хаяж нэг холбогдох арга заавал оруулна уу:',
+                        style: TextStyle(fontSize: 14, color: Colors.black54),
+                      ),
+                      const SizedBox(height: 16),
+                      _label('Утасны дугаар (сонголттой)'),
+                      TextFormField(
+                        controller: _phoneCtrl,
+                        decoration: const InputDecoration(
+                            hintText: 'жишээ: +976 9999 9999',
+                            prefixIcon: Icon(Icons.phone)),
+                        keyboardType: TextInputType.phone,
+                      ),
+                      const SizedBox(height: 16),
+                      _label('Facebook хуудас (сонголттой)'),
+                      TextFormField(
+                        controller: _facebookCtrl,
+                        decoration: const InputDecoration(
+                            hintText: 'жишээ: facebook.com/yourstore',
+                            prefixIcon: Icon(Icons.facebook)),
+                      ),
+                      const SizedBox(height: 16),
+                      _label('Instagram хуудас (сонголттой)'),
+                      TextFormField(
+                        controller: _instagramCtrl,
+                        decoration: const InputDecoration(
+                            hintText: 'жишээ: @yourstore',
+                            prefixIcon: Icon(Icons.camera_alt)),
+                      ),
+                      const SizedBox(height: 24),
+                      _label('Буцаалт, Солилтын бодлого *'),
+                      TextFormField(
+                        controller: _refundPolicyCtrl,
+                        maxLines: 4,
+                        decoration: const InputDecoration(
+                            hintText:
+                                'Таны дэлгүүрийн буцаалт, солилтын нөхцөл, шаардлагыг бичнэ үү...',
+                            border: OutlineInputBorder()),
+                        validator: (v) => v != null && v.trim().isNotEmpty
+                            ? null
+                            : 'Буцаалтын бодлого заавал оруулна уу',
                       ),
                     ],
                   ),

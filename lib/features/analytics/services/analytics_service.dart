@@ -133,7 +133,7 @@ class AnalyticsService {
 
       for (final order in orders) {
         final data = order.data();
-        final status = data['status'] ?? 'unknown';
+        final status = _getStatusAsString(data['status']);
         statusCounts[status] = (statusCounts[status] ?? 0) + 1;
 
         if (status != 'canceled') {
@@ -204,10 +204,20 @@ class AnalyticsService {
 
       for (final orderDoc in ordersSnapshot.docs) {
         final orderData = orderDoc.data();
+
+        // Safe type checking for order status to filter out canceled orders
+        final orderStatus = _getStatusAsString(orderData['status']);
+        if (orderStatus == 'canceled') continue;
+
         final items = orderData['items'] as List<dynamic>? ?? [];
 
         for (final item in items) {
+          // Skip if item data is malformed
+          if (item == null || item is! Map<String, dynamic>) continue;
+
           final productId = item['productId'] ?? '';
+          if (productId.isEmpty) continue;
+
           final quantity = item['quantity'] ?? 0;
           final price = (item['price'] ?? 0).toDouble();
           final revenue = price * quantity;
@@ -264,7 +274,7 @@ class AnalyticsService {
       final start = startDate ?? _last30Days;
       final end = endDate ?? _today;
 
-      // Get products for this store
+      // Get products for this store (only active products)
       final productsSnapshot = await _firestore
           .collection('products')
           .where('storeId', isEqualTo: storeId)
@@ -276,6 +286,13 @@ class AnalyticsService {
       // Build product lookup and initialize categories
       for (final doc in productsSnapshot.docs) {
         final data = doc.data();
+
+        // Safe type checking for isActive field
+        final isActive = _getBooleanValue(data['isActive'], defaultValue: true);
+
+        // Only include active products
+        if (!isActive) continue;
+
         products[doc.id] = data;
 
         final category = data['category'] ?? 'Uncategorized';
@@ -382,13 +399,16 @@ class AnalyticsService {
         final createdAt =
             (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
 
+        // Safe type checking for status field
+        final status = _getStatusAsString(data['status']);
+
         if (!customerOrderHistory.containsKey(userId)) {
           customerOrderHistory[userId] = [];
         }
         customerOrderHistory[userId]!.add({
           'createdAt': createdAt,
           'total': (data['total'] ?? 0).toDouble(),
-          'status': data['status'] ?? 'placed',
+          'status': status,
         });
       }
 
@@ -607,7 +627,11 @@ class AnalyticsService {
 
     for (final doc in orders) {
       final data = doc.data();
-      if (data['status'] != 'canceled') {
+
+      // Safe type checking for status field
+      final status = _getStatusAsString(data['status']);
+
+      if (status != 'canceled') {
         totalRevenue += (data['total'] ?? 0).toDouble();
       }
       customerIds.add(data['userId'] ?? '');
@@ -632,9 +656,19 @@ class AnalyticsService {
         .get();
 
     int lowStockCount = 0;
+    int activeProductCount = 0;
 
     for (final doc in snapshot.docs) {
       final data = doc.data();
+
+      // Safe type checking for isActive field
+      final isActive = _getBooleanValue(data['isActive'], defaultValue: true);
+
+      // Only count active products
+      if (!isActive) continue;
+
+      activeProductCount++;
+
       final stock = data['stock'] ?? 0;
       if (stock < 10) {
         // Low stock threshold
@@ -643,9 +677,31 @@ class AnalyticsService {
     }
 
     return {
-      'total': snapshot.docs.length,
+      'total': activeProductCount,
       'lowStock': lowStockCount,
     };
+  }
+
+  // Helper method to safely convert status field to string
+  String _getStatusAsString(dynamic status) {
+    if (status == null) return 'placed';
+    if (status is String) return status;
+    if (status is bool) {
+      // Handle cases where status might be stored as boolean
+      return status ? 'active' : 'inactive';
+    }
+    return status.toString();
+  }
+
+  // Helper method to safely get boolean from dynamic value
+  bool _getBooleanValue(dynamic value, {bool defaultValue = false}) {
+    if (value == null) return defaultValue;
+    if (value is bool) return value;
+    if (value is String) {
+      return value.toLowerCase() == 'true' || value.toLowerCase() == 'active';
+    }
+    if (value is int) return value != 0;
+    return defaultValue;
   }
 
   // **EXPORT FUNCTIONALITY**

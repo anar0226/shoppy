@@ -1197,8 +1197,23 @@ class SearchResult {
   });
 }
 
-class OrdersScreen extends StatelessWidget {
+class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
+
+  @override
+  State<OrdersScreen> createState() => _OrdersScreenState();
+}
+
+class _OrdersScreenState extends State<OrdersScreen> {
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1212,6 +1227,7 @@ class OrdersScreen extends StatelessWidget {
           child: Column(
             children: [
               _buildHeader(context),
+              if (_isSearching) _buildSearchBar(),
               Expanded(
                 child: auth.user == null
                     ? const Center(
@@ -1230,17 +1246,48 @@ class OrdersScreen extends StatelessWidget {
                           }
 
                           final docs = snap.data?.docs ?? [];
-                          if (docs.isEmpty) {
-                            return _buildEmptyState();
+
+                          // Filter orders based on search query
+                          final filteredDocs = _searchQuery.isEmpty
+                              ? docs
+                              : docs.where((doc) {
+                                  final data =
+                                      doc.data() as Map<String, dynamic>;
+                                  final orderId = doc.id.toLowerCase();
+                                  final items = List<Map<String, dynamic>>.from(
+                                      data['items'] ?? []);
+                                  final searchLower =
+                                      _searchQuery.toLowerCase();
+
+                                  // Search by order ID
+                                  if (orderId.contains(searchLower))
+                                    return true;
+
+                                  // Search by product names
+                                  for (final item in items) {
+                                    final productName = (item['name'] ?? '')
+                                        .toString()
+                                        .toLowerCase();
+                                    if (productName.contains(searchLower))
+                                      return true;
+                                  }
+
+                                  return false;
+                                }).toList();
+
+                          if (filteredDocs.isEmpty) {
+                            return _searchQuery.isEmpty
+                                ? _buildEmptyState()
+                                : _buildNoSearchResults();
                           }
 
                           return ListView.separated(
                             padding: const EdgeInsets.all(16),
-                            itemCount: docs.length,
+                            itemCount: filteredDocs.length,
                             separatorBuilder: (_, __) =>
                                 const SizedBox(height: 16),
                             itemBuilder: (context, index) {
-                              final order = docs[index];
+                              final order = filteredDocs[index];
                               return _buildOrderCard(context, order);
                             },
                           );
@@ -1273,15 +1320,18 @@ class OrdersScreen extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: () {
-                  PopupUtils.showInfo(
-                    context: context,
-                    message: 'Захиалга хайх!',
-                  );
+                  setState(() {
+                    _isSearching = !_isSearching;
+                    if (!_isSearching) {
+                      _searchController.clear();
+                      _searchQuery = '';
+                    }
+                  });
                 },
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: _isSearching ? Colors.blue.shade50 : Colors.white,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
@@ -1291,10 +1341,10 @@ class OrdersScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.search,
+                  child: Icon(
+                    _isSearching ? Icons.close : Icons.search,
                     size: 20,
-                    color: Colors.black87,
+                    color: _isSearching ? Colors.blue.shade700 : Colors.black87,
                   ),
                 ),
               ),
@@ -1327,6 +1377,69 @@ class OrdersScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value;
+          });
+        },
+        decoration: const InputDecoration(
+          hintText: 'Захиалга хайх (дугаар, бүтээгдэхүүний нэр)...',
+          prefixIcon: Icon(Icons.search, color: Colors.grey),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+        autofocus: true,
+      ),
+    );
+  }
+
+  Widget _buildNoSearchResults() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search_off,
+            size: 80,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Хайлтад тохирох захиалга олдсонгүй',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Өөр түлхүүр үг ашиглан дахин оролдоно уу',
+            style: TextStyle(
+              color: Colors.grey,
+            ),
           ),
         ],
       ),
@@ -1712,33 +1825,33 @@ class OrdersScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Track order option
+            // Refund policy option
             ListTile(
-              leading: const Icon(Icons.track_changes, color: Colors.black87),
-              title: const Text('Захиалга хянах'),
+              leading: const Icon(Icons.policy, color: Colors.black87),
+              title: const Text('Буцаалт, Солилт'),
               onTap: () {
                 Navigator.pop(context);
-                _navigateToOrderTracking(context, order);
+                _showRefundPolicy(context, order);
               },
             ),
 
-            // Receipt option
+            // Report issue option
             ListTile(
-              leading: const Icon(Icons.receipt_long, color: Colors.black87),
-              title: const Text('Баримт'),
+              leading: const Icon(Icons.report_problem, color: Colors.orange),
+              title: const Text('Асуудал мэдэгдэх'),
               onTap: () {
                 Navigator.pop(context);
-                _navigateToReceipt(context, order);
+                _showReportIssue(context, order);
               },
             ),
 
-            // Contact store option
+            // Delete order option
             ListTile(
-              leading: const Icon(Icons.message, color: Colors.black87),
-              title: Text('$storeName-тай холбогдох'),
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Захиалга устгах'),
               onTap: () {
                 Navigator.pop(context);
-                _showContactStore(context, storeName);
+                _showDeleteOrderConfirmation(context, order);
               },
             ),
           ],
@@ -1766,11 +1879,490 @@ class OrdersScreen extends StatelessWidget {
     );
   }
 
-  void _showContactStore(BuildContext context, String storeName) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$storeName-тай холбогдох функц удахгүй нэмэгдэнэ'),
-        duration: const Duration(seconds: 2),
+  void _showContactStore(BuildContext context, String storeName,
+      [QueryDocumentSnapshot? order]) async {
+    String? storeId;
+
+    // Get store ID from order if provided, otherwise use a recent order
+    if (order != null) {
+      final orderData = order.data() as Map<String, dynamic>;
+      storeId = orderData['storeId'] as String?;
+    } else {
+      // Get the store ID from a recent order
+      final auth = context.read<AuthProvider>();
+      if (auth.user != null) {
+        try {
+          final orderSnapshot = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(auth.user!.uid)
+              .collection('orders')
+              .orderBy('createdAt', descending: true)
+              .limit(1)
+              .get();
+
+          // Check if widget is still mounted after async operation
+          if (!mounted) return;
+
+          if (orderSnapshot.docs.isNotEmpty) {
+            final orderData = orderSnapshot.docs.first.data();
+            storeId = orderData['storeId'] as String?;
+          }
+        } catch (e) {
+          // Fallback to generic message
+          if (!mounted) return;
+        }
+      }
+    }
+
+    if (storeId == null || storeId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$storeName-тай холбогдох мэдээлэл олдсонгүй'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Fetch store's contact information
+      final storeDoc = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(storeId)
+          .get();
+
+      // Check if widget is still mounted after async operation
+      if (!mounted) return;
+
+      if (!storeDoc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$storeName-тай холбогдох мэдээлэл олдсонгүй'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
+      final storeData = storeDoc.data() as Map<String, dynamic>;
+      final phone = storeData['phone'] as String? ?? '';
+      final instagram = storeData['instagram'] as String? ?? '';
+      final facebook = storeData['facebook'] as String? ?? '';
+
+      if (phone.isEmpty && instagram.isEmpty && facebook.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$storeName-ийн холбогдох мэдээлэл олдсонгүй'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
+      _showContactDialog(context, storeName, phone, instagram, facebook);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$storeName-тай холбогдох мэдээлэл олдсонгүй'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _showContactDialog(BuildContext context, String storeName, String phone,
+      String instagram, String facebook) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle bar
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Title
+            Text(
+              '$storeName-тай холбогдох',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Contact options
+            if (phone.isNotEmpty) ...[
+              _buildContactOption(
+                context,
+                icon: Icons.phone,
+                label: 'Утас',
+                value: phone,
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Утас: $phone')),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            if (instagram.isNotEmpty) ...[
+              _buildContactOption(
+                context,
+                icon: Icons.camera_alt,
+                label: 'Instagram',
+                value: instagram,
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Instagram: $instagram')),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            if (facebook.isNotEmpty) ...[
+              _buildContactOption(
+                context,
+                icon: Icons.facebook,
+                label: 'Facebook',
+                value: facebook,
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Facebook: $facebook')),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContactOption(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showRefundPolicy(BuildContext context,
+      [QueryDocumentSnapshot? order]) async {
+    String? storeId;
+
+    // Get store ID from order if provided, otherwise use a recent order
+    if (order != null) {
+      final orderData = order.data() as Map<String, dynamic>;
+      storeId = orderData['storeId'] as String?;
+    } else {
+      // Get the store ID from a recent order
+      final auth = context.read<AuthProvider>();
+      if (auth.user != null) {
+        try {
+          final orderSnapshot = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(auth.user!.uid)
+              .collection('orders')
+              .orderBy('createdAt', descending: true)
+              .limit(1)
+              .get();
+
+          // Check if widget is still mounted after async operation
+          if (!mounted) return;
+
+          if (orderSnapshot.docs.isNotEmpty) {
+            final orderData = orderSnapshot.docs.first.data();
+            storeId = orderData['storeId'] as String?;
+          }
+        } catch (e) {
+          // Fallback to generic policy
+          if (!mounted) return;
+        }
+      }
+    }
+
+    if (storeId == null || storeId.isEmpty) {
+      if (!mounted) return;
+      _showGenericRefundPolicy(context);
+      return;
+    }
+
+    try {
+      // Fetch store's refund policy
+      final storeDoc = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(storeId)
+          .get();
+
+      // Check if widget is still mounted after async operation
+      if (!mounted) return;
+
+      if (!storeDoc.exists) {
+        _showGenericRefundPolicy(context);
+        return;
+      }
+
+      final storeData = storeDoc.data() as Map<String, dynamic>;
+      final storeName = storeData['name'] as String? ?? 'Дэлгүүр';
+      final refundPolicy = storeData['refundPolicy'] as String? ?? '';
+
+      if (refundPolicy.isEmpty) {
+        _showGenericRefundPolicy(context);
+        return;
+      }
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('$storeName-ийн буцаалт, солилт'),
+          content: SingleChildScrollView(
+            child: Text(
+              refundPolicy,
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Ойлголоо'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showGenericRefundPolicy(context);
+    }
+  }
+
+  void _showGenericRefundPolicy(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Буцаах бодлого'),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Ерөнхий буцаах бодлого:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 12),
+              Text(
+                  '• Захиалга хүлээн авснаас хойш 7 хоногийн дотор буцаах боломжтой'),
+              SizedBox(height: 8),
+              Text(
+                  '• Бараа эх байдлаараа байх ёстой (хэрэглээгүй, хуванцар боолттой)'),
+              SizedBox(height: 8),
+              Text(
+                  '• Хувийн хэрэглээний бараа (гоо сайхны бүтээгдэхүүн) буцаах боломжгүй'),
+              SizedBox(height: 8),
+              Text('• Буцаах зардлыг худалдан авагч хариуцна'),
+              SizedBox(height: 8),
+              Text('• Мөнгийг 3-5 ажлын өдрийн дотор буцаан олгоно'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Ойлголоо'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReportIssue(BuildContext context, QueryDocumentSnapshot order) {
+    final TextEditingController issueController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Асуудал мэдэгдэх'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Захиалгатай холбоотой асуудлаа бичээд илгээнэ үү:',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: issueController,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                hintText: 'Асуудлын дэлгэрэнгүй тайлбар...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Цуцлах'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (issueController.text.trim().isNotEmpty) {
+                // Here you would typically send the issue to your support system
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        'Таны асуудал амжилттай илгээгдлээ. Удахгүй хариу өгөх болно.'),
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Асуудлын тайлбар оруулна уу'),
+                  ),
+                );
+              }
+              issueController.dispose();
+            },
+            child: const Text('Илгээх'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteOrderConfirmation(
+      BuildContext context, QueryDocumentSnapshot order) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Захиалга устгах'),
+        content: const Text(
+          'Та энэ захиалгыг устгахдаа итгэлтэй байна уу? Энэ үйлдлийг буцаах боломжгүй.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Цуцлах'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              try {
+                // Delete the order from user's orders collection
+                final user = auth.FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .collection('orders')
+                      .doc(order.id)
+                      .delete();
+
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Захиалга амжилттай устгагдлаа'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Захиалга устгахад алдаа гарлаа'),
+                  ),
+                );
+              }
+            },
+            child: const Text('Устгах'),
+          ),
+        ],
       ),
     );
   }
@@ -1961,30 +2553,33 @@ class ReceiptPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
 
-                // Order info - using actual order number
+                // Order info - using truncated order number
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Захиалгын дугаар #${order.id.toUpperCase()}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Захиалгын дугаар #${order.id.substring(0, 8).toUpperCase()}...',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _formatDate(createdAt.toDate()),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatDate(createdAt.toDate()),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),

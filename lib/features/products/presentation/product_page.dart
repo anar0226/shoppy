@@ -69,9 +69,8 @@ class _ProductPageState extends State<ProductPage> {
     // Extract variant information from product
     _extractVariantInfo();
 
-    if (_storeName.isEmpty || _storeLogoUrl.isEmpty) {
-      _fetchStoreInfo();
-    }
+    // Always fetch actual store info from Firestore
+    _fetchStoreInfo();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final recent =
@@ -158,10 +157,9 @@ class _ProductPageState extends State<ProductPage> {
 
         if (mounted) {
           setState(() {
-            if (_storeName.isEmpty) _storeName = store.name;
-            if (_storeLogoUrl.isEmpty) {
-              _storeLogoUrl = store.logo.isNotEmpty ? store.logo : store.banner;
-            }
+            // Always update store name and logo from Firestore data
+            _storeName = store.name;
+            _storeLogoUrl = store.logo.isNotEmpty ? store.logo : store.banner;
             // Update the local state variables with actual store data
             _storeRating = storeRating;
             _storeReviewCount = storeReviewCount;
@@ -562,7 +560,7 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   Widget _buildStarRating(int roundedStars) {
-    if (widget.product.reviewStars == 0) {
+    if (_avgRating == 0) {
       return Row(
         children: List.generate(
           5,
@@ -1277,29 +1275,56 @@ class _ProductPageState extends State<ProductPage> {
           .doc(widget.product.storeId)
           .get();
 
+      // Check if widget is still mounted after async operation
+      if (!mounted) return;
+
       if (!storeDoc.exists) {
         _showNoContactInfoDialog();
         return;
       }
 
       final storeData = storeDoc.data() as Map<String, dynamic>;
-      final settings = storeData['settings'] as Map<String, dynamic>? ?? {};
 
-      final instagram = settings['instagram'] as String? ?? '';
-      final facebook = settings['facebook'] as String? ?? '';
+      // Get contact information from direct fields
+      final phone = storeData['phone'] as String? ?? '';
+      final instagram = storeData['instagram'] as String? ?? '';
+      final facebook = storeData['facebook'] as String? ?? '';
 
-      if (instagram.isEmpty && facebook.isEmpty) {
-        _showNoContactInfoDialog();
+      // Fallback to settings for backward compatibility
+      if (phone.isEmpty && instagram.isEmpty && facebook.isEmpty) {
+        final settings = storeData['settings'] as Map<String, dynamic>? ?? {};
+        final settingsInstagram = settings['instagram'] as String? ?? '';
+        final settingsFacebook = settings['facebook'] as String? ?? '';
+
+        if (settingsInstagram.isEmpty && settingsFacebook.isEmpty) {
+          _showNoContactInfoDialog();
+          return;
+        }
+
+        _showContactDialog(
+          phone: '',
+          instagram: settingsInstagram,
+          facebook: settingsFacebook,
+        );
         return;
       }
 
-      _showContactDialog(instagram, facebook);
+      _showContactDialog(
+        phone: phone,
+        instagram: instagram,
+        facebook: facebook,
+      );
     } catch (e) {
+      if (!mounted) return;
       _showNoContactInfoDialog();
     }
   }
 
-  void _showContactDialog(String instagram, String facebook) {
+  void _showContactDialog({
+    required String phone,
+    required String instagram,
+    required String facebook,
+  }) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1339,13 +1364,25 @@ class _ProductPageState extends State<ProductPage> {
             const SizedBox(height: 24),
 
             // Contact options
+            if (phone.isNotEmpty) ...[
+              _buildContactOption(
+                icon: Icons.phone,
+                label: 'Утас',
+                value: phone,
+                onTap: () {
+                  Navigator.pop(context);
+                  _showPopupMessage('Утас: $phone');
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+
             if (instagram.isNotEmpty) ...[
               _buildContactOption(
                 icon: Icons.camera_alt,
                 label: 'Instagram',
                 value: instagram,
                 onTap: () {
-                  // Could implement URL launcher here
                   Navigator.pop(context);
                   _showPopupMessage('Instagram: $instagram');
                 },
@@ -1359,7 +1396,6 @@ class _ProductPageState extends State<ProductPage> {
                 label: 'Facebook',
                 value: facebook,
                 onTap: () {
-                  // Could implement URL launcher here
                   Navigator.pop(context);
                   _showPopupMessage('Facebook: $facebook');
                 },

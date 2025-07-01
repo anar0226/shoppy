@@ -12,6 +12,12 @@ class StoreModel {
   final DateTime updatedAt;
   final Map<String, dynamic> settings;
 
+  // New contact information fields
+  final String phone;
+  final String facebook;
+  final String instagram;
+  final String refundPolicy;
+
   StoreModel({
     required this.id,
     required this.name,
@@ -23,6 +29,10 @@ class StoreModel {
     required this.createdAt,
     required this.updatedAt,
     required this.settings,
+    this.phone = '',
+    this.facebook = '',
+    this.instagram = '',
+    this.refundPolicy = '',
   });
 
   factory StoreModel.fromFirestore(DocumentSnapshot doc) {
@@ -38,6 +48,10 @@ class StoreModel {
       createdAt: _parseTimestamp(data['createdAt']),
       updatedAt: _parseTimestamp(data['updatedAt']),
       settings: data['settings'] ?? {},
+      phone: data['phone'] ?? '',
+      facebook: data['facebook'] ?? '',
+      instagram: data['instagram'] ?? '',
+      refundPolicy: data['refundPolicy'] ?? '',
     );
   }
 
@@ -52,6 +66,10 @@ class StoreModel {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'settings': settings,
+      'phone': phone,
+      'facebook': facebook,
+      'instagram': instagram,
+      'refundPolicy': refundPolicy,
     };
   }
 
@@ -66,6 +84,10 @@ class StoreModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     Map<String, dynamic>? settings,
+    String? phone,
+    String? facebook,
+    String? instagram,
+    String? refundPolicy,
   }) {
     return StoreModel(
       id: id ?? this.id,
@@ -78,7 +100,30 @@ class StoreModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       settings: settings ?? this.settings,
+      phone: phone ?? this.phone,
+      facebook: facebook ?? this.facebook,
+      instagram: instagram ?? this.instagram,
+      refundPolicy: refundPolicy ?? this.refundPolicy,
     );
+  }
+
+  // Validation methods
+  bool get hasContactInfo =>
+      phone.isNotEmpty || facebook.isNotEmpty || instagram.isNotEmpty;
+
+  List<String> get availableContactMethods {
+    List<String> methods = [];
+    if (phone.isNotEmpty) methods.add('phone');
+    if (facebook.isNotEmpty) methods.add('facebook');
+    if (instagram.isNotEmpty) methods.add('instagram');
+    return methods;
+  }
+
+  String? validateContactInfo() {
+    if (!hasContactInfo) {
+      return 'Дор хаяж нэг холбогдох арга заавал оруулна уу (утас, Facebook эсвэл Instagram)';
+    }
+    return null;
   }
 
   static DateTime _parseTimestamp(dynamic ts) {

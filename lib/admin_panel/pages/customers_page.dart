@@ -75,12 +75,20 @@ class _CustomersPageState extends State<CustomersPage> {
 
     for (var order in orders) {
       final data = order.data();
-      // Track unique customers
+
+      // Track unique customers using enhanced logic
       final customerEmail = data['customerEmail'] as String? ??
           data['userEmail'] as String? ??
+          data['email'] as String? ??
           '';
-      if (customerEmail.isNotEmpty) {
-        uniqueCustomers.add(customerEmail);
+
+      // Use email as primary key, fallback to userId if no email
+      String customerKey = customerEmail.isNotEmpty
+          ? customerEmail
+          : (data['userId'] as String? ?? 'unknown-${order.id}');
+
+      if (customerKey.isNotEmpty && customerKey != 'unknown-${order.id}') {
+        uniqueCustomers.add(customerKey);
       }
 
       // Calculate revenue
@@ -93,15 +101,18 @@ class _CustomersPageState extends State<CustomersPage> {
     final newTotalRevenue = revenue;
     final newTotalOrders = orders.length;
 
-    // Only setState if values actually changed
+    // Only update state if values have actually changed
     if (totalCustomers != newTotalCustomers ||
         totalRevenue != newTotalRevenue ||
         totalOrders != newTotalOrders) {
+      totalCustomers = newTotalCustomers;
+      totalRevenue = newTotalRevenue;
+      totalOrders = newTotalOrders;
+
+      // Schedule state update for next frame to avoid rebuilding during build
       if (mounted) {
-        setState(() {
-          totalCustomers = newTotalCustomers;
-          totalRevenue = newTotalRevenue;
-          totalOrders = newTotalOrders;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() {});
         });
       }
     }
@@ -260,48 +271,102 @@ class _CustomersPageState extends State<CustomersPage> {
     // Group orders by customer
     final Map<String, Map<String, dynamic>> customerData = {};
 
+    // Debug: Print order count and first order structure (only in debug mode)
+    if (orders.isNotEmpty) {
+      print('📊 Processing ${orders.length} orders for customer extraction');
+      if (orders.length > 0) {
+        final firstOrder = orders.first.data();
+        print('🔍 Sample order fields: ${firstOrder.keys.toList()}');
+        print('📧 Customer fields in first order:');
+        print('   customerEmail: ${firstOrder['customerEmail']}');
+        print('   userEmail: ${firstOrder['userEmail']}');
+        print('   email: ${firstOrder['email']}');
+        print('   customerName: ${firstOrder['customerName']}');
+        print('   userId: ${firstOrder['userId']}');
+      }
+    }
+
     for (var order in orders) {
       final data = order.data();
+
+      // Try multiple possible field names for customer email
       final customerEmail = data['customerEmail'] as String? ??
           data['userEmail'] as String? ??
+          data['email'] as String? ??
           '';
 
-      // Get customer name with fallback logic
-      String customerName = data['customerName'] as String? ?? '';
+      // Try multiple possible field names for customer name
+      String customerName = data['customerName'] as String? ??
+          data['name'] as String? ??
+          data['displayName'] as String? ??
+          '';
+
+      // Enhanced fallback logic for customer name
       if (customerName.isEmpty) {
-        // Fallback to email username or placeholder
-        customerName = customerEmail.isNotEmpty
-            ? customerEmail.split('@').first
-            : 'Үл мэдэгдэх';
+        if (customerEmail.isNotEmpty) {
+          // Use email username as fallback
+          customerName = customerEmail.split('@').first;
+        } else {
+          // Try to get user ID and create a placeholder name
+          final userId = data['userId'] as String? ?? '';
+          if (userId.isNotEmpty) {
+            customerName = 'User ${userId.substring(0, 8)}';
+          } else {
+            customerName = 'Үл мэдэгдэх үйлчлүүлэгч';
+          }
+        }
       }
 
-      if (customerEmail.isNotEmpty) {
-        if (!customerData.containsKey(customerEmail)) {
-          customerData[customerEmail] = {
+      // Use email as primary key, fallback to userId if no email
+      String customerKey = customerEmail.isNotEmpty
+          ? customerEmail
+          : (data['userId'] as String? ?? 'unknown-${order.id}');
+
+      if (customerKey.isNotEmpty && customerKey != 'unknown-${order.id}') {
+        if (!customerData.containsKey(customerKey)) {
+          customerData[customerKey] = {
             'name': customerName,
-            'email': customerEmail,
+            'email': customerEmail.isNotEmpty ? customerEmail : 'Имэйл байхгүй',
+            'userId': data['userId'] ?? '',
             'orders': 0,
             'totalSpent': 0.0,
             'lastOrderDate': null,
             'status': 'идэвхтэй',
-            'address': data['shippingAddress'] ?? data['deliveryAddress'] ?? '',
+            'address': data['shippingAddress'] ??
+                data['deliveryAddress'] ??
+                data['address'] ??
+                '',
           };
         }
 
-        customerData[customerEmail]!['orders'] += 1;
-        customerData[customerEmail]!['totalSpent'] +=
+        customerData[customerKey]!['orders'] += 1;
+        customerData[customerKey]!['totalSpent'] +=
             TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
 
-        final orderDate = (data['createdAt'] ?? data['date']) as Timestamp?;
+        final orderDate = (data['createdAt'] ??
+            data['date'] ??
+            data['updatedAt']) as Timestamp?;
         if (orderDate != null) {
-          if (customerData[customerEmail]!['lastOrderDate'] == null ||
+          if (customerData[customerKey]!['lastOrderDate'] == null ||
               orderDate
                   .toDate()
-                  .isAfter(customerData[customerEmail]!['lastOrderDate'])) {
-            customerData[customerEmail]!['lastOrderDate'] = orderDate.toDate();
+                  .isAfter(customerData[customerKey]!['lastOrderDate'])) {
+            customerData[customerKey]!['lastOrderDate'] = orderDate.toDate();
           }
         }
       }
+    }
+
+    // Debug: Print extraction results
+    print(
+        '✅ Extracted ${customerData.length} unique customers from ${orders.length} orders');
+    if (customerData.isNotEmpty) {
+      print('👥 Sample customers:');
+      customerData.entries.take(3).forEach((entry) {
+        final customer = entry.value;
+        print(
+            '   ${customer['name']} (${customer['email']}) - ${customer['orders']} orders');
+      });
     }
 
     // Filter customers based on search query

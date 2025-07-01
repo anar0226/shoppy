@@ -22,12 +22,19 @@ class TopProduct {
   });
 
   factory TopProduct.fromMap(Map<String, dynamic> map, {int rank = 0}) {
+    // Safe image URL extraction
+    String imageUrl = map['imageUrl'] ?? '';
+    if (imageUrl.isEmpty && map['images'] != null) {
+      final images = map['images'];
+      if (images is List && images.isNotEmpty) {
+        imageUrl = images[0]?.toString() ?? '';
+      }
+    }
+
     return TopProduct(
       id: map['id'] ?? '',
       name: map['name'] ?? '',
-      imageUrl: map['imageUrl'] ?? (map['images'] as List?)?.isNotEmpty == true
-          ? map['images'][0]
-          : '',
+      imageUrl: imageUrl,
       unitsSold: map['unitsSold'] ?? 0,
       revenue: (map['revenue'] ?? 0).toDouble(),
       price: (map['price'] ?? 0).toDouble(),

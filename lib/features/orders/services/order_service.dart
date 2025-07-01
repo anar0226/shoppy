@@ -13,7 +13,7 @@ class OrderService {
 
   // **CORE ORDER FUNCTIONALITY**
 
-  Future<void> createOrder({
+  Future<String> createOrder({
     required User user,
     required double subtotal,
     required double shipping,
@@ -88,7 +88,8 @@ class OrderService {
         .doc(user.uid)
         .collection('orders')
         .add(orderData);
-    await _db.collection('orders').add(orderData);
+    final orderDoc = await _db.collection('orders').add(orderData);
+    return orderDoc.id;
   }
 
   // **ORDER ANALYTICS METHODS**
@@ -119,10 +120,11 @@ class OrderService {
 
       for (final order in orders) {
         final data = order.data();
-        final status = data['status'] ?? 'unknown';
+        final status = _getStatusAsString(data['status']);
         statusCounts[status] = (statusCounts[status] ?? 0) + 1;
 
-        if (status != 'canceled') {
+        final safeStatus = _getStatusAsString(status);
+        if (safeStatus != 'canceled') {
           totalRevenue += (data['total'] ?? 0).toDouble();
           totalSubtotal += (data['subtotal'] ?? 0).toDouble();
           totalShipping += (data['shippingCost'] ?? 0).toDouble();
@@ -177,7 +179,8 @@ class OrderService {
 
           for (final doc in snapshot.docs) {
             final data = doc.data();
-            if (data['status'] != 'canceled') {
+            final status = _getStatusAsString(data['status']);
+            if (status != 'canceled') {
               dayRevenue += (data['total'] ?? 0).toDouble();
               dayOrders++;
             }
@@ -209,7 +212,8 @@ class OrderService {
 
           for (final doc in snapshot.docs) {
             final data = doc.data();
-            if (data['status'] != 'canceled') {
+            final status = _getStatusAsString(data['status']);
+            if (status != 'canceled') {
               weekRevenue += (data['total'] ?? 0).toDouble();
               weekOrders++;
             }
@@ -248,7 +252,7 @@ class OrderService {
           'id': doc.id,
           'userEmail': data['userEmail'] ?? '',
           'total': data['total'] ?? 0.0,
-          'status': data['status'] ?? 'placed',
+          'status': _getStatusAsString(data['status']),
           'createdAt': data['createdAt'],
           'itemCount': data['itemCount'] ?? 0,
           'items': data['items'] ?? [],
@@ -285,7 +289,7 @@ class OrderService {
 
       for (final doc in snapshot.docs) {
         final data = doc.data();
-        final status = data['status'] ?? 'placed';
+        final status = _getStatusAsString(data['status']);
         statusCounts[status] = (statusCounts[status] ?? 0) + 1;
       }
 
@@ -320,7 +324,8 @@ class OrderService {
           double monthRevenue = 0.0;
           for (final doc in snapshot.docs) {
             final data = doc.data();
-            if (data['status'] != 'canceled') {
+            final status = _getStatusAsString(data['status']);
+            if (status != 'canceled') {
               monthRevenue += (data['total'] ?? 0).toDouble();
             }
           }
@@ -346,7 +351,8 @@ class OrderService {
           double dayRevenue = 0.0;
           for (final doc in snapshot.docs) {
             final data = doc.data();
-            if (data['status'] != 'canceled') {
+            final status = _getStatusAsString(data['status']);
+            if (status != 'canceled') {
               dayRevenue += (data['total'] ?? 0).toDouble();
             }
           }
@@ -470,7 +476,8 @@ class OrderService {
       double monthlyRevenue = 0.0;
       for (final doc in monthSnapshot.docs) {
         final data = doc.data();
-        if (data['status'] != 'canceled') {
+        final status = _getStatusAsString(data['status']);
+        if (status != 'canceled') {
           monthlyRevenue += (data['total'] ?? 0).toDouble();
         }
       }
@@ -484,5 +491,27 @@ class OrderService {
     } catch (e) {
       throw Exception('Failed to get order summary: $e');
     }
+  }
+
+  // Helper method to safely convert status field to string
+  String _getStatusAsString(dynamic status) {
+    if (status == null) return 'placed';
+    if (status is String) return status;
+    if (status is bool) {
+      // Handle cases where status might be stored as boolean
+      return status ? 'active' : 'inactive';
+    }
+    return status.toString();
+  }
+
+  // Helper method to safely get boolean from dynamic value
+  bool _getBooleanValue(dynamic value, {bool defaultValue = false}) {
+    if (value == null) return defaultValue;
+    if (value is bool) return value;
+    if (value is String) {
+      return value.toLowerCase() == 'true' || value.toLowerCase() == 'active';
+    }
+    if (value is int) return value != 0;
+    return defaultValue;
   }
 }

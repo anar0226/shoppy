@@ -42,6 +42,10 @@ class _SignupPageState extends State<SignupPage> {
         'createdAt': Timestamp.now(),
         'updatedAt': Timestamp.now(),
         'settings': {},
+        'phone': '',
+        'facebook': '',
+        'instagram': '',
+        'refundPolicy': '',
       });
 
       await AuthService.instance.sendEmailVerification();
