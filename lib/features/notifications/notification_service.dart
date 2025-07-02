@@ -138,7 +138,9 @@ class NotificationService {
         'message': message,
         'data': data ?? {},
         'read': false,
-        'createdAt': FieldValue.serverTimestamp(),
+        'isRead': false, // Include both read and isRead for compatibility
+        'createdAt': Timestamp
+            .now(), // Use explicit timestamp instead of server timestamp
       });
 
       // Send push notification

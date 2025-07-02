@@ -49,4 +49,14 @@ class TypeUtils {
     final uri = Uri.tryParse(url!);
     return uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
   }
+
+  /// Safely extract storeId from dynamic data (handles both String and List cases)
+  static String extractStoreId(dynamic storeIdData) {
+    if (storeIdData == null) return '';
+    if (storeIdData is String) return storeIdData;
+    if (storeIdData is List && storeIdData.isNotEmpty) {
+      return storeIdData.first.toString();
+    }
+    return storeIdData.toString();
+  }
 }

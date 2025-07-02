@@ -16,8 +16,6 @@ class SettingsPage extends StatelessWidget {
     final List<_SettingsItem> items = [
       _SettingsItem(Icons.location_on, "Хүргэлтийн хаяг"),
       _SettingsItem(Icons.notifications, "Мэдэгдэл"),
-      _SettingsItem(Icons.verified_user, "Дата"),
-      _SettingsItem(Icons.language, "Хэл"),
     ];
 
     return Scaffold(
@@ -64,20 +62,6 @@ class SettingsPage extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (_) => const NotificationsPage(),
                               ),
-                            );
-                            break;
-                          case 2: // Дата (Data)
-                            // TODO: Add data management page navigation
-                            PopupUtils.showInfo(
-                              context: context,
-                              message: 'Дата хуудас удахгүй нээгдэх болно',
-                            );
-                            break;
-                          case 3: // Хэл (Language)
-                            // TODO: Add language selection page navigation
-                            PopupUtils.showInfo(
-                              context: context,
-                              message: 'Хэлний тохиргоо удахгүй нээгдэх болно',
                             );
                             break;
                         }

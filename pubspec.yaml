@@ -151,6 +151,9 @@ flutter:
     # Toys & Games
     - assets/images/categories/Toys&games/
     - assets/images/categories/Toys&games/toys and games.jpg
+
+    - assets/images/logos/QPAY.png
+    - assets/images/logos/STOREPAY.png
   
     
     # Animations (Lottie files, etc.)

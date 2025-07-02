@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'notification_service.dart';
+import '../../core/utils/type_utils.dart';
 
 class UserNotificationsPage extends StatefulWidget {
   const UserNotificationsPage({super.key});
@@ -417,7 +418,7 @@ class _UserNotificationsPageState extends State<UserNotificationsPage> {
       case 'priceDrops':
       case 'newDrops':
         final productId = data['productId'] as String?;
-        final storeId = data['storeId'] as String?;
+        final storeId = TypeUtils.extractStoreId(data['storeId']);
         if (productId != null && storeId != null) {
           // Navigator.pushNamed(context, '/product-details', arguments: {
           //   'productId': productId,

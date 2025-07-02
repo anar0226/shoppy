@@ -106,14 +106,14 @@ class _ShoesCategoryPageState extends State<ShoesCategoryPage> {
   }
 
   static const List<String> _sections = [
-    'Өндөр ёстой',
+    'Өндөр өсгийт',
     'Шаахай',
     'Пүүз',
     'Бусад',
   ];
 
   final List<_SubCat> _subCats = const [
-    _SubCat('Өндөр ёстой', 'assets/images/categories/Women/shoes/Heels.jpg',
+    _SubCat('Өндөр өсгийт', 'assets/images/categories/Women/shoes/Heels.jpg',
         Color(0xFF8B4513)),
     _SubCat('Шаахай', 'assets/images/categories/Women/shoes/Slippers.jpg',
         Color(0xFFD97841)),

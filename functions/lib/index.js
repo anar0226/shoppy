@@ -655,20 +655,20 @@ exports.sendOrderNotification = functions.firestore
         let body = '';
         switch (newStatus) {
             case 'confirmed':
-                title = 'Order Confirmed!';
-                body = `Your order #${orderId.substring(0, 6)} has been confirmed and is being prepared.`;
+                title = 'Захиалга баталгаажлаа!';
+                body = `Таны захиалга: #${orderId.substring(0, 6)} баталгаажлаа.`;
                 break;
             case 'shipped':
-                title = 'Order Shipped!';
-                body = `Great news! Your order #${orderId.substring(0, 6)} is on its way.`;
+                title = 'Захиалга замдаа гарлаа!';
+                body = `Таны захиалга: #${orderId.substring(0, 6)} замдаа гарлаа.`;
                 break;
             case 'delivered':
-                title = 'Order Delivered!';
-                body = `Your order #${orderId.substring(0, 6)} has been delivered. Enjoy your purchase!`;
+                title = 'Захиалга амжилттай хүргэгдлээ !';
+                body = `Таны захиалга: #${orderId.substring(0, 6)} амжилттай хүргэгдлээ.`;
                 break;
             case 'canceled':
-                title = 'Order Canceled';
-                body = `Your order #${orderId.substring(0, 6)} has been canceled.`;
+                title = 'Захиалга цуцлагдсан!';
+                body = `Таны захиалга: #${orderId.substring(0, 6)} цуцлагдсан.`;
                 break;
             default:
                 return; // Don't send notification for other status changes
@@ -732,8 +732,8 @@ exports.sendPriceDropNotification = functions.firestore
                 userId: userDoc.id,
                 payload: {
                     notification: {
-                        title: 'Price Drop Alert! 🔥',
-                        body: `${productName} is now ${afterDiscount}% off! Don't miss out!`,
+                        title: 'Цочир хямдрал! 🔥',
+                        body: `${productName} ${afterDiscount}%-аар хямдралаа!`,
                     },
                     data: {
                         type: 'priceDrops',
@@ -755,11 +755,11 @@ exports.sendPriceDropNotification = functions.firestore
                 batch.set(docRef, notification);
             });
             await batch.commit();
-            console.log(`Queued ${notifications.length} price drop notifications for product ${productId}`);
+            console.log(`${notifications.length} хямдралын мэдэгдэл орууллаа: ${productId}`);
         }
     }
     catch (error) {
-        console.error('Error processing price drop notification:', error);
+        console.error('Алдаа гарлаа:', error);
     }
 });
 // **PHASE 2: PAYOUT AUTOMATION CLOUD FUNCTIONS**
@@ -828,7 +828,7 @@ exports.processScheduledPayouts = functions.pubsub.schedule('0 10 * * *')
                             transactionIds,
                             requestDate: now,
                             scheduledDate: now,
-                            notes: 'Automatic scheduled payout',
+                            notes: 'Автоматаар захиалгын төлөвлөгөө',
                             metadata: {
                                 scheduleId: scheduleDoc.id,
                                 automaticPayout: true,
@@ -862,18 +862,18 @@ exports.processScheduledPayouts = functions.pubsub.schedule('0 10 * * *')
                 }
             }
             catch (error) {
-                console.error(`Error processing schedule ${scheduleDoc.id}:`, error);
+                console.error(`${scheduleDoc.id} захиалгын төлөвлөгөө бүрэн төлөгдлөө:`, error);
             }
         }
         // Commit all changes
         if (processedCount > 0) {
             await batch.commit();
         }
-        console.log(`Processed ${processedCount} scheduled payouts`);
+        console.log(`${processedCount} захиалгын төлөвлөгөө бүрэн төлөгдлөө`);
         return { success: true, processedCount };
     }
     catch (error) {
-        console.error('Error in scheduled payout processing:', error);
+        console.error('Алдаа гарлаа:', error);
         throw error;
     }
 });
@@ -987,14 +987,14 @@ exports.processQPayPayout = functions.https.onCall(async (data, context) => {
             // Handle QPay API errors
             await payoutDoc.ref.update({
                 status: 'failed',
-                failureReason: `QPay error: ${error}`,
+                failureReason: `QPay алдаа: ${error}`,
             });
             throw error;
         }
     }
     catch (error) {
-        console.error('Error processing QPay payout:', error);
-        throw new functions.https.HttpsError('internal', 'Error processing payout');
+        console.error('Алдаа гарлаа:', error);
+        throw new functions.https.HttpsError('internal', 'Алдаа гарлаа');
     }
 });
 // Simulate QPay transfer (replace with actual QPay API integration)

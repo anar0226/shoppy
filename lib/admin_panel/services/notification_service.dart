@@ -215,6 +215,7 @@ class NotificationService {
         ...notification.toMap(),
         'storeId': storeId,
         'ownerId': ownerId,
+        'read': false, // Include both read and isRead for compatibility
       });
     } catch (e) {
       debugPrint('Error creating notification: $e');
@@ -238,6 +239,135 @@ class NotificationService {
       type: NotificationType.order,
       data: {'orderId': orderId, 'total': total},
     );
+  }
+
+  // Enhanced method to send notifications with SMS support
+  static Future<void> notifyStoreOwnerNewOrder({
+    required String storeId,
+    required String ownerId,
+    required String orderId,
+    required String customerEmail,
+    required double total,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    try {
+      // Create in-app notification
+      final notificationService = NotificationService();
+      await notificationService.notifyNewOrder(
+        storeId: storeId,
+        ownerId: ownerId,
+        orderId: orderId,
+        customerEmail: customerEmail,
+        total: total,
+      );
+
+      // Send FCM push notification to store owner
+      final itemNames = items
+          .map((item) => item['name'] ?? 'Бүтээгдэхүүн')
+          .take(2)
+          .join(', ');
+      final moreItems = items.length > 2 ? ' +${items.length - 2} бусад' : '';
+
+      await _sendPushNotificationToOwner(
+        ownerId: ownerId,
+        title: 'Шинэ захиалга ирлээ! 🛍️',
+        message: '$itemNames$moreItems - ₮${total.toStringAsFixed(0)}',
+        data: {
+          'type': 'new_order',
+          'orderId': orderId,
+          'storeId': storeId,
+        },
+      );
+
+      // Send SMS notification if phone number is available
+      await _sendSMSNotificationToOwner(
+        ownerId: ownerId,
+        orderId: orderId,
+        total: total,
+        itemCount: items.length,
+      );
+    } catch (e) {
+      debugPrint('Error sending new order notification: $e');
+    }
+  }
+
+  // Send push notification to store owner
+  static Future<void> _sendPushNotificationToOwner({
+    required String ownerId,
+    required String title,
+    required String message,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      // Get store owner's FCM token
+      final ownerDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(ownerId)
+          .get();
+
+      if (ownerDoc.exists) {
+        final ownerData = ownerDoc.data() as Map<String, dynamic>;
+        final fcmToken = ownerData['fcmToken'] as String?;
+
+        if (fcmToken != null && fcmToken.isNotEmpty) {
+          // Send push notification via Firebase Cloud Functions
+          await FirebaseFirestore.instance
+              .collection('notification_queue')
+              .add({
+            'userId': ownerId,
+            'payload': {
+              'notification': {
+                'title': title,
+                'body': message,
+              },
+              'data': data ?? {},
+              'token': fcmToken,
+            },
+            'status': 'pending',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error sending push notification to owner: $e');
+    }
+  }
+
+  // Send SMS notification to store owner
+  static Future<void> _sendSMSNotificationToOwner({
+    required String ownerId,
+    required String orderId,
+    required double total,
+    required int itemCount,
+  }) async {
+    try {
+      // Get store owner's phone number
+      final ownerDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(ownerId)
+          .get();
+
+      if (ownerDoc.exists) {
+        final ownerData = ownerDoc.data() as Map<String, dynamic>;
+        final phoneNumber = ownerData['phoneNumber'] as String?;
+
+        if (phoneNumber != null && phoneNumber.isNotEmpty) {
+          // Queue SMS notification for Cloud Functions to process
+          await FirebaseFirestore.instance.collection('sms_queue').add({
+            'phoneNumber': phoneNumber,
+            'message':
+                'Shoppy: Шинэ захиалга #${orderId.substring(0, 6)}. $itemCount бүтээгдэхүүн, ₮${total.toStringAsFixed(0)}. Админ панелээс харна уу.',
+            'type': 'new_order',
+            'ownerId': ownerId,
+            'orderId': orderId,
+            'status': 'pending',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error queuing SMS notification: $e');
+    }
   }
 
   // Notify low stock

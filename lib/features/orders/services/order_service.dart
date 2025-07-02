@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:avii/features/cart/models/cart_item.dart';
 import 'package:avii/features/stores/models/store_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../admin_panel/services/notification_service.dart';
 
 class OrderService {
   final _db = FirebaseFirestore.instance;
@@ -83,12 +84,34 @@ class OrderService {
           0, (sum, item) => sum + ((item['quantity'] ?? 0) as int)),
     };
 
+    // Create the order in main collection first to get the order ID
+    final orderDoc = await _db.collection('orders').add(orderData);
+
+    // Add the main order ID reference and save to user's collection
+    final userOrderData = Map<String, dynamic>.from(orderData);
+    userOrderData['mainOrderId'] = orderDoc.id;
+
     await _db
         .collection('users')
         .doc(user.uid)
         .collection('orders')
-        .add(orderData);
-    final orderDoc = await _db.collection('orders').add(orderData);
+        .add(userOrderData);
+
+    // Send notification to store owner about new order
+    try {
+      await NotificationService.notifyStoreOwnerNewOrder(
+        storeId: store.id,
+        ownerId: store.ownerId,
+        orderId: orderDoc.id,
+        customerEmail: user.email ?? '',
+        total: subtotal + shipping + tax,
+        items: items,
+      );
+    } catch (e) {
+      // Don't fail order creation if notification fails
+      print('Failed to send order notification: $e');
+    }
+
     return orderDoc.id;
   }
 
@@ -386,9 +409,94 @@ class OrderService {
         updateData['canceledAt'] = FieldValue.serverTimestamp();
       }
 
+      // Update main orders collection
       await _db.collection('orders').doc(orderId).update(updateData);
+
+      // Also update user's personal orders collection for mobile app sync
+      await _updateUserOrderStatus(orderId, updateData);
     } catch (e) {
       throw Exception('Failed to update order status: $e');
+    }
+  }
+
+  /// Update the user's personal orders collection to sync with mobile app
+  Future<void> _updateUserOrderStatus(
+      String orderId, Map<String, dynamic> updateData) async {
+    try {
+      // First get the order to find the user ID
+      final orderDoc = await _db.collection('orders').doc(orderId).get();
+      if (!orderDoc.exists) return;
+
+      final orderData = orderDoc.data()!;
+      final userId = orderData['userId'] as String?;
+
+      if (userId != null && userId.isNotEmpty) {
+        // Add the main order ID to the update data for future reference
+        final enhancedUpdateData = Map<String, dynamic>.from(updateData);
+        enhancedUpdateData['mainOrderId'] = orderId;
+
+        // Find matching order in user's collection using multiple criteria
+        final userOrdersQuery = await _db
+            .collection('users')
+            .doc(userId)
+            .collection('orders')
+            .get();
+
+        DocumentSnapshot? matchingUserOrder;
+
+        // Try to find by stored main order ID first (for future orders)
+        for (final userOrderDoc in userOrdersQuery.docs) {
+          final userOrderData = userOrderDoc.data() as Map<String, dynamic>;
+
+          if (userOrderData['mainOrderId'] == orderId) {
+            matchingUserOrder = userOrderDoc;
+            break;
+          }
+        }
+
+        // If not found by order ID, try to match by order details
+        if (matchingUserOrder == null) {
+          final orderCreatedAt = orderData['createdAt'] as Timestamp?;
+          final orderTotal = orderData['total'];
+          final orderStoreId = orderData['storeId'];
+
+          for (final userOrderDoc in userOrdersQuery.docs) {
+            final userOrderData = userOrderDoc.data() as Map<String, dynamic>;
+
+            final userOrderCreatedAt = userOrderData['createdAt'] as Timestamp?;
+            final userOrderTotal = userOrderData['total'];
+            final userOrderStoreId = userOrderData['storeId'];
+
+            // Match by creation time, total amount, and store ID
+            if (orderCreatedAt != null &&
+                userOrderCreatedAt != null &&
+                orderStoreId == userOrderStoreId &&
+                orderTotal == userOrderTotal &&
+                (orderCreatedAt.seconds - userOrderCreatedAt.seconds).abs() <=
+                    2) {
+              matchingUserOrder = userOrderDoc;
+              break;
+            }
+          }
+        }
+
+        // Update the matching user order
+        if (matchingUserOrder != null) {
+          await _db
+              .collection('users')
+              .doc(userId)
+              .collection('orders')
+              .doc(matchingUserOrder.id)
+              .update(enhancedUpdateData);
+          print(
+              '✅ Successfully synced order status to mobile app: ${matchingUserOrder.id} -> ${updateData['status']}');
+        } else {
+          print('⚠️ Could not find matching user order for $orderId');
+        }
+      }
+    } catch (e) {
+      // Don't fail the main update if user order sync fails
+      print('❌ Failed to sync user order status: $e');
     }
   }
 

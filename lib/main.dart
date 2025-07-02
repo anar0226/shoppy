@@ -1480,7 +1480,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   Widget _buildOrderCard(BuildContext context, QueryDocumentSnapshot order) {
     final data = order.data() as Map<String, dynamic>;
     final items = List<Map<String, dynamic>>.from(data['items'] ?? []);
-    final storeId = data['storeId'] as String? ?? '';
+    final storeId = TypeUtils.extractStoreId(data['storeId']);
     final status = data['status'] as String? ?? 'placed';
     final totalAmount =
         TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
@@ -1905,7 +1905,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
           if (orderSnapshot.docs.isNotEmpty) {
             final orderData = orderSnapshot.docs.first.data();
-            storeId = orderData['storeId'] as String?;
+            storeId = TypeUtils.extractStoreId(orderData['storeId']);
           }
         } catch (e) {
           // Fallback to generic message
@@ -2152,7 +2152,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
           if (orderSnapshot.docs.isNotEmpty) {
             final orderData = orderSnapshot.docs.first.data();
-            storeId = orderData['storeId'] as String?;
+            storeId = TypeUtils.extractStoreId(orderData['storeId']);
           }
         } catch (e) {
           // Fallback to generic policy
@@ -2479,7 +2479,7 @@ class ReceiptPage extends StatelessWidget {
     final totalAmount =
         TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
     final createdAt = (data['createdAt'] ?? Timestamp.now()) as Timestamp;
-    final storeId = data['storeId'] as String? ?? '';
+    final storeId = TypeUtils.extractStoreId(data['storeId']);
 
     // Extract payment and address information
     final String paymentMethod = data['paymentMethod'] as String? ?? 'Карт';
@@ -2777,66 +2777,156 @@ class ReceiptPage extends StatelessWidget {
 
   Widget _buildBillingAddressSection(String customerEmail,
       Map<String, dynamic> deliveryAddress, String shippingAddress) {
-    // Extract address information
-    final recipientName = deliveryAddress['recipientName'] as String? ??
-        deliveryAddress['contactName'] as String? ??
-        'Хэрэглэгч';
-    final fullAddress = deliveryAddress['fullAddress'] as String? ??
-        deliveryAddress['address'] as String? ??
-        (shippingAddress.isNotEmpty
-            ? shippingAddress
-            : 'Улаанbaatar, Монгол улс');
-    final phone = deliveryAddress['phone'] as String? ??
-        deliveryAddress['contactPhone'] as String? ??
-        '+976 9999 9999';
+    return FutureBuilder<Map<String, String>>(
+      future:
+          _getReceiptUserInfo(deliveryAddress, shippingAddress, customerEmail),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Төлбөрийн хаяг',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 12),
+              CircularProgressIndicator(),
+            ],
+          );
+        }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Төлбөрийн хаяг',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          recipientName,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          fullAddress,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          phone,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black,
-          ),
-        ),
-        if (customerEmail.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(
-            customerEmail,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.black,
+        final userInfo = snapshot.data ?? {};
+        final recipientName = userInfo['name'] ?? 'Хэрэглэгч';
+        final fullAddress = userInfo['address'] ?? 'Улаанbaatar, Монгол улс';
+        final phone = userInfo['phone'] ?? '+976 9999 9999';
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Төлбөрийн хаяг',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
             ),
-          ),
-        ],
-      ],
+            const SizedBox(height: 12),
+            Text(
+              recipientName,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              fullAddress,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              phone,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black,
+              ),
+            ),
+            if (customerEmail.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                customerEmail,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black,
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
+  }
+
+  // Helper method to get user info for receipt
+  Future<Map<String, String>> _getReceiptUserInfo(
+      Map<String, dynamic> deliveryAddress,
+      String shippingAddress,
+      String customerEmail) async {
+    try {
+      // Try to get current user info if available
+      final currentUser = auth.FirebaseAuth.instance.currentUser;
+      String userName = 'Хэрэглэгч';
+      String userPhone = '+976 9999 9999';
+
+      if (currentUser != null) {
+        try {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .get();
+
+          if (userDoc.exists) {
+            final userData = userDoc.data() as Map<String, dynamic>;
+            userName = userData['displayName'] as String? ??
+                userData['firstName'] as String? ??
+                userData['name'] as String? ??
+                currentUser.displayName ??
+                'Хэрэглэгч';
+            userPhone = userData['phoneNumber'] as String? ??
+                userData['phone'] as String? ??
+                currentUser.phoneNumber ??
+                '+976 9999 9999';
+          }
+        } catch (e) {
+          print('Error fetching user data for receipt: $e');
+        }
+      }
+
+      // Get address information
+      String finalAddress = 'Улаанbaatar, Монгол улс';
+      String phone = userPhone;
+
+      if (deliveryAddress.isNotEmpty) {
+        finalAddress = deliveryAddress['fullAddress'] as String? ??
+            deliveryAddress['address'] as String? ??
+            deliveryAddress['line1'] as String? ??
+            shippingAddress;
+
+        phone = deliveryAddress['phone'] as String? ??
+            deliveryAddress['contactPhone'] as String? ??
+            userPhone;
+
+        // Override name if delivery address has name info
+        final firstName = deliveryAddress['firstName'] as String? ?? '';
+        final lastName = deliveryAddress['lastName'] as String? ?? '';
+        if (firstName.isNotEmpty || lastName.isNotEmpty) {
+          userName = '$firstName $lastName'.trim();
+        }
+      } else if (shippingAddress.isNotEmpty) {
+        finalAddress = shippingAddress;
+      }
+
+      return {
+        'name': userName,
+        'address': finalAddress,
+        'phone': phone,
+      };
+    } catch (e) {
+      print('Error getting receipt user info: $e');
+      return {
+        'name': 'Хэрэглэгч',
+        'address': 'Улаанbaatar, Монгол улс',
+        'phone': '+976 9999 9999',
+      };
+    }
   }
 
   String _getPaymentMethodDisplay(String paymentMethod) {

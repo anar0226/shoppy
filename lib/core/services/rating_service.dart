@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import '../utils/type_utils.dart';
 
 /// Service for fetching actual rating data instead of using placeholder values
 class RatingService {
@@ -135,7 +136,7 @@ class RatingService {
 
       if (productDoc.exists) {
         final data = productDoc.data() as Map<String, dynamic>;
-        final storeId = data['storeId'] as String?;
+        final storeId = TypeUtils.extractStoreId(data['storeId']);
 
         if (storeId != null) {
           return await getStoreRating(storeId);

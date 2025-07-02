@@ -740,7 +740,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         final currentAddress = hasAddress
             ? (addressProvider.defaultAddress?.formatted() ??
                 addressProvider.addresses.first.formatted())
-            : 'Tap to add your shipping address';
+            : 'Xүргэлтийн xаягаа оруулна уу';
 
         return InkWell(
           onTap: () async {

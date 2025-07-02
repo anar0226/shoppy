@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:avii/core/utils/type_utils.dart';
 
 class OrderTrackingPage extends StatefulWidget {
@@ -12,16 +13,365 @@ class OrderTrackingPage extends StatefulWidget {
 }
 
 class _OrderTrackingPageState extends State<OrderTrackingPage> {
+  // Fetch actual user data and delivery information
+  Future<Map<String, String>> _getDeliveryInfo(
+      Map<String, dynamic> orderData) async {
+    try {
+      final userId = orderData['userId'] as String?;
+      final deliveryAddress =
+          orderData['deliveryAddress'] as Map<String, dynamic>? ?? {};
+      final shippingAddress = orderData['shippingAddress'] as String? ?? '';
+
+      String userName = 'Хэрэглэгч';
+      String userPhone = '';
+
+      // Try to get user information from Firestore
+      if (userId != null && userId.isNotEmpty) {
+        try {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
+
+          if (userDoc.exists) {
+            final userData = userDoc.data() as Map<String, dynamic>;
+            userName = userData['displayName'] as String? ??
+                userData['firstName'] as String? ??
+                userData['name'] as String? ??
+                'Хэрэглэгч';
+            userPhone = userData['phoneNumber'] as String? ??
+                userData['phone'] as String? ??
+                '';
+          }
+        } catch (e) {
+          print('Error fetching user data: $e');
+        }
+      }
+
+      // Get delivery address information
+      String finalAddress = 'Хаяг байхгүй';
+      String phone = userPhone;
+
+      if (deliveryAddress.isNotEmpty) {
+        // Try different possible field names for address
+        finalAddress = deliveryAddress['fullAddress'] as String? ??
+            deliveryAddress['address'] as String? ??
+            deliveryAddress['line1'] as String? ??
+            shippingAddress;
+
+        // Try different possible field names for phone
+        phone = deliveryAddress['phone'] as String? ??
+            deliveryAddress['contactPhone'] as String? ??
+            userPhone;
+
+        // If we have firstName and lastName, use them instead
+        final firstName = deliveryAddress['firstName'] as String? ?? '';
+        final lastName = deliveryAddress['lastName'] as String? ?? '';
+        if (firstName.isNotEmpty || lastName.isNotEmpty) {
+          userName = '$firstName $lastName'.trim();
+        }
+      } else if (shippingAddress.isNotEmpty) {
+        finalAddress = shippingAddress;
+      }
+
+      return {
+        'name': userName,
+        'address': finalAddress,
+        'phone': phone,
+      };
+    } catch (e) {
+      print('Error getting delivery info: $e');
+      return {
+        'name': 'Хэрэглэгч',
+        'address': 'Хаяг байхгүй',
+        'phone': '',
+      };
+    }
+  }
+
+  // Show store contact information popup
+  void _showContactStoreDialog(String storeId) async {
+    try {
+      final storeDoc = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(storeId)
+          .get();
+
+      if (!storeDoc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Дэлгүүрийн мэдээлэл олдсонгүй')),
+        );
+        return;
+      }
+
+      final storeData = storeDoc.data() as Map<String, dynamic>;
+      final storeName = storeData['name'] as String? ?? 'Дэлгүүр';
+      final storePhone = storeData['phone'] as String? ?? '';
+      final storeEmail = storeData['email'] as String? ?? '';
+      final storeFacebook = storeData['facebook'] as String? ?? '';
+      final storeInstagram = storeData['instagram'] as String? ?? '';
+      final storeDescription = storeData['description'] as String? ?? '';
+
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                const Icon(Icons.store, color: Colors.blue),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    storeName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (storeDescription.isNotEmpty) ...[
+                    Text(
+                      storeDescription,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  const Text(
+                    'Холбоо барих',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (storePhone.isNotEmpty)
+                    _buildContactItem(
+                      Icons.phone,
+                      'Утас',
+                      storePhone,
+                      () => _launchPhone(storePhone),
+                    ),
+                  if (storeEmail.isNotEmpty)
+                    _buildContactItem(
+                      Icons.email,
+                      'И-мэйл',
+                      storeEmail,
+                      () => _launchEmail(storeEmail),
+                    ),
+                  if (storeFacebook.isNotEmpty)
+                    _buildContactItem(
+                      Icons.facebook,
+                      'Facebook',
+                      storeFacebook,
+                      () => _launchUrl(storeFacebook),
+                    ),
+                  if (storeInstagram.isNotEmpty)
+                    _buildContactItem(
+                      Icons.camera_alt,
+                      'Instagram',
+                      storeInstagram,
+                      () => _launchUrl(storeInstagram),
+                    ),
+                  if (storePhone.isEmpty &&
+                      storeEmail.isEmpty &&
+                      storeFacebook.isEmpty &&
+                      storeInstagram.isEmpty)
+                    Text(
+                      'Холбогдох мэдээлэл байхгүй байна',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Хаах'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Алдаа гарлаа: $e')),
+      );
+    }
+  }
+
+  Widget _buildContactItem(
+      IconData icon, String title, String value, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                size: 16,
+                color: Colors.blue.shade600,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 12,
+              color: Colors.grey.shade400,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _launchPhone(String phone) {
+    // This would launch phone dialer in a real app
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Утасны дугаар: $phone')),
+    );
+  }
+
+  void _launchEmail(String email) {
+    // This would launch email client in a real app
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('И-мэйл: $email')),
+    );
+  }
+
+  void _launchUrl(String url) {
+    // This would launch browser in a real app
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Холбоос: $url')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final data = widget.order.data() as Map<String, dynamic>;
-    final storeId = data['storeId'] as String? ?? '';
-    final status = data['status'] as String? ?? 'placed';
-    final totalAmount =
-        TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
-    final createdAt = (data['createdAt'] ?? Timestamp.now()) as Timestamp;
-    final items = List<Map<String, dynamic>>.from(data['items'] ?? []);
+    // Use real-time stream to get live updates when admin changes status
+    return StreamBuilder<DocumentSnapshot>(
+      stream: widget.order.reference.snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            backgroundColor: Colors.grey.shade50,
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: const Text(
+                'Захиалгын статус',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
 
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return Scaffold(
+            backgroundColor: Colors.grey.shade50,
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: const Text(
+                'Захиалгын статус',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            body: const Center(
+              child: Text(
+                'Захиалга олдсонгүй',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            ),
+          );
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final storeId = TypeUtils.extractStoreId(data['storeId']);
+        final status = data['status'] as String? ?? 'placed';
+        final totalAmount =
+            TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
+        final createdAt = (data['createdAt'] ?? Timestamp.now()) as Timestamp;
+        final items = List<Map<String, dynamic>>.from(data['items'] ?? []);
+
+        return _buildOrderTrackingContent(
+            context, storeId, status, totalAmount, createdAt, items, data);
+      },
+    );
+  }
+
+  Widget _buildOrderTrackingContent(
+      BuildContext context,
+      String storeId,
+      String status,
+      double totalAmount,
+      Timestamp createdAt,
+      List<Map<String, dynamic>> items,
+      Map<String, dynamic> data) {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
@@ -49,12 +399,17 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
             const SizedBox(height: 24),
 
             // Progress Tracker
-            _buildProgressTracker(status),
+            _buildProgressTracker(status, data),
 
             const SizedBox(height: 32),
 
             // Order Items
             _buildOrderItems(items),
+
+            const SizedBox(height: 16),
+
+            // Contact Store Button
+            _buildContactStoreButton(storeId),
 
             const SizedBox(height: 24),
 
@@ -167,7 +522,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
     );
   }
 
-  Widget _buildProgressTracker(String status) {
+  Widget _buildProgressTracker(String status, Map<String, dynamic> data) {
     final steps = [
       TrackingStep(
         title: 'Захиалга баталгаажлаа',
@@ -212,13 +567,61 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Захиалгын явц',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Захиалгын явц',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              // Show last updated time if available
+              if (data['updatedAt'] != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.green.withOpacity(0.3),
+                                blurRadius: 4,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'актив',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Шинэчлэгдсэн: ${_formatUpdateTime(data['updatedAt'] as Timestamp?)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
           ),
           const SizedBox(height: 24),
 
@@ -308,7 +711,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    'Одоогийн алхам',
+                    'Одоогийн төлөв',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -365,6 +768,35 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildContactStoreButton(String storeId) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () => _showContactStoreDialog(storeId),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue.shade600,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            elevation: 2,
+          ),
+          icon: const Icon(Icons.contact_support, size: 20),
+          label: const Text(
+            'Дэлгүүртэй холбогдох',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -468,17 +900,6 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
 
   Widget _buildOrderSummary(double totalAmount, Map<String, dynamic> data) {
     final paymentMethod = data['paymentMethod'] as String? ?? 'Карт';
-    final deliveryAddress =
-        data['deliveryAddress'] as Map<String, dynamic>? ?? {};
-    final recipientName = deliveryAddress['recipientName'] as String? ??
-        deliveryAddress['contactName'] as String? ??
-        'Хэрэглэгч';
-    final fullAddress = deliveryAddress['fullAddress'] as String? ??
-        deliveryAddress['address'] as String? ??
-        'Хаяг байхгүй';
-    final phone = deliveryAddress['phone'] as String? ??
-        deliveryAddress['contactPhone'] as String? ??
-        '';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -514,41 +935,74 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
 
           const SizedBox(height: 12),
 
-          // Delivery Address
-          const Text(
-            'Хүргэлтийн хаяг',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
+          // Delivery Address Section
+          FutureBuilder<Map<String, String>>(
+            future: _getDeliveryInfo(data),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Хүргэлтийн хаяг',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    CircularProgressIndicator(),
+                  ],
+                );
+              }
+
+              final deliveryInfo = snapshot.data ?? {};
+              final recipientName = deliveryInfo['name'] ?? 'Хэрэглэгч';
+              final fullAddress = deliveryInfo['address'] ?? 'Хаяг байхгүй';
+              final phone = deliveryInfo['phone'] ?? '';
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Хүргэлтийн хаяг',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    recipientName,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    fullAddress,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  if (phone.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      phone,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
           ),
-          const SizedBox(height: 8),
-          Text(
-            recipientName,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            fullAddress,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-            ),
-          ),
-          if (phone.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              phone,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade600,
-              ),
-            ),
-          ],
 
           const SizedBox(height: 16),
 
@@ -610,19 +1064,22 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
   }
 
   StepStatus _getStepStatus(String orderStatus, int stepIndex) {
-    // Map orderStatus to step completion
+    // Enhanced status mapping to match admin panel statuses
     Map<String, int> statusSteps = {
       'placed': 0, // Order placed
       'confirmed': 1, // Order confirmed
+      'paid': 1, // Order paid (same as confirmed)
       'processing': 1, // Processing
       'shipped': 2, // Shipped
       'delivered': 3, // Delivered
       'cancelled': -1, // Cancelled
+      'canceled': -1, // Alternative spelling
     };
 
-    int currentStep = statusSteps[orderStatus] ?? 0;
+    int currentStep = statusSteps[orderStatus.toLowerCase()] ?? 0;
 
-    if (orderStatus == 'cancelled') {
+    if (orderStatus.toLowerCase() == 'cancelled' ||
+        orderStatus.toLowerCase() == 'canceled') {
       return StepStatus.pending; // Show all as pending if cancelled
     }
 
@@ -647,6 +1104,24 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
         return 'Бэлэн мөнгө';
       default:
         return 'Карт';
+    }
+  }
+
+  String _formatUpdateTime(Timestamp? timestamp) {
+    if (timestamp == null) return '';
+
+    final now = DateTime.now();
+    final updateTime = timestamp.toDate();
+    final difference = now.difference(updateTime);
+
+    if (difference.inMinutes < 1) {
+      return 'Одоо';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} мин өмнө';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} цаг өмнө';
+    } else {
+      return '${updateTime.day}/${updateTime.month} ${updateTime.hour}:${updateTime.minute.toString().padLeft(2, '0')}';
     }
   }
 

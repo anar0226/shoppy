@@ -144,15 +144,26 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
         // Load the actual products using collectionGroup query
         for (final productId in productIds) {
           try {
-            final productQuery = await FirebaseFirestore.instance
-                .collectionGroup('products')
-                .where(FieldPath.documentId, isEqualTo: productId)
-                .limit(1)
+            // First try the old structure (products/{productId})
+            final productDoc = await FirebaseFirestore.instance
+                .collection('products')
+                .doc(productId)
                 .get();
 
-            if (productQuery.docs.isNotEmpty) {
-              allFeaturedProducts
-                  .add(ProductModel.fromFirestore(productQuery.docs.first));
+            if (productDoc.exists) {
+              allFeaturedProducts.add(ProductModel.fromFirestore(productDoc));
+            } else {
+              // Fallback: search in collection group using a field query (not documentId)
+              final productQuery = await FirebaseFirestore.instance
+                  .collectionGroup('products')
+                  .where('productId', isEqualTo: productId)
+                  .limit(1)
+                  .get();
+
+              if (productQuery.docs.isNotEmpty) {
+                allFeaturedProducts
+                    .add(ProductModel.fromFirestore(productQuery.docs.first));
+              }
             }
           } catch (e) {
             print('Error loading featured product $productId: $e');

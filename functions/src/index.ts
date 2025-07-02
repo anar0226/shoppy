@@ -742,20 +742,20 @@ export const sendOrderNotification = functions.firestore
       
       switch (newStatus) {
         case 'confirmed':
-          title = 'Order Confirmed!';
-          body = `Your order #${orderId.substring(0, 6)} has been confirmed and is being prepared.`;
+          title = 'Захиалга баталгаажлаа!';
+          body = `Таны захиалга: #${orderId.substring(0, 6)} баталгаажлаа.`;
           break;
         case 'shipped':
-          title = 'Order Shipped!';
-          body = `Great news! Your order #${orderId.substring(0, 6)} is on its way.`;
+          title = 'Захиалга замдаа гарлаа!';
+          body = `Таны захиалга: #${orderId.substring(0, 6)} замдаа гарлаа.`;
           break;
         case 'delivered':
-          title = 'Order Delivered!';
-          body = `Your order #${orderId.substring(0, 6)} has been delivered. Enjoy your purchase!`;
+          title = 'Захиалга амжилттай хүлээгдлээ!';
+          body = `Таны захиалга: #${orderId.substring(0, 6)} амжилттай хүлээгдлээ.`;
           break;
         case 'canceled':
-          title = 'Order Canceled';
-          body = `Your order #${orderId.substring(0, 6)} has been canceled.`;
+          title = 'Захиалга цуцлагдсан!';
+          body = `Таны захиалга: #${orderId.substring(0, 6)} цуцлагдсан.`;
           break;
         default:
           return; // Don't send notification for other status changes
@@ -1166,3 +1166,54 @@ async function simulateQPayTransfer(payout: any): Promise<{ success: boolean; tr
     };
   }
 }
+
+// Process SMS queue for order notifications  
+export const processSMSQueue = functions.firestore
+  .document('sms_queue/{smsId}')
+  .onCreate(async (snap, context) => {
+    try {
+      const data = snap.data();
+      const { phoneNumber, message, type, ownerId, orderId } = data;
+
+      if (!phoneNumber || !message) {
+        console.error('Invalid SMS data');
+        await snap.ref.update({
+          status: 'failed',
+          error: 'Missing phoneNumber or message',
+          failedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return;
+      }
+
+      // For now, we'll just log the SMS (in production, integrate with Twilio or similar)
+      console.log(`SMS to ${phoneNumber}: ${message}`);
+      
+      // Update the SMS queue document with success status
+      await snap.ref.update({
+        status: 'sent',
+        sentAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Optional: Store SMS analytics
+      if (type === 'new_order' && ownerId) {
+        await admin.firestore().collection('sms_analytics').add({
+          ownerId,
+          orderId: orderId || null,
+          type,
+          phoneNumber: phoneNumber.replace(/\d(?=\d{4})/g, '*'), // Mask phone number for privacy
+          status: 'sent',
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+    } catch (error) {
+      console.error('Error processing SMS queue:', error);
+      
+      // Update queue document with error status
+      await snap.ref.update({
+        status: 'failed',
+        error: error instanceof Error ? error.message : String(error),
+        failedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+  });
