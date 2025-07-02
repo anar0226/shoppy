@@ -12,6 +12,7 @@ class SellerCard extends StatelessWidget {
   final String? storeId;
   final String? backgroundImageUrl;
   final String? storeLogoUrl; // Added store logo URL parameter
+  final bool isRecommended; // Added recommended flag
 
   const SellerCard({
     super.key,
@@ -24,6 +25,7 @@ class SellerCard extends StatelessWidget {
     this.storeId,
     this.backgroundImageUrl,
     this.storeLogoUrl, // Added store logo URL parameter
+    this.isRecommended = false, // Default to false
   });
 
   void _showOptionsMenu(BuildContext context) {
@@ -31,7 +33,7 @@ class SellerCard extends StatelessWidget {
 
     showModalBottomSheet(
       context: context,
-      builder: (context) => Container(
+      builder: (BuildContext modalContext) => Container(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -40,7 +42,7 @@ class SellerCard extends StatelessWidget {
               leading: const Icon(Icons.report_outlined, color: Colors.red),
               title: const Text('Рэпорт хийх'),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(modalContext);
                 _showReportDialog(context);
               },
             ),
@@ -49,7 +51,7 @@ class SellerCard extends StatelessWidget {
                   const Icon(Icons.thumb_down_outlined, color: Colors.orange),
               title: const Text('Таалагдаxгүй байна'),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(modalContext);
                 _handleNotInterested(context);
               },
             ),
@@ -66,17 +68,47 @@ class SellerCard extends StatelessWidget {
     );
   }
 
-  void _handleNotInterested(BuildContext context) {
-    FollowingService().markNotInterested(storeId!).then((success) {
+  void _handleNotInterested(BuildContext context) async {
+    try {
+      // Check if storeId is valid before proceeding
+      if (storeId == null || storeId!.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Алдаа гарлаа: Дэлгүүрийн мэдээлэл олдсонгүй'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final success = await FollowingService().markNotInterested(storeId!);
+
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Таныд дахиж энэ дэлгүүрийг санал болгоxгүй :)'),
             duration: Duration(seconds: 2),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Алдаа гарлаа. Дахин оролдоно уу.'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.red,
           ),
         );
       }
-    });
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Алдаа гарлаа: $error'),
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -293,6 +325,36 @@ class SellerCard extends StatelessWidget {
                 ),
               ),
             ),
+
+            // Recommended badge
+            if (isRecommended)
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade600,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Text(
+                    'Зөвлөж байна',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

@@ -10,48 +10,49 @@ class IntimatesCategoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CategoryPage(
-      title: 'Intimates',
+      title: 'Дотуур хувцас',
       featuredStoreIds: const [_lalarStoreId],
-      sections: const ['Bras', 'Lingerie', 'Shapewear', 'Underwear'],
+      sections: const ['Лифчик', 'Ланжери', 'Биеийн даруулга', 'Дотоож'],
       subCategories: [
         SubCategory(
-          name: 'Bras',
+          name: 'Лифчик',
           imageUrl: 'assets/images/categories/Women/intimates/bra.jpg',
           color: const Color.fromARGB(255, 49, 47, 48),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => const FinalCategoryPage(title: 'Bras')),
+                builder: (_) => const FinalCategoryPage(title: 'Лифчик')),
           ),
         ),
         SubCategory(
-          name: 'Lingerie',
+          name: 'Ланжери',
           imageUrl: 'assets/images/categories/Women/intimates/lingerie.jpg',
           color: const Color.fromARGB(55, 230, 68, 154),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => const FinalCategoryPage(title: 'Lingerie')),
+                builder: (_) => const FinalCategoryPage(title: 'Ланжери')),
           ),
         ),
         SubCategory(
-          name: 'Shapewear',
+          name: 'Биеийн даруулга',
           imageUrl: 'assets/images/categories/Women/intimates/shapewear.jpg',
           color: const Color(0xFF8B4513),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => const FinalCategoryPage(title: 'Shapewear')),
+                builder: (_) =>
+                    const FinalCategoryPage(title: 'Биеийн даруулга')),
           ),
         ),
         SubCategory(
-          name: 'Underwear',
+          name: 'Дотоож',
           imageUrl: 'assets/images/categories/Women/intimates/underwear.jpg',
           color: const Color(0xFFB8A082),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => const FinalCategoryPage(title: 'Underwear')),
+                builder: (_) => const FinalCategoryPage(title: 'Дотоож')),
           ),
         ),
       ],

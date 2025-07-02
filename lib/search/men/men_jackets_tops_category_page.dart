@@ -11,56 +11,56 @@ class MenJacketsTopsCategoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CategoryPage(
-      title: 'Jackets & Tops',
+      title: 'Гадуур хувцас',
       featuredStoreIds: const [_featuredStoreId],
       sections: const [
-        'Jackets',
-        'Hoodies',
-        'Polos',
-        'Shirts',
+        'куртка',
+        'Малгайтай цамц',
+        'Поло',
+        'Цамц',
       ],
       subCategories: [
         SubCategory(
-          name: 'Jackets',
+          name: 'куртка',
           imageUrl: 'assets/images/categories/Men/Jackets&tops/jackets.jpg',
           color: const Color(0xFF8B4513),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => const FinalCategoryPage(title: 'Jackets'),
+              builder: (_) => const FinalCategoryPage(title: 'куртка'),
             ),
           ),
         ),
         SubCategory(
-          name: 'Hoodies',
+          name: 'Малгайтай цамц',
           imageUrl: 'assets/images/categories/Men/Jackets&tops/hoodie.jpg',
           color: const Color(0xFF6B9BD1),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => const FinalCategoryPage(title: 'Hoodies'),
+              builder: (_) => const FinalCategoryPage(title: 'Малгайтай цамц'),
             ),
           ),
         ),
         SubCategory(
-          name: 'Polos',
+          name: 'Поло',
           imageUrl: 'assets/images/categories/Men/Jackets&tops/polo.jpg',
           color: const Color(0xFFD97841),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => const FinalCategoryPage(title: 'Polos'),
+              builder: (_) => const FinalCategoryPage(title: 'Поло'),
             ),
           ),
         ),
         SubCategory(
-          name: 'Shirts',
+          name: 'Цамц',
           imageUrl: 'assets/images/categories/Men/Jackets&tops/shirts.jpg',
           color: const Color(0xFFB8A082),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => const FinalCategoryPage(title: 'Shirts'),
+              builder: (_) => const FinalCategoryPage(title: 'Цамц'),
             ),
           ),
         ),

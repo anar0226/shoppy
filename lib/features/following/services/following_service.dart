@@ -36,16 +36,16 @@ class FollowingService {
       final user = _auth.currentUser;
       if (user == null) return false;
 
-      // Add store to user's following list
-      await _firestore.collection('users').doc(user.uid).update({
+      // Add store to user's following list (use set with merge to handle non-existent documents)
+      await _firestore.collection('users').doc(user.uid).set({
         'followerStoreIds': FieldValue.arrayUnion([storeId]),
-      });
+      }, SetOptions(merge: true));
 
-      // Update store's follower count
-      await _firestore.collection('stores').doc(storeId).update({
+      // Update store's follower count (use set with merge to handle non-existent documents)
+      await _firestore.collection('stores').doc(storeId).set({
         'followerCount': FieldValue.increment(1),
         'followers': FieldValue.arrayUnion([user.uid]),
-      });
+      }, SetOptions(merge: true));
 
       // Add analytics event
       await _addFollowEvent(storeId, 'follow');
@@ -63,16 +63,24 @@ class FollowingService {
       final user = _auth.currentUser;
       if (user == null) return false;
 
-      // Remove store from user's following list
-      await _firestore.collection('users').doc(user.uid).update({
-        'followerStoreIds': FieldValue.arrayRemove([storeId]),
-      });
+      // Check if user document exists before trying to update
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        // Remove store from user's following list
+        await _firestore.collection('users').doc(user.uid).update({
+          'followerStoreIds': FieldValue.arrayRemove([storeId]),
+        });
+      }
 
-      // Update store's follower count
-      await _firestore.collection('stores').doc(storeId).update({
-        'followerCount': FieldValue.increment(-1),
-        'followers': FieldValue.arrayRemove([user.uid]),
-      });
+      // Check if store document exists before trying to update
+      final storeDoc = await _firestore.collection('stores').doc(storeId).get();
+      if (storeDoc.exists) {
+        // Update store's follower count
+        await _firestore.collection('stores').doc(storeId).update({
+          'followerCount': FieldValue.increment(-1),
+          'followers': FieldValue.arrayRemove([user.uid]),
+        });
+      }
 
       // Add analytics event
       await _addFollowEvent(storeId, 'unfollow');
@@ -142,12 +150,18 @@ class FollowingService {
       final user = _auth.currentUser;
       if (user == null) return false;
 
-      await _firestore.collection('users').doc(user.uid).update({
+      // Use set with merge to handle cases where user document doesn't exist
+      await _firestore.collection('users').doc(user.uid).set({
         'notInterestedStoreIds': FieldValue.arrayUnion([storeId]),
-      });
+      }, SetOptions(merge: true));
 
-      // Add analytics event
-      await _addFollowEvent(storeId, 'not_interested');
+      // Add analytics event (wrapped in try-catch to prevent crashes)
+      try {
+        await _addFollowEvent(storeId, 'not_interested');
+      } catch (analyticsError) {
+        // Don't fail the whole operation if analytics fail
+        debugPrint('Analytics event failed: $analyticsError');
+      }
 
       return true;
     } catch (e) {

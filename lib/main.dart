@@ -357,7 +357,7 @@ class _SearchScreenState extends State<SearchScreen> {
       color: const Color(0xFF6A5ACD),
     ),
     CategoryItem(
-      name: 'Электроник бараа',
+      name: 'Цахилгаан бараа',
       imageUrl: 'assets/images/categories/electronics/electronics.jpg',
       color: const Color(0xFF2F2F2F),
     ),

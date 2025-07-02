@@ -55,14 +55,43 @@ class _ShoesCategoryPageState extends State<ShoesCategoryPage> {
           .get();
       if (!doc.exists) return;
       final store = StoreModel.fromFirestore(doc);
+
+      // Get actual store rating from reviews
+      double storeRating = 0.0;
+      String reviewCount = '0';
+
+      try {
+        final reviewsSnapshot = await FirebaseFirestore.instance
+            .collection('stores')
+            .doc(store.id)
+            .collection('reviews')
+            .where('status', isEqualTo: 'active')
+            .get();
+
+        if (reviewsSnapshot.docs.isNotEmpty) {
+          final reviews = reviewsSnapshot.docs;
+          final totalRating = reviews.fold<double>(0, (sum, doc) {
+            final data = doc.data();
+            return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+          });
+          storeRating = totalRating / reviews.length;
+          reviewCount = reviews.length > 1000
+              ? '${(reviews.length / 1000).toStringAsFixed(1)}K'
+              : reviews.length.toString();
+        }
+      } catch (reviewError) {
+        print('⚠️ Error loading reviews for store ${store.id}: $reviewError');
+        // Keep default values
+      }
+
       final storeData = StoreData(
         id: store.id,
         name: store.name,
         displayName: store.name.toUpperCase(),
         heroImageUrl: store.banner.isNotEmpty ? store.banner : store.logo,
         backgroundColor: const Color(0xFFFFFFFF),
-        rating: 4.8,
-        reviewCount: '12K',
+        rating: double.parse(storeRating.toStringAsFixed(1)),
+        reviewCount: reviewCount,
         collections: const <StoreCollection>[],
         categories: const <String>["All"],
         productCount: 0,
@@ -77,20 +106,20 @@ class _ShoesCategoryPageState extends State<ShoesCategoryPage> {
   }
 
   static const List<String> _sections = [
-    'Heels',
-    'Slippers',
-    'Sneakers',
-    'Others',
+    'Өндөр ёстой',
+    'Шаахай',
+    'Пүүз',
+    'Бусад',
   ];
 
   final List<_SubCat> _subCats = const [
-    _SubCat('Heels', 'assets/images/categories/Women/shoes/Heels.jpg',
+    _SubCat('Өндөр ёстой', 'assets/images/categories/Women/shoes/Heels.jpg',
         Color(0xFF8B4513)),
-    _SubCat('Slippers', 'assets/images/categories/Women/shoes/Slippers.jpg',
+    _SubCat('Шаахай', 'assets/images/categories/Women/shoes/Slippers.jpg',
         Color(0xFFD97841)),
-    _SubCat('Sneakers', 'assets/images/categories/Women/shoes/Sneakers.jpg',
+    _SubCat('Пүүз', 'assets/images/categories/Women/shoes/Sneakers.jpg',
         Color(0xFF6B9BD1)),
-    _SubCat('Others', 'assets/images/categories/Women/shoes/Others.jpg',
+    _SubCat('Бусад', 'assets/images/categories/Women/shoes/Others.jpg',
         Color(0xFFB8A082)),
   ];
 
@@ -105,7 +134,7 @@ class _ShoesCategoryPageState extends State<ShoesCategoryPage> {
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
-          title: const Text('Shoes', style: TextStyle(color: Colors.black)),
+          title: const Text('Гутал', style: TextStyle(color: Colors.black)),
         ),
         body: SafeArea(
           child: ListView(
@@ -210,7 +239,7 @@ class _ShoesCategoryPageState extends State<ShoesCategoryPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Featured brands',
+        const Text('Онцлох брэндүүд',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
         GridView.count(
@@ -308,8 +337,8 @@ class _ShoesCategoryPageState extends State<ShoesCategoryPage> {
     final product = ProductModel(
       id: 'placeholder',
       storeId: '',
-      name: 'Coming Soon',
-      description: 'Stay tuned – great products on the way!',
+      name: 'Удахгүй',
+      description: 'Удахгүй шинэ бүтээгдэхүүн гарах болно!',
       price: 0,
       images: _placeholderImage != null ? [_placeholderImage!] : [],
       category: '',
@@ -346,14 +375,13 @@ class _ShoesCategoryPageState extends State<ShoesCategoryPage> {
                     height: 160,
                     color: Colors.grey.shade300,
                     alignment: Alignment.center,
-                    child: const Text('Coming Soon',
+                    child: const Text('Удахгүй',
                         style: TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
           ),
           const SizedBox(height: 8),
-          const Text('Coming Soon',
-              style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text('Удахгүй', style: TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
     );

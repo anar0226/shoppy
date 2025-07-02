@@ -16,12 +16,12 @@ class WomenCategoryPage extends StatelessWidget {
       title: 'Эмэгтэй',
       featuredStoreIds: const [_lalarStoreId],
       sections: const [
-        'Shirts & tops',
-        'Shoes',
-        'Dresses',
-        'Pants',
-        'Intimates',
-        'Activewear',
+        'Гадуур хувцас & Футболк',
+        'Гутал',
+        'Даашинз',
+        'Өмд',
+        'Дотуур хувцас',
+        'Спорт хувцас',
       ],
       subCategories: [
         SubCategory(

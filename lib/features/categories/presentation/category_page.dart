@@ -8,6 +8,7 @@ import 'package:avii/features/products/models/product_model.dart'
 import 'package:avii/features/products/presentation/product_page.dart';
 import 'package:avii/features/home/presentation/main_scaffold.dart';
 import '../../../core/services/rating_service.dart';
+import '../services/category_product_service.dart';
 
 /// Model representing a tappable sub-category card.
 class SubCategory {
@@ -68,6 +69,7 @@ class _CategoryPageState extends State<CategoryPage> {
   String? _placeholderImage;
   List<StoreData> _featuredStores = [];
   Map<String, List<ProductModel>> _sectionProducts = {};
+  final CategoryProductService _categoryService = CategoryProductService();
 
   @override
   void initState() {
@@ -106,6 +108,34 @@ class _CategoryPageState extends State<CategoryPage> {
         if (!doc.exists) continue;
         final store = StoreModel.fromFirestore(doc);
 
+        // Get actual store rating from reviews
+        double storeRating = 0.0;
+        String reviewCount = '0';
+
+        try {
+          final reviewsSnapshot = await FirebaseFirestore.instance
+              .collection('stores')
+              .doc(store.id)
+              .collection('reviews')
+              .where('status', isEqualTo: 'active')
+              .get();
+
+          if (reviewsSnapshot.docs.isNotEmpty) {
+            final reviews = reviewsSnapshot.docs;
+            final totalRating = reviews.fold<double>(0, (sum, doc) {
+              final data = doc.data();
+              return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+            });
+            storeRating = totalRating / reviews.length;
+            reviewCount = reviews.length > 1000
+                ? '${(reviews.length / 1000).toStringAsFixed(1)}K'
+                : reviews.length.toString();
+          }
+        } catch (reviewError) {
+          print('⚠️ Error loading reviews for store ${store.id}: $reviewError');
+          // Keep default values
+        }
+
         loaded.add(
           StoreData(
             id: store.id,
@@ -113,8 +143,8 @@ class _CategoryPageState extends State<CategoryPage> {
             displayName: store.name.toUpperCase(),
             heroImageUrl: store.banner.isNotEmpty ? store.banner : store.logo,
             backgroundColor: const Color(0xFFFFFFFF),
-            rating: 4.8,
-            reviewCount: '12K',
+            rating: double.parse(storeRating.toStringAsFixed(1)),
+            reviewCount: reviewCount,
             collections: const <StoreCollection>[],
             categories: const <String>['All'],
             productCount: 0,
@@ -141,45 +171,91 @@ class _CategoryPageState extends State<CategoryPage> {
 
     for (final section in widget.sections) {
       try {
-        // Build path for super admin featured products
-        String featuredPath = '${widget.title}_$section';
+        print('🔍 Loading products for section: $section');
+        List<ProductModel> products = [];
 
-        // Load featured products configuration from super admin
-        final featuredDoc = await FirebaseFirestore.instance
-            .doc('featured_products/$featuredPath')
-            .get();
+        // Step 1: Try to load featured products from super admin
+        try {
+          String featuredPath = '${widget.title}_$section';
+          final featuredDoc = await FirebaseFirestore.instance
+              .doc('featured_products/$featuredPath')
+              .get();
 
-        if (featuredDoc.exists) {
-          final data = featuredDoc.data() as Map<String, dynamic>;
-          final productIds = List<String>.from(data['productIds'] ?? []);
+          if (featuredDoc.exists) {
+            final data = featuredDoc.data() as Map<String, dynamic>;
+            final productIds = List<String>.from(data['productIds'] ?? []);
 
-          final products = <ProductModel>[];
+            for (final productId in productIds.take(2)) {
+              // Take 2 featured products
+              try {
+                final productQuery = await FirebaseFirestore.instance
+                    .collectionGroup('products')
+                    .where(FieldPath.documentId, isEqualTo: productId)
+                    .limit(1)
+                    .get();
 
-          // Load the actual products using collectionGroup query
-          for (final productId in productIds.take(4)) {
-            // Limit to 4 products per section
-            try {
-              final productQuery = await FirebaseFirestore.instance
-                  .collectionGroup('products')
-                  .where(FieldPath.documentId, isEqualTo: productId)
-                  .limit(1)
-                  .get();
-
-              if (productQuery.docs.isNotEmpty) {
-                products
-                    .add(ProductModel.fromFirestore(productQuery.docs.first));
+                if (productQuery.docs.isNotEmpty) {
+                  products
+                      .add(ProductModel.fromFirestore(productQuery.docs.first));
+                }
+              } catch (e) {
+                print('Error loading featured product $productId: $e');
               }
-            } catch (e) {
-              print('Error loading featured product $productId: $e');
             }
           }
-
-          sectionProducts[section] = products;
-        } else {
-          sectionProducts[section] = [];
+        } catch (e) {
+          print('Error loading featured products for section $section: $e');
         }
+
+        // Step 2: Fill remaining slots with actual category products
+        final remainingSlots = 4 - products.length;
+        if (remainingSlots > 0) {
+          try {
+            final categoryProducts =
+                await _categoryService.loadProductsByCategory(
+              category: widget.title,
+              subCategory: section,
+              limit: remainingSlots + 2, // Get a few extra for variety
+            );
+
+            // Filter out already added featured products
+            final existingIds = products.map((p) => p.id).toSet();
+            final newProducts = categoryProducts
+                .where((p) => !existingIds.contains(p.id))
+                .take(remainingSlots)
+                .toList();
+
+            products.addAll(newProducts);
+          } catch (e) {
+            print('Error loading category products for section $section: $e');
+          }
+        }
+
+        // Step 3: If still not enough, try broader search
+        if (products.length < 4) {
+          try {
+            final searchTerms = [section, widget.title];
+            final broadProducts = await _categoryService.loadProductsByTerms(
+              searchTerms: searchTerms,
+              limit: 4 - products.length + 2,
+            );
+
+            final existingIds = products.map((p) => p.id).toSet();
+            final newProducts = broadProducts
+                .where((p) => !existingIds.contains(p.id))
+                .take(4 - products.length)
+                .toList();
+
+            products.addAll(newProducts);
+          } catch (e) {
+            print('Error loading broad products for section $section: $e');
+          }
+        }
+
+        sectionProducts[section] = products;
+        print('✅ Loaded ${products.length} products for section $section');
       } catch (e) {
-        print('Error loading featured products for section $section: $e');
+        print('❌ Error loading products for section $section: $e');
         sectionProducts[section] = [];
       }
     }
@@ -547,7 +623,7 @@ class _CategoryPageState extends State<CategoryPage> {
         final product = ProductModel(
           id: 'placeholder',
           storeId: '',
-          name: 'Coming Soon',
+          name: 'Удахгүй',
           description: 'Stay tuned – great products on the way!',
           price: 0,
           images: _placeholderImage != null ? [_placeholderImage!] : [],

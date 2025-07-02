@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as FirebaseAuth;
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:avii/features/auth/providers/auth_provider.dart';
 import 'package:avii/features/stores/models/store_model.dart';
 import 'package:avii/features/products/models/product_model.dart';
@@ -17,6 +18,8 @@ import 'package:avii/features/products/presentation/product_page.dart';
 import 'widgets/seller_card.dart';
 import 'package:avii/features/reviews/services/reviews_service.dart';
 import '../../../core/services/rating_service.dart';
+import '../../recommendations/services/simple_recommendation_service.dart';
+import '../../recommendations/presentation/preferences_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,9 +30,16 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final SimpleRecommendationService _recommendationService =
+      SimpleRecommendationService();
 
   late Future<List<SellerData>> _sellersFuture;
   Future<List<Store>>? _followingFuture;
+
+  // Pagination variables
+  int _currentPage = 0;
+  static const int _storesPerPage = 30;
+  List<String> _loadedStoreIds = [];
 
   @override
   void initState() {
@@ -40,8 +50,69 @@ class _HomeScreenState extends State<HomeScreen> {
     final auth = context.read<AuthProvider>();
     if (auth.user != null) {
       _followingFuture = _loadFollowingStores(auth.user!.uid);
+      // Check if user needs to set preferences
+      _checkAndShowPreferencesDialog();
     } else {
       _followingFuture = Future.value([]);
+    }
+  }
+
+  // Check if user has preferences, if not show dialog
+  Future<void> _checkAndShowPreferencesDialog() async {
+    try {
+      final preferences = await _recommendationService.getUserPreferences();
+      print(
+          '🔍 Checking user preferences: ${preferences != null ? "Found" : "Not found"}');
+
+      if (preferences == null) {
+        // Check if we've already shown the dialog this session using SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        final hasShownDialog = prefs.getBool(
+                'preferences_dialog_shown_${FirebaseAuth.FirebaseAuth.instance.currentUser?.uid}') ??
+            false;
+
+        if (!hasShownDialog) {
+          // Wait a bit for the UI to settle, then show dialog
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Future.delayed(const Duration(milliseconds: 500), () {
+              _showPreferencesDialog();
+            });
+          });
+        }
+      }
+    } catch (e) {
+      print('Error checking user preferences: $e');
+    }
+  }
+
+  // Show preferences dialog
+  Future<void> _showPreferencesDialog() async {
+    if (!mounted) return;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const PreferencesDialog(),
+    );
+
+    if (result == true) {
+      // Preferences were saved, reload stores to show recommendations
+      setState(() {
+        _currentPage = 0; // Reset to first page
+        _loadedStoreIds.clear(); // Clear loaded stores
+        _sellersFuture = _loadSellers();
+      });
+    }
+
+    // Mark that we've shown the preferences dialog for this user
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = FirebaseAuth.FirebaseAuth.instance.currentUser?.uid;
+      if (userId != null) {
+        await prefs.setBool('preferences_dialog_shown_$userId', true);
+      }
+    } catch (e) {
+      print('Error saving dialog shown flag: $e');
     }
   }
 
@@ -61,194 +132,190 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<List<SellerData>> _loadSellers() async {
     try {
-      // Try to load featured stores configuration
-      final featuredDoc = await _db
-          .collection('platform_settings')
-          .doc('featured_stores')
-          .get();
-
-      List<String> featuredStoreIds = [];
-      if (featuredDoc.exists) {
-        featuredStoreIds =
-            List<String>.from(featuredDoc.data()?['storeIds'] ?? []);
-      }
-
-      // If no featured stores configured or permission denied, use hardcoded store IDs
-      if (featuredStoreIds.isEmpty) {
-        featuredStoreIds = [
-          'TLLb3tqzvU2TZSsNPol9',
-          'store_rbA5yLk0vadvSWarOpzYW1bRRUz1'
-        ];
-      }
-
+      print('🔍 Loading sellers - Page $_currentPage');
       final List<SellerData> result = [];
-      for (final storeId in featuredStoreIds) {
+
+      // Step 1: Load recommended stores (only on first page)
+      if (_currentPage == 0) {
         try {
-          final storeDoc = await _db.collection('stores').doc(storeId).get();
-          if (!storeDoc.exists) continue;
+          final recommendedStores =
+              await _recommendationService.getRecommendedStores(limit: 10);
+          print('📋 Found ${recommendedStores.length} recommended stores');
 
-          final storeModel = StoreModel.fromFirestore(storeDoc);
+          for (final storeModel in recommendedStores) {
+            if (result.length >= _storesPerPage) break;
 
-          // Load seller card settings
-          final sellerCardDoc =
-              await _db.collection('seller_cards').doc(storeModel.id).get();
-
-          List<String> featuredProductIds = [];
-          String? customBackgroundUrl;
-
-          if (sellerCardDoc.exists) {
-            final cardData = sellerCardDoc.data()!;
-            featuredProductIds =
-                List<String>.from(cardData['featuredProductIds'] ?? []);
-            customBackgroundUrl = cardData['backgroundImageUrl'];
-          }
-
-          // Load products - either featured products or default products
-          List<ProductModel> products;
-
-          if (featuredProductIds.isNotEmpty) {
-            // Load the specific featured products
-            products = [];
-            for (final productId in featuredProductIds.take(4)) {
-              try {
-                final productDoc =
-                    await _db.collection('products').doc(productId).get();
-                if (productDoc.exists) {
-                  products.add(ProductModel.fromFirestore(productDoc));
-                }
-              } catch (e) {
-                print('Error loading featured product $productId: $e');
-              }
+            final sellerData = await _convertStoreToSellerData(storeModel,
+                isRecommended: true);
+            if (sellerData != null) {
+              result.add(sellerData);
+              _loadedStoreIds.add(storeModel.id);
             }
-          } else {
-            // Load default products if no featured products are set
-            products = await _fetchProducts(storeModel.id);
           }
-
-          if (products.isEmpty) continue;
-
-          final sellerProducts = products
-              .map((p) => SellerProduct(
-                    id: p.id,
-                    imageUrl: p.images.isNotEmpty ? p.images.first : '',
-                    price: '₮${p.price.toStringAsFixed(2)}',
-                  ))
-              .toList();
-
-          // Load real ratings from reviews
-          double storeRating = 0.0; // Changed from 4.5 to 0.0 when no reviews
-          int reviewCount = 0;
-
-          try {
-            final reviewsSnapshot = await _db
-                .collection('stores')
-                .doc(storeModel.id)
-                .collection('reviews')
-                .where('status', isEqualTo: 'active')
-                .get();
-
-            if (reviewsSnapshot.docs.isNotEmpty) {
-              final reviews = reviewsSnapshot.docs;
-              final totalRating = reviews.fold<double>(0, (sum, doc) {
-                final data = doc.data();
-                return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
-              });
-              storeRating = totalRating / reviews.length;
-              reviewCount = reviews.length;
-              print(
-                  '📊 Store ${storeModel.name}: $reviewCount reviews, rating: $storeRating');
-            }
-          } catch (reviewError) {
-            print(
-                '⚠️ Error loading reviews for ${storeModel.name}: $reviewError');
-          }
-
-          result.add(SellerData(
-            name: storeModel.name,
-            storeId: storeModel.id,
-            profileLetter: storeModel.name.isNotEmpty
-                ? storeModel.name[0].toUpperCase()
-                : '?',
-            rating: double.parse(storeRating.toStringAsFixed(1)),
-            reviews: reviewCount,
-            products: sellerProducts,
-            backgroundImageUrl: customBackgroundUrl ?? storeModel.banner,
-            storeLogoUrl: storeModel.logo, // Add store logo URL
-            isAssetBg: false,
-          ));
         } catch (e) {
-          print('Error loading store $storeId: $e');
+          print('⚠️ Error loading recommended stores: $e');
         }
       }
 
+      // Step 2: Fill remaining slots with other active stores
+      final int remainingSlots = _storesPerPage - result.length;
+      if (remainingSlots > 0) {
+        try {
+          // Get user's not interested stores to exclude them
+          final notInterestedStores = await _getNotInterestedStores();
+
+          // Calculate how many stores to skip based on current page and already loaded stores
+          final int skipCount = (_currentPage * _storesPerPage) - result.length;
+
+          final storesSnapshot = await _db
+              .collection('stores')
+              .where('status', isEqualTo: 'active')
+              .limit(remainingSlots +
+                  skipCount +
+                  50) // Get extra to account for filtering
+              .get();
+
+          print(
+              '📋 Found ${storesSnapshot.docs.length} active stores from Firestore');
+
+          int addedCount = 0;
+          int skippedCount = 0;
+
+          for (final doc in storesSnapshot.docs) {
+            if (addedCount >= remainingSlots) break;
+
+            final storeModel = StoreModel.fromFirestore(doc);
+
+            // Skip if already loaded
+            if (_loadedStoreIds.contains(storeModel.id)) {
+              continue;
+            }
+
+            // Skip if user marked as not interested
+            if (notInterestedStores.contains(storeModel.id)) {
+              continue;
+            }
+
+            // Skip the first few stores if this is not the first page
+            if (skippedCount < skipCount) {
+              skippedCount++;
+              continue;
+            }
+
+            final sellerData = await _convertStoreToSellerData(storeModel,
+                isRecommended: false);
+            if (sellerData != null) {
+              result.add(sellerData);
+              _loadedStoreIds.add(storeModel.id);
+              addedCount++;
+            }
+          }
+
+          print('✅ Added $addedCount additional stores');
+        } catch (e) {
+          print('⚠️ Error loading additional stores: $e');
+        }
+      }
+
+      print('🎯 Total sellers loaded: ${result.length}');
       return result;
     } catch (e) {
-      print('Error loading sellers: $e');
-      // Fallback: try to load any available stores directly
-      try {
-        final storeSnap = await _db.collection('stores').limit(2).get();
-        final List<SellerData> fallbackResult = [];
+      print('💥 Fatal error loading sellers: $e');
+      return [];
+    }
+  }
 
-        for (final doc in storeSnap.docs) {
-          final storeModel = StoreModel.fromFirestore(doc);
-          final products = await _fetchProducts(storeModel.id);
+  // Helper method to convert StoreModel to SellerData
+  Future<SellerData?> _convertStoreToSellerData(StoreModel storeModel,
+      {required bool isRecommended}) async {
+    try {
+      // Load seller card settings
+      final sellerCardDoc =
+          await _db.collection('seller_cards').doc(storeModel.id).get();
 
-          if (products.isNotEmpty) {
-            final sellerProducts = products
-                .map((p) => SellerProduct(
-                      id: p.id,
-                      imageUrl: p.images.isNotEmpty ? p.images.first : '',
-                      price: '₮${p.price.toStringAsFixed(2)}',
-                    ))
-                .toList();
+      List<String> featuredProductIds = [];
+      String? customBackgroundUrl;
 
-            // Load real ratings for fallback stores too
-            double fallbackRating =
-                0.0; // Changed from 4.5 to 0.0 when no reviews
-            int fallbackReviewCount = 0;
+      if (sellerCardDoc.exists) {
+        final cardData = sellerCardDoc.data()!;
+        featuredProductIds =
+            List<String>.from(cardData['featuredProductIds'] ?? []);
+        customBackgroundUrl = cardData['backgroundImageUrl'];
+      }
 
-            try {
-              final reviewsSnapshot = await _db
-                  .collection('stores')
-                  .doc(storeModel.id)
-                  .collection('reviews')
-                  .where('status', isEqualTo: 'active')
-                  .get();
+      // Load products - either featured products or default products
+      List<ProductModel> products;
 
-              if (reviewsSnapshot.docs.isNotEmpty) {
-                final reviews = reviewsSnapshot.docs;
-                final totalRating = reviews.fold<double>(0, (sum, doc) {
-                  final data = doc.data();
-                  return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
-                });
-                fallbackRating = totalRating / reviews.length;
-                fallbackReviewCount = reviews.length;
-              }
-            } catch (reviewError) {
-              print(
-                  '⚠️ Error loading fallback reviews for ${storeModel.name}: $reviewError');
+      if (featuredProductIds.isNotEmpty) {
+        // Load the specific featured products
+        products = [];
+        for (final productId in featuredProductIds.take(4)) {
+          try {
+            final productDoc =
+                await _db.collection('products').doc(productId).get();
+            if (productDoc.exists) {
+              products.add(ProductModel.fromFirestore(productDoc));
             }
-
-            fallbackResult.add(SellerData(
-              name: storeModel.name,
-              storeId: storeModel.id,
-              profileLetter: storeModel.name.isNotEmpty
-                  ? storeModel.name[0].toUpperCase()
-                  : '?',
-              rating: double.parse(fallbackRating.toStringAsFixed(1)),
-              reviews: fallbackReviewCount,
-              products: sellerProducts,
-              backgroundImageUrl: storeModel.banner,
-              storeLogoUrl: storeModel.logo, // Add store logo URL
-              isAssetBg: false,
-            ));
+          } catch (e) {
+            print('Error loading featured product $productId: $e');
           }
         }
-        return fallbackResult;
-      } catch (fallbackError) {
-        print('Fallback also failed: $fallbackError');
-        return [];
+      } else {
+        // Load default products if no featured products are set
+        products = await _fetchProducts(storeModel.id);
       }
+
+      if (products.isEmpty) return null;
+
+      final sellerProducts = products
+          .map((p) => SellerProduct(
+                id: p.id,
+                imageUrl: p.images.isNotEmpty ? p.images.first : '',
+                price: '₮${p.price.toStringAsFixed(2)}',
+              ))
+          .toList();
+
+      // Load real ratings from reviews
+      double storeRating = 0.0;
+      int reviewCount = 0;
+
+      try {
+        final reviewsSnapshot = await _db
+            .collection('stores')
+            .doc(storeModel.id)
+            .collection('reviews')
+            .where('status', isEqualTo: 'active')
+            .get();
+
+        if (reviewsSnapshot.docs.isNotEmpty) {
+          final reviews = reviewsSnapshot.docs;
+          final totalRating = reviews.fold<double>(0, (sum, doc) {
+            final data = doc.data();
+            return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+          });
+          storeRating = totalRating / reviews.length;
+          reviewCount = reviews.length;
+        }
+      } catch (reviewError) {
+        print('⚠️ Error loading reviews for ${storeModel.name}: $reviewError');
+      }
+
+      return SellerData(
+        name: storeModel.name,
+        storeId: storeModel.id,
+        profileLetter:
+            storeModel.name.isNotEmpty ? storeModel.name[0].toUpperCase() : '?',
+        rating: double.parse(storeRating.toStringAsFixed(1)),
+        reviews: reviewCount,
+        products: sellerProducts,
+        backgroundImageUrl: customBackgroundUrl ?? storeModel.banner,
+        storeLogoUrl: storeModel.logo,
+        isAssetBg: false,
+        isRecommended: isRecommended,
+      );
+    } catch (e) {
+      print('Error converting store ${storeModel.id} to seller data: $e');
+      return null;
     }
   }
 
@@ -268,6 +335,70 @@ class _HomeScreenState extends State<HomeScreen> {
         .limit(limit)
         .get();
     return upper.docs.map((d) => ProductModel.fromFirestore(d)).toList();
+  }
+
+  // Get user's not interested stores
+  Future<List<String>> _getNotInterestedStores() async {
+    try {
+      final userId = FirebaseAuth.FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) return [];
+
+      final userDoc = await _db.collection('users').doc(userId).get();
+      if (!userDoc.exists) return [];
+
+      final userData = userDoc.data() as Map<String, dynamic>;
+      return List<String>.from(userData['notInterestedStoreIds'] ?? []);
+    } catch (e) {
+      print('Error getting not interested stores: $e');
+      return [];
+    }
+  }
+
+  // Refresh method to load next page of stores
+  Future<void> _refreshStores() async {
+    setState(() {
+      _currentPage++;
+    });
+
+    try {
+      final newSellers = await _loadSellers();
+      if (newSellers.isNotEmpty) {
+        setState(() {
+          _sellersFuture = Future.value(newSellers);
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${newSellers.length} шинэ дэлгүүр ачаалагдлаа'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        // No more stores available, revert page counter
+        setState(() {
+          _currentPage--;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Илүү дэлгүүр байхгүй байна'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // Error occurred, revert page counter
+      setState(() {
+        _currentPage--;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Дэлгүүр ачаалахад алдаа гарлаа: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   // Load featured offers dynamically from real stores
@@ -373,67 +504,72 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // Scrollable Content
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 16),
+                child: RefreshIndicator(
+                  onRefresh: _refreshStores,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
 
-                      // Following Section
-                      FutureBuilder<List<Store>>(
-                        future: _followingFuture,
-                        builder: (context, snap) {
-                          if (!snap.hasData) {
-                            return const SizedBox(
-                                height: 100,
-                                child:
-                                    Center(child: CircularProgressIndicator()));
-                          }
-                          return _buildFollowingSection(context, snap.data!);
-                        },
-                      ),
+                        // Following Section
+                        FutureBuilder<List<Store>>(
+                          future: _followingFuture,
+                          builder: (context, snap) {
+                            if (!snap.hasData) {
+                              return const SizedBox(
+                                  height: 100,
+                                  child: Center(
+                                      child: CircularProgressIndicator()));
+                            }
+                            return _buildFollowingSection(context, snap.data!);
+                          },
+                        ),
 
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                      // Your Offers Section
-                      _buildYourOffersSection(context),
+                        // Your Offers Section
+                        _buildYourOffersSection(context),
 
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                      // Seller Cards (dynamic)
-                      FutureBuilder<List<SellerData>>(
-                        future: _sellersFuture,
-                        builder: (context, snap) {
-                          if (!snap.hasData) {
-                            return const Center(
-                                child: CircularProgressIndicator());
-                          }
-                          final data = snap.data!;
-                          if (data.isEmpty) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(
-                                  'Одоогоор идэвхтэй дэлгүүр байхгүй байна'),
+                        // Seller Cards (dynamic)
+                        FutureBuilder<List<SellerData>>(
+                          future: _sellersFuture,
+                          builder: (context, snap) {
+                            if (!snap.hasData) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            }
+                            final data = snap.data!;
+                            if (data.isEmpty) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                    'Одоогоор идэвхтэй дэлгүүр байхгүй байна'),
+                              );
+                            }
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Column(
+                                children: data
+                                    .map((seller) => Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 24),
+                                          child:
+                                              _buildSellerCard(context, seller),
+                                        ))
+                                    .toList(),
+                              ),
                             );
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Column(
-                              children: data
-                                  .map((seller) => Padding(
-                                        padding:
-                                            const EdgeInsets.only(bottom: 24),
-                                        child:
-                                            _buildSellerCard(context, seller),
-                                      ))
-                                  .toList(),
-                            ),
-                          );
-                        },
-                      ),
+                          },
+                        ),
 
-                      const SizedBox(height: 80), // Space for bottom nav
-                    ],
+                        const SizedBox(height: 80), // Space for bottom nav
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -881,6 +1017,7 @@ class _HomeScreenState extends State<HomeScreen> {
       storeId: seller.storeId,
       backgroundImageUrl: seller.backgroundImageUrl,
       storeLogoUrl: seller.storeLogoUrl, // Pass the store logo URL
+      isRecommended: seller.isRecommended, // Pass the recommended flag
       onShopAllTap: () => _openStore(context, seller.storeId),
     );
   }
@@ -1088,6 +1225,7 @@ class SellerData {
   final String? backgroundImageUrl;
   final String? storeLogoUrl; // Added store logo URL field
   final bool isAssetBg;
+  final bool isRecommended; // Added recommended flag
 
   SellerData({
     required this.name,
@@ -1099,5 +1237,6 @@ class SellerData {
     this.backgroundImageUrl,
     this.storeLogoUrl, // Added store logo URL parameter
     this.isAssetBg = false,
+    this.isRecommended = false, // Default to false
   });
 }

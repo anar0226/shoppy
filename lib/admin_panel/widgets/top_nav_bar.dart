@@ -190,7 +190,7 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
                   const PopupMenuDivider(),
                   const PopupMenuItem<String>(
                     value: 'signout',
-                    child: Text('Sign out'),
+                    child: Text('Гарах'),
                   ),
                 ];
               },
@@ -244,7 +244,7 @@ class NotificationsDialog extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Notifications',
+                  'Мэдэгдэл',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -257,7 +257,44 @@ class NotificationsDialog extends StatelessWidget {
                       onPressed: () async {
                         await NotificationService().markAllAsRead();
                       },
-                      child: const Text('Mark all read'),
+                      child: const Text('бүгдийг уншсан гэж тэмдэглэх'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        // Show confirmation dialog
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Бүх мэдэгдэл устгах'),
+                            content: const Text(
+                              'Бүх мэдэгдэл устгах уу?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: const Text('Цуцалгах'),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                ),
+                                child: const Text('Бүгдийг устгах'),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirmed == true) {
+                          await NotificationService().clearAllNotifications();
+                        }
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.red,
+                      ),
+                      child: const Text('Бүгдийг устгах'),
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
@@ -290,7 +327,7 @@ class NotificationsDialog extends StatelessWidget {
                           ),
                           SizedBox(height: 16),
                           Text(
-                            'No notifications yet',
+                            'Мэдэгдэл байхгүй',
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey,

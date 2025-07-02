@@ -53,14 +53,43 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
           .get();
       if (!doc.exists) return;
       final store = StoreModel.fromFirestore(doc);
+
+      // Get actual store rating from reviews
+      double storeRating = 0.0;
+      String reviewCount = '0';
+
+      try {
+        final reviewsSnapshot = await FirebaseFirestore.instance
+            .collection('stores')
+            .doc(store.id)
+            .collection('reviews')
+            .where('status', isEqualTo: 'active')
+            .get();
+
+        if (reviewsSnapshot.docs.isNotEmpty) {
+          final reviews = reviewsSnapshot.docs;
+          final totalRating = reviews.fold<double>(0, (sum, doc) {
+            final data = doc.data();
+            return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+          });
+          storeRating = totalRating / reviews.length;
+          reviewCount = reviews.length > 1000
+              ? '${(reviews.length / 1000).toStringAsFixed(1)}K'
+              : reviews.length.toString();
+        }
+      } catch (reviewError) {
+        print('⚠️ Error loading reviews for store ${store.id}: $reviewError');
+        // Keep default values
+      }
+
       final storeData = StoreData(
         id: store.id,
         name: store.name,
         displayName: store.name.toUpperCase(),
         heroImageUrl: store.banner.isNotEmpty ? store.banner : store.logo,
         backgroundColor: const Color(0xFFFFFFFF),
-        rating: 4.8,
-        reviewCount: '12K',
+        rating: double.parse(storeRating.toStringAsFixed(1)),
+        reviewCount: reviewCount,
         collections: const <StoreCollection>[],
         categories: const <String>["All"],
         productCount: 0,
@@ -75,14 +104,14 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
   }
 
   static const List<String> _sections = [
-    'Tshirts',
-    'Hoodies',
+    'Футболк',
+    'Худи',
   ];
 
   static const List<_SubCat> _subCats = [
-    _SubCat('Tshirts', 'assets/images/categories/Women/WomenTshirt.jpg',
+    _SubCat('Футболк', 'assets/images/categories/Women/WomenTshirt.jpg',
         Color(0xFF2D8A47)),
-    _SubCat('Hoodies', 'assets/images/categories/Women/shoes/hoodie.jpg',
+    _SubCat('Худи', 'assets/images/categories/Women/shoes/hoodie.jpg',
         Color(0xFFD97841)),
   ];
 
@@ -97,7 +126,7 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
-          title: const Text('Shirts & Tops',
+          title: const Text('Гадуур хувцас & Футболк',
               style: TextStyle(color: Colors.black)),
         ),
         body: SafeArea(
@@ -200,7 +229,7 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Featured brands',
+        const Text('Онцлох брэндүүд',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
         GridView.count(
@@ -298,8 +327,8 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
     final product = ProductModel(
       id: 'placeholder',
       storeId: '',
-      name: 'Coming Soon',
-      description: 'Stay tuned – great products on the way!',
+      name: 'Удахгүй',
+      description: 'Удахгүй шинэ бүтээгдэхүүн гарах болно!',
       price: 0,
       images: _placeholderImage != null ? [_placeholderImage!] : [],
       category: '',
@@ -336,14 +365,13 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
                     height: 160,
                     color: Colors.grey.shade300,
                     alignment: Alignment.center,
-                    child: const Text('Coming Soon',
+                    child: const Text('Удахгүй',
                         style: TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
           ),
           const SizedBox(height: 8),
-          const Text('Coming Soon',
-              style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text('Удахгүй', style: TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
     );

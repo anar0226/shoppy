@@ -58,7 +58,7 @@ class FirestoreStoreScreen extends StatelessWidget {
               }
               final products = prodSnap.data!;
               if (products.isEmpty) {
-                return const Center(child: Text('No products'));
+                return const Center(child: Text('Бараа олдсонгүй'));
               }
               return GridView.builder(
                 padding: const EdgeInsets.all(16),

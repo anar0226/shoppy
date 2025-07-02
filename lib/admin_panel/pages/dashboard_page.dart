@@ -170,7 +170,6 @@ class _DashboardPageState extends State<DashboardPage> {
     if (_currentStoreId == null) return [];
 
     try {
-      // Get recent product updates, orders, and customer activities
       final recentActivity = <Map<String, dynamic>>[];
 
       // Recent orders
@@ -178,18 +177,32 @@ class _DashboardPageState extends State<DashboardPage> {
           .collection('orders')
           .where('storeId', isEqualTo: _currentStoreId)
           .orderBy('createdAt', descending: true)
-          .limit(3)
+          .limit(2)
           .get();
 
       for (final doc in ordersSnapshot.docs) {
         final data = doc.data();
+        final userEmail = data['userEmail'] ?? data['customerEmail'] ?? '';
+        final customerName = userEmail.isNotEmpty
+            ? userEmail
+                .split('@')
+                .first
+                .replaceAll('.', ' ')
+                .split(' ')
+                .map((word) => word.isNotEmpty
+                    ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
+                    : word)
+                .join(' ')
+            : 'Customer';
+
         recentActivity.add({
           'type': 'order',
-          'icon': Icons.shopping_cart,
+          'icon': Icons.shopping_cart_outlined,
           'color': Colors.green,
           'title':
-              'Шинэ захиалга #${doc.id.substring(0, 6)} - ${data['userEmail'] ?? 'Үйлчлүүлэгч'}',
+              'New order #${doc.id.substring(0, 4).toUpperCase()} received from $customerName',
           'time': _formatTime(data['createdAt']),
+          'timestamp': data['createdAt'],
         });
       }
 
@@ -205,20 +218,62 @@ class _DashboardPageState extends State<DashboardPage> {
         final data = doc.data();
         recentActivity.add({
           'type': 'product',
-          'icon': Icons.inventory,
+          'icon': Icons.inventory_2_outlined,
           'color': Colors.blue,
-          'title': 'Бүтээгдэхүүн "${data['name']}" нөөц шинэчлэгдсэн',
+          'title': 'Product ${data['name'] ?? 'Unknown'} inventory updated',
           'time': _formatTime(data['updatedAt'] ?? data['createdAt']),
+          'timestamp': data['updatedAt'] ?? data['createdAt'],
         });
       }
 
-      // Sort by time and return latest
+      // Add shipped orders
+      final shippedOrdersSnapshot = await FirebaseFirestore.instance
+          .collection('orders')
+          .where('storeId', isEqualTo: _currentStoreId)
+          .where('status', isEqualTo: 'shipped')
+          .orderBy('updatedAt', descending: true)
+          .limit(1)
+          .get();
+
+      for (final doc in shippedOrdersSnapshot.docs) {
+        final data = doc.data();
+        final userEmail = data['userEmail'] ?? data['customerEmail'] ?? '';
+        final customerName = userEmail.isNotEmpty
+            ? userEmail
+                .split('@')
+                .first
+                .replaceAll('.', ' ')
+                .split(' ')
+                .map((word) => word.isNotEmpty
+                    ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
+                    : word)
+                .join(' ')
+            : 'Customer';
+
+        recentActivity.add({
+          'type': 'shipping',
+          'icon': Icons.local_shipping_outlined,
+          'color': Colors.orange,
+          'title':
+              'Order #${doc.id.substring(0, 4).toUpperCase()} shipped to $customerName',
+          'time': _formatTime(data['updatedAt'] ?? data['createdAt']),
+          'timestamp': data['updatedAt'] ?? data['createdAt'],
+        });
+      }
+
+      // Sort by timestamp (most recent first)
       recentActivity.sort((a, b) {
-        // This is a simple sort, in a real app you'd parse the time strings
-        return 0;
+        final aTime = a['timestamp'];
+        final bTime = b['timestamp'];
+        if (aTime == null || bTime == null) return 0;
+
+        final aDate = aTime is Timestamp ? aTime.toDate() : aTime as DateTime;
+        final bDate = bTime is Timestamp ? bTime.toDate() : bTime as DateTime;
+
+        return bDate.compareTo(aDate);
       });
 
-      return recentActivity.take(6).toList();
+      return recentActivity.take(4).toList();
     } catch (e) {
       return [];
     }
@@ -289,12 +344,16 @@ class _DashboardPageState extends State<DashboardPage> {
     final now = DateTime.now();
     final diff = now.difference(date);
 
-    if (diff.inMinutes < 60) {
-      return '${diff.inMinutes} minutes ago';
+    if (diff.inMinutes < 1) {
+      return 'Just now';
+    } else if (diff.inMinutes < 60) {
+      return '${diff.inMinutes} minute${diff.inMinutes > 1 ? 's' : ''} ago';
     } else if (diff.inHours < 24) {
       return '${diff.inHours} hour${diff.inHours > 1 ? 's' : ''} ago';
-    } else {
+    } else if (diff.inDays < 7) {
       return '${diff.inDays} day${diff.inDays > 1 ? 's' : ''} ago';
+    } else {
+      return '${(diff.inDays / 7).floor()} week${(diff.inDays / 7).floor() > 1 ? 's' : ''} ago';
     }
   }
 
@@ -442,7 +501,7 @@ class _DashboardPageState extends State<DashboardPage> {
             child: RevenueLineChart(
               data: _revenueTrends,
               height: 320,
-              title: 'Цаг хугацааны борлуулалт',
+              title: 'Орлого ба захиалгууд',
               lineColor: Colors.green,
             ),
           ),
@@ -603,21 +662,33 @@ class _DashboardPageState extends State<DashboardPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Сүүлийн захиалгууд',
+                      'Сүүлийн үеийн захиалгууд',
                       style: TextStyle(
                         fontSize: 18,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
                       ),
                     ),
                     TextButton(
                       onPressed: () {
                         // Navigate to orders page
                       },
-                      child: const Text('Бүх захиалга харах'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.green,
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                      ),
+                      child: const Text(
+                        'Бүгдийг харах',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 _buildRecentOrdersTable(),
               ],
             ),
@@ -640,17 +711,29 @@ class _DashboardPageState extends State<DashboardPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Сүүлийн үйл ажиллагаа',
+                      'Recent activity',
                       style: TextStyle(
                         fontSize: 18,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
                       ),
                     ),
                     TextButton(
                       onPressed: () {
                         // Navigate to full activity log
                       },
-                      child: const Text('Бүгдийг харах'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.green,
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                      ),
+                      child: const Text(
+                        'View all',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -671,7 +754,10 @@ class _DashboardPageState extends State<DashboardPage> {
         child: Center(
           child: Text(
             'Захиалга байхгүй',
-            style: TextStyle(color: Colors.grey),
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 16,
+            ),
           ),
         ),
       );
@@ -680,31 +766,57 @@ class _DashboardPageState extends State<DashboardPage> {
     return Column(
       children: [
         // Table header
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: const Row(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
             children: [
-              Expanded(
-                  flex: 2,
-                  child: Text('Захиалга',
-                      style: TextStyle(fontWeight: FontWeight.w600))),
-              Expanded(
-                  child: Text('Үйлчлүүлэгч',
-                      style: TextStyle(fontWeight: FontWeight.w600))),
-              Expanded(
-                  child: Text('Дүн',
-                      style: TextStyle(fontWeight: FontWeight.w600))),
-              Expanded(
-                  child: Text('Төлөв',
-                      style: TextStyle(fontWeight: FontWeight.w600))),
+              const Expanded(
+                flex: 2,
+                child: Text(
+                  'Захиалгийн дугаар',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+              const Expanded(
+                flex: 3,
+                child: Text(
+                  'Үйлчлүүлэгч',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+              const Expanded(
+                flex: 2,
+                child: Text(
+                  'Үнийн дүн',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+              const Expanded(
+                flex: 2,
+                child: Text(
+                  'Статус',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 8),
         // Table rows
         ...(_recentOrders.map((order) => _buildOrderRow(order))),
       ],
@@ -713,47 +825,58 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildOrderRow(Map<String, dynamic> order) {
     final status = order['status']?.toString() ?? 'placed';
-    final statusColor = _getStatusColor(status);
+    final statusInfo = _getStatusInfo(status);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
           Expanded(
             flex: 2,
             child: Text(
-              '#${order['id']?.toString().substring(0, 6) ?? 'Тодорхойгүй'}',
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              '#${order['id']?.toString().substring(0, 4).toUpperCase() ?? '1024'}',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: Colors.black87,
+              ),
             ),
           ),
           Expanded(
+            flex: 3,
             child: Text(
-              order['userEmail']?.toString() ?? 'Тодорхойгүй',
-              style: const TextStyle(fontSize: 14),
+              order['userEmail']?.toString().split('@').first ?? 'Customer',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           Expanded(
+            flex: 2,
             child: Text(
               '₮${order['total']?.toStringAsFixed(0) ?? '0'}',
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: Colors.black87,
+              ),
             ),
           ),
           Expanded(
+            flex: 2,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(4),
+                color: statusInfo['backgroundColor'],
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
-                status.toUpperCase(),
+                statusInfo['label'],
                 style: TextStyle(
-                  color: statusColor,
-                  fontSize: 11,
+                  color: statusInfo['textColor'],
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
@@ -771,8 +894,11 @@ class _DashboardPageState extends State<DashboardPage> {
         height: 200,
         child: Center(
           child: Text(
-            'Үйл ажиллагаа байхгүй',
-            style: TextStyle(color: Colors.grey),
+            'No recent activity',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 16,
+            ),
           ),
         ),
       );
@@ -780,8 +906,9 @@ class _DashboardPageState extends State<DashboardPage> {
 
     return SizedBox(
       height: 240,
-      child: ListView.builder(
+      child: ListView.separated(
         itemCount: _recentActivity.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 20),
         itemBuilder: (context, index) {
           final activity = _recentActivity[index];
           return _buildActivityItem(activity);
@@ -791,66 +918,88 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildActivityItem(Map<String, dynamic> activity) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: (activity['color'] as Color).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              activity['icon'] as IconData,
-              size: 16,
-              color: activity['color'] as Color,
-            ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: (activity['color'] as Color).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  activity['title']?.toString() ?? '',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  activity['time']?.toString() ?? '',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
+          child: Icon(
+            activity['icon'] as IconData,
+            size: 20,
+            color: activity['color'] as Color,
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                activity['title']?.toString() ?? '',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                activity['time']?.toString() ?? '',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
-  Color _getStatusColor(String status) {
+  Map<String, dynamic> _getStatusInfo(String status) {
     switch (status.toLowerCase()) {
       case 'paid':
-        return Colors.green;
+        return {
+          'label': 'Paid',
+          'backgroundColor': Colors.green.withOpacity(0.1),
+          'textColor': Colors.green,
+        };
       case 'pending':
-        return Colors.orange;
+        return {
+          'label': 'Pending',
+          'backgroundColor': Colors.orange.withOpacity(0.1),
+          'textColor': Colors.orange,
+        };
       case 'shipped':
-        return Colors.blue;
+        return {
+          'label': 'Shipped',
+          'backgroundColor': Colors.blue.withOpacity(0.1),
+          'textColor': Colors.blue,
+        };
       case 'delivered':
-        return Colors.green;
+        return {
+          'label': 'Delivered',
+          'backgroundColor': Colors.green.withOpacity(0.1),
+          'textColor': Colors.green,
+        };
       case 'canceled':
-        return Colors.red;
+        return {
+          'label': 'Canceled',
+          'backgroundColor': Colors.red.withOpacity(0.1),
+          'textColor': Colors.red,
+        };
       default:
-        return Colors.grey;
+        return {
+          'label': 'Unknown',
+          'backgroundColor': Colors.grey.withOpacity(0.1),
+          'textColor': Colors.grey,
+        };
     }
   }
 }

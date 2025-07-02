@@ -221,14 +221,14 @@ class _RevenueLineChartState extends State<RevenueLineChart> {
                             ),
                             children: [
                               TextSpan(
-                                text: 'Revenue: ${data.formattedRevenue}\n',
+                                text: 'Орлого: ${data.formattedRevenue}\n',
                                 style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 12,
                                 ),
                               ),
                               TextSpan(
-                                text: 'Orders: ${data.orders}',
+                                text: 'Захиалгууд: ${data.orders}',
                                 style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 12,

@@ -4,6 +4,7 @@ import 'package:avii/features/home/presentation/main_scaffold.dart';
 import 'package:avii/features/products/presentation/product_page.dart';
 import 'package:avii/features/products/models/product_model.dart';
 import 'package:avii/features/stores/models/store_model.dart';
+import '../services/category_product_service.dart';
 
 class FinalCategoryPage extends StatefulWidget {
   final String title;
@@ -26,8 +27,11 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
   static const String _lalarStoreId = 'TLLb3tqzvU2TZSsNPol9';
   StoreModel? _lalarStore;
   List<ProductModel> _featuredProducts = [];
+  List<ProductModel> _categoryProducts = [];
   List<StoreModel> _allStores = [];
   bool _isLoadingFeatured = true;
+  bool _isLoadingCategory = true;
+  final CategoryProductService _categoryService = CategoryProductService();
 
   @override
   void initState() {
@@ -39,7 +43,66 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
     await _loadPlaceholder();
     await _loadStore();
     await _loadAllStores();
-    await _loadFeaturedProducts();
+    await Future.wait([
+      _loadFeaturedProducts(),
+      _loadCategoryProducts(),
+    ]);
+  }
+
+  Future<void> _loadCategoryProducts() async {
+    try {
+      print('🔍 Loading category products for: ${widget.title}');
+
+      // First try loading by exact category hierarchy
+      List<ProductModel> products =
+          await _categoryService.loadProductsByCategory(
+        category: widget.mainCategory,
+        subCategory: widget.subCategory,
+        leafCategory: widget.title,
+        limit: 20,
+      );
+
+      // If no products found, try broader searches
+      if (products.isEmpty) {
+        print('🔄 No products found with hierarchy, trying term-based search');
+
+        // Create search terms from the category information
+        final searchTerms = <String>[];
+        if (widget.title.isNotEmpty) searchTerms.add(widget.title);
+        if (widget.subCategory != null && widget.subCategory!.isNotEmpty) {
+          searchTerms.add(widget.subCategory!);
+        }
+        if (widget.mainCategory != null && widget.mainCategory!.isNotEmpty) {
+          searchTerms.add(widget.mainCategory!);
+        }
+
+        if (searchTerms.isNotEmpty) {
+          products = await _categoryService.loadProductsByTerms(
+            searchTerms: searchTerms,
+            limit: 20,
+          );
+        }
+      }
+
+      // Final fallback: load all active products
+      if (products.isEmpty) {
+        print('🔄 No products found with terms, loading all active products');
+        products = await _categoryService.loadAllActiveProducts(limit: 20);
+      }
+
+      setState(() {
+        _categoryProducts = products;
+        _isLoadingCategory = false;
+      });
+
+      print('✅ Loaded ${products.length} category products');
+    } catch (e) {
+      print('❌ Error loading category products: $e');
+      setState(() {
+        _categoryProducts = [];
+        _isLoadingCategory = false;
+      });
+    }
   }
 
   Future<void> _loadAllStores() async {
@@ -148,8 +211,8 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
     final product = ProductModel(
       id: 'placeholder',
       storeId: _lalarStoreId,
-      name: 'Coming Soon',
-      description: 'Stay tuned – great products on the way!',
+      name: 'Удахгүй',
+      description: 'Удахгүй шинэ бүтээгдэхүүн гарах болно!',
       price: 0,
       images: _placeholderImage != null ? [_placeholderImage!] : [],
       category: widget.title,
@@ -191,8 +254,6 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
                   style: const TextStyle(
                       fontSize: 28, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
-              _buildFiltersRow(),
-              const SizedBox(height: 12),
               Expanded(child: _buildProductsGrid()),
             ],
           ),
@@ -219,78 +280,96 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
     );
   }
 
-  Widget _buildFiltersRow() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Row(
-        children: [
-          _filterChip('Offers'),
-          _filterChip('Following'),
-          _filterChip('On sale'),
-          _filterChip('Ratings \u25BC'),
-          _filterChip('Size'),
-        ],
-      ),
-    );
-  }
-
-  Widget _filterChip(String label) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        onSelected: (_) {},
-      ),
-    );
-  }
-
   Widget _buildProductsGrid() {
-    if (_isLoadingFeatured) {
+    if (_isLoadingFeatured || _isLoadingCategory) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_featuredProducts.isEmpty) {
+    // Determine which products to show
+    final hasFeatureProducts = _featuredProducts.isNotEmpty;
+    final hasCategoryProducts = _categoryProducts.isNotEmpty;
+
+    if (!hasFeatureProducts && !hasCategoryProducts) {
       return _buildEmptyState();
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Featured Products Section
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            children: [
-              const Icon(Icons.star, color: Colors.amber, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Featured ${widget.title}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+        // Featured Products Section (if available)
+        if (hasFeatureProducts) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                const Icon(Icons.star, color: Colors.amber, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Featured ${widget.title}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        Expanded(
-          child: GridView.builder(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 0.6,
+              ],
             ),
-            itemCount: _featuredProducts.length,
-            itemBuilder: (context, index) =>
-                _buildFeaturedProductCard(_featuredProducts[index]),
           ),
-        ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 280, // Fixed height for featured products
+            child: GridView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              scrollDirection: Axis.horizontal,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 1,
+                mainAxisSpacing: 16,
+                childAspectRatio: 0.8,
+              ),
+              itemCount: _featuredProducts.length,
+              itemBuilder: (context, index) =>
+                  _buildFeaturedProductCard(_featuredProducts[index]),
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+
+        // Category Products Section
+        if (hasCategoryProducts) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                const Icon(Icons.category, color: Colors.blue, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  hasFeatureProducts
+                      ? 'More ${widget.title}'
+                      : 'All ${widget.title}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: GridView.builder(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 0.6,
+              ),
+              itemCount: _categoryProducts.length,
+              itemBuilder: (context, index) =>
+                  _buildCategoryProductCard(_categoryProducts[index]),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -307,7 +386,7 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No Featured ${widget.title} Yet',
+            '${widget.title} ангиллын бараа олдсонгүй',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -316,11 +395,20 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Store owners can feature products in this category\nthrough their admin panel.',
+            'Энэ ангиллын бараа олдсонгүй.\nДараа дахин шалгана уу!',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.grey.shade500,
             ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Бусад ангилал үзэх'),
           ),
         ],
       ),
@@ -428,6 +516,121 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
   }
 
   void _openFeaturedProduct(ProductModel product, StoreModel store) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductPage(
+          product: product,
+          storeName: store.name,
+          storeLogoUrl: store.logo,
+          storeRating: 4.5,
+          storeRatingCount: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryProductCard(ProductModel product) {
+    // Find the store for this product
+    final store = _allStores.firstWhere(
+      (s) => s.id == product.storeId,
+      orElse: () => StoreModel(
+        id: product.storeId,
+        name: 'Store',
+        description: '',
+        logo: '',
+        banner: '',
+        ownerId: '',
+        status: 'active',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        settings: {},
+      ),
+    );
+
+    return GestureDetector(
+      onTap: () => _openCategoryProduct(product, store),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Product image + favourite button
+          Expanded(
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: product.images.isNotEmpty
+                      ? Image.network(
+                          product.images.first,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey.shade300,
+                              child: const Icon(Icons.image,
+                                  size: 50, color: Colors.grey),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: Colors.grey.shade300,
+                          child: const Icon(Icons.image,
+                              size: 50, color: Colors.grey),
+                        ),
+                ),
+                Positioned(
+                  bottom: 8,
+                  right: 8,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white70,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4.0),
+                      child: Icon(Icons.favorite_border, size: 18),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            store.name,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            product.name,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: const [
+              Icon(Icons.star, size: 14, color: Colors.amber),
+              SizedBox(width: 2),
+              Text('4.5', style: TextStyle(fontSize: 12)),
+              SizedBox(width: 4),
+              Text('(24)',
+                  style: TextStyle(fontSize: 12, color: Colors.black45)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '₮${product.price.toStringAsFixed(0)}',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openCategoryProduct(ProductModel product, StoreModel store) {
     Navigator.push(
       context,
       MaterialPageRoute(

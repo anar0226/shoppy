@@ -12,19 +12,19 @@ class MenCategoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CategoryPage(
-      title: 'Men',
+      title: 'Эрэгтэй',
       featuredStoreIds: const [_featuredStoreId],
       sections: const [
-        'Shoes',
-        'Jackets & Tops',
-        'Others',
-        'Pants',
-        'Tshirts',
-        'Activewear',
+        'Гутал',
+        'Гадуур хувцас',
+        'Бусад',
+        'Өмд',
+        'Футболк',
+        'Спорт хувцас',
       ],
       subCategories: [
         SubCategory(
-          name: 'Shoes',
+          name: 'Гутал',
           imageUrl: 'assets/images/categories/Men/shoes.jpg',
           color: const Color(0xFF2D8A47),
           onTap: () => Navigator.push(
@@ -33,7 +33,7 @@ class MenCategoryPage extends StatelessWidget {
           ),
         ),
         SubCategory(
-          name: 'Jackets & Tops',
+          name: 'Гадуур хувцас',
           imageUrl: 'assets/images/categories/Men/jacket.jpg',
           color: const Color(0xFFD97841),
           onTap: () => Navigator.push(
@@ -43,43 +43,43 @@ class MenCategoryPage extends StatelessWidget {
           ),
         ),
         SubCategory(
-          name: 'Others',
+          name: 'Бусад',
           imageUrl: 'assets/images/categories/Men/Others.jpg',
           color: const Color(0xFF8B4513),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => const FinalCategoryPage(title: 'Others')),
+                builder: (_) => const FinalCategoryPage(title: 'Бусад')),
           ),
         ),
         SubCategory(
-          name: 'Pants',
+          name: 'Өмд',
           imageUrl: 'assets/images/categories/Men/pants.jpg',
           color: const Color(0xFFB8A082),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => const FinalCategoryPage(title: 'Pants')),
+                builder: (_) => const FinalCategoryPage(title: 'Өмд')),
           ),
         ),
         SubCategory(
-          name: 'Tshirts',
+          name: 'Футболк',
           imageUrl: 'assets/images/categories/Men/Tshirt.jpg',
           color: const Color(0xFFE8B5C8),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => const FinalCategoryPage(title: 'Tshirts')),
+                builder: (_) => const FinalCategoryPage(title: 'Футболк')),
           ),
         ),
         SubCategory(
-          name: 'Activewear',
+          name: 'Спорт хувцас',
           imageUrl: 'assets/images/categories/Men/Activewear.jpg',
           color: const Color(0xFF6B9BD1),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => const FinalCategoryPage(title: 'Activewear')),
+                builder: (_) => const FinalCategoryPage(title: 'Спорт хувцас')),
           ),
         ),
       ],

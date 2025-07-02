@@ -610,7 +610,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
                     ),
                     child: const Center(
                       child: Text(
-                        'No products found. Add some products to your store first.',
+                        'Бараа олдсонгүй. Эхлээд дэлгүүртээ бараа нэмэх хэрэгтэй.',
                         style: TextStyle(color: Colors.grey),
                       ),
                     ),

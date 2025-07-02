@@ -12,71 +12,71 @@ class MenShoesCategoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CategoryPage(
-      title: 'Men Shoes',
+      title: 'Эрэгтэй гутал',
       featuredStoreIds: const [_featuredStoreId],
       sections: const [
-        'Sneakers',
-        'Slippers',
-        'Boots',
-        'Athletic shoes',
+        'Пүүз',
+        'Шаахай',
+        'Гутал',
+        'Спорт гутал',
       ],
       subCategories: [
         SubCategory(
-          name: 'Sneakers',
+          name: 'Пүүз',
           imageUrl: 'assets/images/categories/Men/shoes.jpg',
           color: const Color(0xFF6B9BD1),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => const FinalCategoryPage(
-                title: 'Sneakers',
-                mainCategory: 'Men',
-                subCategory: 'Shoes',
+                title: 'Пүүз',
+                mainCategory: 'Эрэгтэй',
+                subCategory: 'Гутал',
               ),
             ),
           ),
         ),
         SubCategory(
-          name: 'Slippers',
+          name: 'Шаахай',
           imageUrl: 'assets/images/categories/Men/shoes/slippers.jpg',
           color: const Color(0xFFD97841),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => const FinalCategoryPage(
-                title: 'Slippers',
-                mainCategory: 'Men',
-                subCategory: 'Shoes',
+                title: 'Шаахай',
+                mainCategory: 'Эрэгтэй',
+                subCategory: 'Гутал',
               ),
             ),
           ),
         ),
         SubCategory(
-          name: 'Boots',
+          name: 'Гутал',
           imageUrl: 'assets/images/categories/Men/shoes/boots.jpg',
           color: const Color(0xFF8B4513),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => const FinalCategoryPage(
-                title: 'Boots',
-                mainCategory: 'Men',
-                subCategory: 'Shoes',
+                title: 'Гутал',
+                mainCategory: 'Эрэгтэй',
+                subCategory: 'Гутал',
               ),
             ),
           ),
         ),
         SubCategory(
-          name: 'Athletic shoes',
+          name: 'Спорт гутал',
           imageUrl: 'assets/images/categories/Men/shoes/athletic.jpg',
           color: const Color(0xFF2D8A47),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => const FinalCategoryPage(
-                title: 'Athletic shoes',
-                mainCategory: 'Men',
-                subCategory: 'Shoes',
+                title: 'Спорт гутал',
+                mainCategory: 'Эрэгтэй',
+                subCategory: 'Гутал',
               ),
             ),
           ),

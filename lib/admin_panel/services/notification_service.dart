@@ -170,6 +170,28 @@ class NotificationService {
     }
   }
 
+  // Delete all notifications for current store owner
+  Future<void> clearAllNotifications() async {
+    final ownerId = AuthService.instance.currentUser?.uid;
+    if (ownerId == null) return;
+
+    try {
+      final allDocs = await _firestore
+          .collection('notifications')
+          .where('ownerId', isEqualTo: ownerId)
+          .get();
+
+      final batch = _firestore.batch();
+      for (final doc in allDocs.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      debugPrint('All notifications cleared successfully');
+    } catch (e) {
+      debugPrint('Error clearing all notifications: $e');
+    }
+  }
+
   // Create a notification (for system use)
   Future<void> createNotification({
     required String storeId,
