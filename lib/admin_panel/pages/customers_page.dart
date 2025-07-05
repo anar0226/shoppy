@@ -274,7 +274,7 @@ class _CustomersPageState extends State<CustomersPage> {
     // Debug: Print order count and first order structure (only in debug mode)
     if (orders.isNotEmpty) {
       print('📊 Processing ${orders.length} orders for customer extraction');
-      if (orders.length > 0) {
+      if (orders.isNotEmpty) {
         final firstOrder = orders.first.data();
         print('🔍 Sample order fields: ${firstOrder.keys.toList()}');
         print('📧 Customer fields in first order:');
@@ -495,12 +495,12 @@ class _CustomersPageState extends State<CustomersPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: Icon(Icons.visibility, size: 18, color: Colors.blue),
+                  icon: const Icon(Icons.visibility, size: 18, color: Colors.blue),
                   onPressed: () => _viewCustomerDetails(customer),
                   tooltip: 'Дэлгэрэнгүй харах',
                 ),
                 IconButton(
-                  icon: Icon(Icons.email, size: 18, color: Colors.green),
+                  icon: const Icon(Icons.email, size: 18, color: Colors.green),
                   onPressed: () => _contactCustomer(email),
                   tooltip: 'И-мэйл илгээх',
                 ),
@@ -516,7 +516,7 @@ class _CustomersPageState extends State<CustomersPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Үйлчлүүлэгчийн мэдээлэл'),
+        title: const Text('Үйлчлүүлэгчийн мэдээлэл'),
         content: SizedBox(
           width: 400,
           child: Column(

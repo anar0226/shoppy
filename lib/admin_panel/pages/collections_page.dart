@@ -923,7 +923,7 @@ class _AddEditCollectionDialogState extends State<AddEditCollectionDialog> {
                 style: OutlinedButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  side: BorderSide(color: AppThemes.primaryColor),
+                  side: const BorderSide(color: AppThemes.primaryColor),
                   foregroundColor: AppThemes.primaryColor,
                 ),
               ),

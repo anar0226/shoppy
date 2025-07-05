@@ -21,9 +21,9 @@ class CartBottomSheet extends StatelessWidget {
       maxChildSize: 0.9,
       builder: (_, controller) {
         return Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: Colors.black,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -99,7 +99,7 @@ class CartBottomSheet extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (_) => CheckoutPage(
                           email:
-                              '${fb_auth.FirebaseAuth.instance.currentUser?.email ?? ''}',
+                              fb_auth.FirebaseAuth.instance.currentUser?.email ?? '',
                           fullAddress: shippingAddr.formatted(),
                           subtotal: cart.subtotal,
                           shippingCost: 0,

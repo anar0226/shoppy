@@ -199,11 +199,11 @@ class _AddDiscountDialogState extends State<AddDiscountDialog> {
                       _label('Type'),
                       DropdownButtonFormField<DiscountType>(
                         value: _selectedType,
-                        items: [
+                        items: const [
                           DropdownMenuItem(
                             value: DiscountType.freeShipping,
                             child: Row(
-                              children: const [
+                              children: [
                                 Icon(Icons.local_shipping_outlined, size: 18),
                                 SizedBox(width: 8),
                                 Text('Free Shipping'),
@@ -213,7 +213,7 @@ class _AddDiscountDialogState extends State<AddDiscountDialog> {
                           DropdownMenuItem(
                             value: DiscountType.percentage,
                             child: Row(
-                              children: const [
+                              children: [
                                 Icon(Icons.percent, size: 18),
                                 SizedBox(width: 8),
                                 Text('Percentage'),
@@ -223,7 +223,7 @@ class _AddDiscountDialogState extends State<AddDiscountDialog> {
                           DropdownMenuItem(
                             value: DiscountType.fixedAmount,
                             child: Row(
-                              children: const [
+                              children: [
                                 Icon(Icons.attach_money, size: 18),
                                 SizedBox(width: 8),
                                 Text('Fixed Amount'),

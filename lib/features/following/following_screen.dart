@@ -10,8 +10,6 @@ import 'package:avii/features/home/presentation/main_scaffold.dart';
 import 'package:avii/features/home/presentation/home_screen.dart'
     show SellerData;
 import 'package:avii/features/stores/presentation/store_screen.dart';
-import 'package:avii/features/stores/presentation/store_screen.dart'
-    show StoreData, StoreProduct;
 import 'services/following_service.dart';
 import '../../core/services/rating_service.dart';
 

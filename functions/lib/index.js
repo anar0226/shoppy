@@ -14,14 +14,17 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.processQPayPayout = exports.processScheduledPayouts = exports.sendPriceDropNotification = exports.sendOrderNotification = exports.processNotificationQueue = exports.getCommissionStats = exports.initializeCommissionRules = exports.createOrder = exports.checkQPayPaymentStatus = exports.handleQPayWebhook = void 0;
+exports.processSMSQueue = exports.processQPayPayout = exports.processScheduledPayouts = exports.sendPriceDropNotification = exports.sendOrderNotification = exports.processNotificationQueue = exports.getCommissionStats = exports.initializeCommissionRules = exports.createOrder = exports.checkQPayPaymentStatus = exports.handleQPayWebhook = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const rate_limiter_1 = require("./rate_limiter");
 // Initialize Firebase Admin
 admin.initializeApp();
 // Export Super Admin functions (after Firebase initialization)
 __exportStar(require("./super-admin-setup"), exports);
 __exportStar(require("./simple-admin-setup"), exports);
+// Export Backup & Recovery functions
+__exportStar(require("./firestore-backup"), exports);
 // QPay Configuration can be added here when implementing actual QPay API integration
 // QPay Webhook Handler
 exports.handleQPayWebhook = functions.https.onRequest(async (req, res) => {
@@ -152,6 +155,8 @@ async function handleFailedPayment(paymentId, invoiceId, objectId) {
 }
 // QPay Payment Status Check (for polling)
 exports.checkQPayPaymentStatus = functions.https.onCall(async (data, context) => {
+    var _a;
+    await (0, rate_limiter_1.enforceRateLimit)((((_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid) || context.rawRequest.ip));
     try {
         if (!context.auth) {
             throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
@@ -195,7 +200,8 @@ exports.checkQPayPaymentStatus = functions.https.onCall(async (data, context) =>
 });
 // Function to create order after successful payment
 exports.createOrder = functions.https.onCall(async (data, context) => {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
+    await (0, rate_limiter_1.enforceRateLimit)((((_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid) || context.rawRequest.ip), 20, 60);
     try {
         // Verify user is authenticated
         if (!context.auth) {
@@ -214,7 +220,7 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
         if (!storeDoc.exists) {
             throw new functions.https.HttpsError('not-found', 'Store not found');
         }
-        const vendorId = (_a = storeDoc.data()) === null || _a === void 0 ? void 0 : _a.ownerId;
+        const vendorId = (_b = storeDoc.data()) === null || _b === void 0 ? void 0 : _b.ownerId;
         // Get customer name from user profile
         let customerName = 'Үйлчлүүлэгч';
         try {
@@ -225,19 +231,19 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
                     (userData === null || userData === void 0 ? void 0 : userData.firstName) ||
                     (userData === null || userData === void 0 ? void 0 : userData.name) ||
                     context.auth.token.name ||
-                    ((_b = context.auth.token.email) === null || _b === void 0 ? void 0 : _b.split('@')[0]) ||
+                    ((_c = context.auth.token.email) === null || _c === void 0 ? void 0 : _c.split('@')[0]) ||
                     'Үйлчлүүлэгч';
             }
             else {
                 customerName = context.auth.token.name ||
-                    ((_c = context.auth.token.email) === null || _c === void 0 ? void 0 : _c.split('@')[0]) ||
+                    ((_d = context.auth.token.email) === null || _d === void 0 ? void 0 : _d.split('@')[0]) ||
                     'Үйлчлүүлэгч';
             }
         }
         catch (e) {
             // Fallback if user data fetch fails
             customerName = context.auth.token.name ||
-                ((_d = context.auth.token.email) === null || _d === void 0 ? void 0 : _d.split('@')[0]) ||
+                ((_e = context.auth.token.email) === null || _e === void 0 ? void 0 : _e.split('@')[0]) ||
                 'Үйлчлүүлэгч';
         }
         // Create order document
@@ -663,8 +669,8 @@ exports.sendOrderNotification = functions.firestore
                 body = `Таны захиалга: #${orderId.substring(0, 6)} замдаа гарлаа.`;
                 break;
             case 'delivered':
-                title = 'Захиалга амжилттай хүргэгдлээ !';
-                body = `Таны захиалга: #${orderId.substring(0, 6)} амжилттай хүргэгдлээ.`;
+                title = 'Захиалга амжилттай хүлээгдлээ!';
+                body = `Таны захиалга: #${orderId.substring(0, 6)} амжилттай хүлээгдлээ.`;
                 break;
             case 'canceled':
                 title = 'Захиалга цуцлагдсан!';
@@ -732,8 +738,8 @@ exports.sendPriceDropNotification = functions.firestore
                 userId: userDoc.id,
                 payload: {
                     notification: {
-                        title: 'Цочир хямдрал! 🔥',
-                        body: `${productName} ${afterDiscount}%-аар хямдралаа!`,
+                        title: 'Price Drop Alert! 🔥',
+                        body: `${productName} is now ${afterDiscount}% off! Don't miss out!`,
                     },
                     data: {
                         type: 'priceDrops',
@@ -755,11 +761,11 @@ exports.sendPriceDropNotification = functions.firestore
                 batch.set(docRef, notification);
             });
             await batch.commit();
-            console.log(`${notifications.length} хямдралын мэдэгдэл орууллаа: ${productId}`);
+            console.log(`Queued ${notifications.length} price drop notifications for product ${productId}`);
         }
     }
     catch (error) {
-        console.error('Алдаа гарлаа:', error);
+        console.error('Error processing price drop notification:', error);
     }
 });
 // **PHASE 2: PAYOUT AUTOMATION CLOUD FUNCTIONS**
@@ -828,7 +834,7 @@ exports.processScheduledPayouts = functions.pubsub.schedule('0 10 * * *')
                             transactionIds,
                             requestDate: now,
                             scheduledDate: now,
-                            notes: 'Автоматаар захиалгын төлөвлөгөө',
+                            notes: 'Automatic scheduled payout',
                             metadata: {
                                 scheduleId: scheduleDoc.id,
                                 automaticPayout: true,
@@ -862,18 +868,18 @@ exports.processScheduledPayouts = functions.pubsub.schedule('0 10 * * *')
                 }
             }
             catch (error) {
-                console.error(`${scheduleDoc.id} захиалгын төлөвлөгөө бүрэн төлөгдлөө:`, error);
+                console.error(`Error processing schedule ${scheduleDoc.id}:`, error);
             }
         }
         // Commit all changes
         if (processedCount > 0) {
             await batch.commit();
         }
-        console.log(`${processedCount} захиалгын төлөвлөгөө бүрэн төлөгдлөө`);
+        console.log(`Processed ${processedCount} scheduled payouts`);
         return { success: true, processedCount };
     }
     catch (error) {
-        console.error('Алдаа гарлаа:', error);
+        console.error('Error in scheduled payout processing:', error);
         throw error;
     }
 });
@@ -987,14 +993,14 @@ exports.processQPayPayout = functions.https.onCall(async (data, context) => {
             // Handle QPay API errors
             await payoutDoc.ref.update({
                 status: 'failed',
-                failureReason: `QPay алдаа: ${error}`,
+                failureReason: `QPay error: ${error}`,
             });
             throw error;
         }
     }
     catch (error) {
-        console.error('Алдаа гарлаа:', error);
-        throw new functions.https.HttpsError('internal', 'Алдаа гарлаа');
+        console.error('Error processing QPay payout:', error);
+        throw new functions.https.HttpsError('internal', 'Error processing payout');
     }
 });
 // Simulate QPay transfer (replace with actual QPay API integration)
@@ -1025,4 +1031,49 @@ async function simulateQPayTransfer(payout) {
         };
     }
 }
+// Process SMS queue for order notifications  
+exports.processSMSQueue = functions.firestore
+    .document('sms_queue/{smsId}')
+    .onCreate(async (snap, context) => {
+    try {
+        const data = snap.data();
+        const { phoneNumber, message, type, ownerId, orderId } = data;
+        if (!phoneNumber || !message) {
+            console.error('Invalid SMS data');
+            await snap.ref.update({
+                status: 'failed',
+                error: 'Missing phoneNumber or message',
+                failedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            return;
+        }
+        // For now, we'll just log the SMS (in production, integrate with Twilio or similar)
+        console.log(`SMS to ${phoneNumber}: ${message}`);
+        // Update the SMS queue document with success status
+        await snap.ref.update({
+            status: 'sent',
+            sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        // Optional: Store SMS analytics
+        if (type === 'new_order' && ownerId) {
+            await admin.firestore().collection('sms_analytics').add({
+                ownerId,
+                orderId: orderId || null,
+                type,
+                phoneNumber: phoneNumber.replace(/\d(?=\d{4})/g, '*'),
+                status: 'sent',
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+    }
+    catch (error) {
+        console.error('Error processing SMS queue:', error);
+        // Update queue document with error status
+        await snap.ref.update({
+            status: 'failed',
+            error: error instanceof Error ? error.message : String(error),
+            failedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+    }
+});
 //# sourceMappingURL=index.js.map

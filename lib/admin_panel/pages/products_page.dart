@@ -6,7 +6,6 @@ import '../widgets/edit_product_dialog.dart';
 import '../widgets/delete_confirmation_dialog.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../auth/auth_service.dart';
-import '../../features/products/models/product_model.dart';
 import '../../features/settings/themes/app_themes.dart';
 
 class ProductsPage extends StatefulWidget {
@@ -104,9 +103,9 @@ class _ProductsPageState extends State<ProductsPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
+                  const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text('Бүтээгдэхүүн',
                           style: TextStyle(
                               fontSize: 28, fontWeight: FontWeight.bold)),

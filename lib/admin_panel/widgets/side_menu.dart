@@ -24,7 +24,7 @@ class SideMenu extends StatefulWidget {
 
 class _SideMenuState extends State<SideMenu> {
   String _storeName = 'My Store';
-  String _storePlan = 'Basic plan';
+  String _storePlan = 'Avii.mn';
 
   @override
   void initState() {
@@ -47,7 +47,7 @@ class _SideMenuState extends State<SideMenu> {
         final storeData = snapshot.docs.first.data();
         setState(() {
           _storeName = storeData['name'] ?? 'My Store';
-          _storePlan = storeData['plan'] ?? 'Basic plan';
+          _storePlan = storeData['plan'] ?? 'Avii.mn';
         });
       }
     } catch (e) {

@@ -158,7 +158,6 @@ class _StoreScreenState extends State<StoreScreen>
   void _showPopupMessage(String message,
       {Color? backgroundColor, bool isError = false}) {
     final overlay = Overlay.of(context);
-    if (overlay == null) return;
 
     final overlayEntry = OverlayEntry(
       builder: (context) => _PopupMessage(
@@ -245,7 +244,7 @@ class _StoreScreenState extends State<StoreScreen>
   }
 
   Widget _buildHoursBanner(double bannerHeight) {
-    return Container(
+    return SizedBox(
       height: bannerHeight,
       width: double.infinity,
       child: Stack(
@@ -589,63 +588,44 @@ class _StoreScreenState extends State<StoreScreen>
     return Container(
       color: Colors.black,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: SizedBox(
-              height: 40,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _getAvailableCategories().length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  final category = _getAvailableCategories()[index];
-                  final isSelected = _selectedCategory == category;
+      child: SizedBox(
+        height: 40,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: _getAvailableCategories().length,
+          separatorBuilder: (_, __) => const SizedBox(width: 12),
+          itemBuilder: (context, index) {
+            final category = _getAvailableCategories()[index];
+            final isSelected = _selectedCategory == category;
 
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedCategory = category;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isSelected ? Colors.white : Colors.transparent,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        category,
-                        style: TextStyle(
-                          color: isSelected
-                              ? Colors.black
-                              : Colors.white.withOpacity(0.6),
-                          fontWeight:
-                              isSelected ? FontWeight.w600 : FontWeight.normal,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  );
-                },
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedCategory = category;
+                });
+              },
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  category,
+                  style: TextStyle(
+                    color: isSelected
+                        ? Colors.black
+                        : Colors.white.withOpacity(0.6),
+                    fontWeight:
+                        isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontSize: 14,
+                  ),
+                ),
               ),
-            ),
-          ),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(
-              Icons.tune,
-              color: Colors.black,
-              size: 20,
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -654,7 +634,7 @@ class _StoreScreenState extends State<StoreScreen>
     final filteredProducts = _getFilteredProducts();
     return Container(
       color: Colors.black,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
       child: Row(
         children: [
           Text(
@@ -717,7 +697,7 @@ class _StoreScreenState extends State<StoreScreen>
     final filteredProducts = _getFilteredProducts();
     return Container(
       color: Colors.black,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -815,7 +795,7 @@ class _StoreScreenState extends State<StoreScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Container(
+              child: SizedBox(
                 width: double.infinity,
                 child: product.imageUrl.isNotEmpty
                     ? Image.network(
@@ -859,7 +839,7 @@ class _StoreScreenState extends State<StoreScreen>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '\₮${product.price.toStringAsFixed(0)}',
+                    '₮${product.price.toStringAsFixed(0)}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,

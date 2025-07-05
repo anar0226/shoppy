@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import '../../features/commission/models/commission_model.dart';
 import '../../features/commission/services/commission_service.dart';
@@ -71,7 +70,7 @@ class _CommissionManagementPageState extends State<CommissionManagementPage>
               children: [
                 Row(
                   children: [
-                    Icon(Icons.account_balance_wallet,
+                    const Icon(Icons.account_balance_wallet,
                         color: Colors.blue, size: 28),
                     const SizedBox(width: 12),
                     Text(
@@ -566,7 +565,7 @@ class _CommissionTransactionsTab extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.receipt,
                   color: Colors.blue,
                   size: 20,
@@ -956,9 +955,9 @@ class _CommissionPayoutsTabState extends State<_CommissionPayoutsTab> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Payout Request',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),

@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/payout_model.dart';
-import '../models/commission_model.dart';
 
 /// Service for managing vendor payouts and financial operations
 class PayoutService {

@@ -15,8 +15,8 @@ class _SendNotificationDialogState extends State<SendNotificationDialog> {
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
 
-  String _selectedTarget = 'all_customers';
-  String _notificationType = 'promotion';
+  final String _selectedTarget = 'all_customers';
+  final String _notificationType = 'promotion';
   bool _isSending = false;
 
   final List<Map<String, dynamic>> _targetOptions = [

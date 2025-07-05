@@ -50,7 +50,7 @@ class _AdminAppState extends State<AdminApp> {
                       body: Center(child: CircularProgressIndicator()));
                 }
                 if (snapshot.hasData) {
-                  final user = snapshot.data as User?;
+                  final user = snapshot.data;
                   if (user != null && user.emailVerified) {
                     return FutureBuilder<bool>(
                       future: _checkStoreSetup(user.uid),

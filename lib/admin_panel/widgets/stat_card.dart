@@ -116,16 +116,16 @@ class StatCard extends StatelessWidget {
               ),
             ],
           ),
-          if (periodLabel != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              periodLabel!,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppThemes.getSecondaryTextColor(context),
-              ),
+          ...[
+          const SizedBox(height: 4),
+          Text(
+            periodLabel,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppThemes.getSecondaryTextColor(context),
             ),
-          ],
+          ),
+        ],
         ],
       ),
     );

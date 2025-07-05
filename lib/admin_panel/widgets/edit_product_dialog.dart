@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import '../auth/auth_service.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:typed_data';
 import '../../core/services/direct_upload_service.dart';
 import '../../features/discounts/models/discount_model.dart';
 import '../../features/discounts/services/discount_service.dart';
@@ -208,7 +207,7 @@ class _EditProductDialogState extends State<EditProductDialog> {
     super.dispose();
   }
 
-  double _uploadProgress = 0.0;
+  final double _uploadProgress = 0.0;
 
   Widget _label(String text) {
     return Padding(
@@ -1014,8 +1013,9 @@ class _EditProductDialogState extends State<EditProductDialog> {
                               validator: (v) {
                                 if (!_hasVariants) {
                                   final n = int.tryParse(v ?? '');
-                                  if (n == null || n < 0)
+                                  if (n == null || n < 0) {
                                     return 'Enter valid inventory';
+                                  }
                                 }
                                 return null;
                               },

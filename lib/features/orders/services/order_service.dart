@@ -109,7 +109,7 @@ class OrderService {
       );
     } catch (e) {
       // Don't fail order creation if notification fails
-      print('Failed to send order notification: $e');
+      // Failed to send order notification
     }
 
     return orderDoc.id;
@@ -446,7 +446,7 @@ class OrderService {
 
         // Try to find by stored main order ID first (for future orders)
         for (final userOrderDoc in userOrdersQuery.docs) {
-          final userOrderData = userOrderDoc.data() as Map<String, dynamic>;
+          final userOrderData = userOrderDoc.data();
 
           if (userOrderData['mainOrderId'] == orderId) {
             matchingUserOrder = userOrderDoc;
@@ -461,7 +461,7 @@ class OrderService {
           final orderStoreId = orderData['storeId'];
 
           for (final userOrderDoc in userOrdersQuery.docs) {
-            final userOrderData = userOrderDoc.data() as Map<String, dynamic>;
+            final userOrderData = userOrderDoc.data();
 
             final userOrderCreatedAt = userOrderData['createdAt'] as Timestamp?;
             final userOrderTotal = userOrderData['total'];

@@ -506,8 +506,8 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
-          Row(
-            children: const [
+          const Row(
+            children: [
               Icon(Icons.star, size: 14, color: Colors.amber),
               SizedBox(width: 2),
               Text('4.5', style: TextStyle(fontSize: 12)),
@@ -621,8 +621,8 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
-          Row(
-            children: const [
+          const Row(
+            children: [
               Icon(Icons.star, size: 14, color: Colors.amber),
               SizedBox(width: 2),
               Text('4.5', style: TextStyle(fontSize: 12)),
@@ -701,8 +701,8 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
-          Row(
-            children: const [
+          const Row(
+            children: [
               Icon(Icons.star, size: 14, color: Colors.amber),
               SizedBox(width: 2),
               Text('0.0', style: TextStyle(fontSize: 12)),

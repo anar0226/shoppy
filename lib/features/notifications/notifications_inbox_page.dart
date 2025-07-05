@@ -419,7 +419,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
       case 'newDrops':
         final productId = data['productId'] as String?;
         final storeId = TypeUtils.extractStoreId(data['storeId']);
-        if (productId != null && storeId != null) {
+        if (productId != null) {
           // Navigator.pushNamed(context, '/product-details', arguments: {
           //   'productId': productId,
           //   'storeId': storeId,

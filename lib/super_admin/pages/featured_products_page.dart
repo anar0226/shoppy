@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../widgets/top_nav_bar.dart';
-import '../widgets/side_menu.dart';
 
 class FeaturedProductsPage extends StatefulWidget {
   const FeaturedProductsPage({super.key});
@@ -155,7 +153,7 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
       if (e.toString().contains('permission-denied')) {
         // Categories collection access DENIED - check Firestore rules
       }
-      throw e;
+      rethrow;
     }
   }
 
@@ -190,7 +188,7 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
         // Categories collection WRITE access DENIED
         // Cannot create sample categories - check Firestore rules
       }
-      throw e;
+      rethrow;
     }
   }
 
@@ -228,7 +226,7 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
         // This means Firestore rules don't allow reading products from stores
         // Check rules for: /stores/{storeId}/products/{productId}
       }
-      throw e;
+      rethrow;
     }
   }
 
@@ -279,12 +277,12 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
       return;
     }
 
-    String path = 'featured_products/${_selectedCategory}';
+    String path = 'featured_products/$_selectedCategory';
     if (_selectedSubcategory != null) {
-      path += '_${_selectedSubcategory}';
+      path += '_$_selectedSubcategory';
     }
     if (_selectedLeafCategory != null) {
-      path += '_${_selectedLeafCategory}';
+      path += '_$_selectedLeafCategory';
     }
 
     try {
@@ -320,12 +318,12 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
   Future<void> _saveFeaturedProducts() async {
     if (_selectedCategory == null) return;
 
-    String path = 'featured_products/${_selectedCategory}';
+    String path = 'featured_products/$_selectedCategory';
     if (_selectedSubcategory != null) {
-      path += '_${_selectedSubcategory}';
+      path += '_$_selectedSubcategory';
     }
     if (_selectedLeafCategory != null) {
-      path += '_${_selectedLeafCategory}';
+      path += '_$_selectedLeafCategory';
     }
 
     try {

@@ -39,7 +39,7 @@ class AuthProvider extends ChangeNotifier {
 
       return credential.user;
     } on FirebaseAuthException catch (e) {
-      throw e.message ?? 'Нэвтрэхэд алдаа гарлаа';
+      throw _mnMessageForCode(e.code);
     } finally {
       await _setLoading(false);
     }
@@ -169,7 +169,7 @@ class AuthProvider extends ChangeNotifier {
             }
           } catch (e) {
             // Log error but don't throw to avoid breaking auto-verification flow
-            debugPrint('Auto-verification failed: $e');
+            // Auto-verification failed
             // The user will still be authenticated in Firebase Auth even if Firestore fails
           }
         },
@@ -263,7 +263,7 @@ class AuthProvider extends ChangeNotifier {
       });
     } catch (e) {
       // Log error but don't throw to avoid breaking authentication flow
-      debugPrint('Failed to create user document: $e');
+      // Failed to create user document
     }
   }
 
@@ -332,6 +332,26 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
     } finally {
       await _setLoading(false);
+    }
+  }
+
+  String _mnMessageForCode(String code) {
+    switch (code) {
+      case 'user-not-found':
+        return 'И-майл бүртгэл олдсонгүй';
+      case 'wrong-password':
+        return 'Нууц үг буруу байна';
+      case 'invalid-email':
+        return 'Имэйл буруу байна';
+      case 'user-disabled':
+        return 'Энэ хэрэглэгч идэвхгүй байна';
+      case 'expired-action-code':
+      case 'expired-credential':
+        return 'Нэвтрэх мэдээллийн хугацаа дууссан байна';
+      case 'too-many-requests':
+        return 'Хэт олон оролдлого. Түр хүлээгээд дахин оролдоно уу';
+      default:
+        return 'Нэвтрэхэд алдаа гарлаа';
     }
   }
 }

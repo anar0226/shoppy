@@ -104,7 +104,7 @@ class _OrdersPageState extends State<OrdersPage> {
                     .get();
 
                 if (productQuery.docs.isNotEmpty) {
-                  data = productQuery.docs.first.data() as Map<String, dynamic>;
+                  data = productQuery.docs.first.data();
                 }
               }
 
@@ -241,6 +241,828 @@ class _OrdersPageState extends State<OrdersPage> {
           ),
         );
       }
+    }
+  }
+
+  // Show delete order confirmation dialog
+  Future<void> _showDeleteOrderDialog(String orderId, String customer) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Захиалга устгах'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Та энэ захиалгыг устгахдаа итгэлтэй байна уу?'),
+            const SizedBox(height: 8),
+            Text('Захиалгын ID: #${orderId.substring(0, 8)}...'),
+            Text('Хэрэглэгч: $customer'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.orange.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Энэ үйлдлийг буцаах боломжгүй!',
+                      style: TextStyle(
+                        color: Colors.orange.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Цуцлах'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Устгах'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _deleteOrder(orderId);
+    }
+  }
+
+  // Delete order from Firestore
+  Future<void> _deleteOrder(String orderId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('orders')
+          .doc(orderId)
+          .delete();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Захиалга амжилттай устгагдлаа'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Захиалга устгахад алдаа гарлаа: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Show detailed order information dialog
+  Future<void> _showOrderDetailsDialog(
+      QueryDocumentSnapshot<Map<String, dynamic>> order) async {
+    final data = order.data();
+    final items = List<dynamic>.from(data['items'] ?? []);
+    final orderId = order.id;
+    final status = data['status'] ?? 'placed';
+    final total = TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
+    final createdAt =
+        (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+
+    // Customer information
+    final customerEmail = data['customerEmail'] ?? data['userEmail'] ?? '';
+    final customerName = data['customerName'] ?? customerEmail.split('@').first;
+    final customerPhone = data['customerPhone'] ?? data['phone'] ?? '';
+
+    // Address information
+    final deliveryAddress =
+        data['deliveryAddress'] as Map<String, dynamic>? ?? {};
+    final shippingAddress = data['shippingAddress'] as String? ?? '';
+
+    // Payment information
+    final paymentMethod = data['paymentMethod'] ?? 'card';
+    final paymentIntentId = data['paymentIntentId'] ?? '';
+
+    // Get product details
+    final productDetails = await _getOrderProductDetails(items);
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.8,
+          height: MediaQuery.of(context).size.height * 0.9,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.receipt_long,
+                        color: Colors.blue.shade700, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Захиалгын дэлгэрэнгүй',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                          Text(
+                            'Захиалга #${orderId.substring(0, 8).toUpperCase()}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.blue.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Order Summary
+                      _buildOrderSummarySection(
+                          orderId, status, total, createdAt),
+                      const SizedBox(height: 24),
+
+                      // Customer Information
+                      _buildCustomerInfoSection(
+                          customerName, customerEmail, customerPhone),
+                      const SizedBox(height: 24),
+
+                      // Delivery Address
+                      _buildDeliveryAddressSection(
+                          deliveryAddress, shippingAddress),
+                      const SizedBox(height: 24),
+
+                      // Products
+                      _buildProductsSection(productDetails),
+                      const SizedBox(height: 24),
+
+                      // Payment Information
+                      _buildPaymentInfoSection(
+                          paymentMethod, paymentIntentId, total),
+                      const SizedBox(height: 24),
+
+                      // Shipping Instructions
+                      _buildShippingInstructionsSection(data),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Footer Actions
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _showStatusEditDialog(orderId, status);
+                        },
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Төлөв өөрчлөх'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          // Could add print functionality here
+                        },
+                        icon: const Icon(Icons.print),
+                        label: const Text('Хэвлэх'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper methods for building dialog sections
+  Widget _buildOrderSummarySection(
+      String orderId, String status, double total, DateTime createdAt) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.blue.shade600, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Захиалгын мэдээлэл',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Захиалгын дугаар:',
+                  style: TextStyle(color: Colors.grey.shade600)),
+              Text('#${orderId.substring(0, 8).toUpperCase()}...',
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Огноо:', style: TextStyle(color: Colors.grey.shade600)),
+              Text(
+                  '${createdAt.year}/${createdAt.month}/${createdAt.day} ${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}',
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Төлөв:', style: TextStyle(color: Colors.grey.shade600)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _getBadgeColor(status),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(_getStatusText(status),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 12)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Нийт дүн:', style: TextStyle(color: Colors.grey.shade600)),
+              Text('₮${total.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerInfoSection(
+      String customerName, String customerEmail, String customerPhone) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.person_outline,
+                  color: Colors.green.shade600, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Хэрэглэгчийн мэдээлэл',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (customerName.isNotEmpty) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Нэр:', style: TextStyle(color: Colors.grey.shade600)),
+                Text(customerName,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('И-мэйл:', style: TextStyle(color: Colors.grey.shade600)),
+              Flexible(
+                child: Text(
+                    customerEmail.isNotEmpty
+                        ? customerEmail
+                        : 'Мэдээлэл байхгүй',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ),
+          if (customerPhone.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Утас:', style: TextStyle(color: Colors.grey.shade600)),
+                Text(customerPhone,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeliveryAddressSection(
+      Map<String, dynamic> deliveryAddress, String shippingAddress) {
+    final hasDetailedAddress = deliveryAddress.isNotEmpty;
+    final displayAddress = hasDetailedAddress
+        ? '${deliveryAddress['line1'] ?? ''} ${deliveryAddress['line2'] ?? ''}'
+            .trim()
+        : shippingAddress;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.location_on_outlined,
+                  color: Colors.orange.shade600, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Хүргэлтийн хаяг',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (hasDetailedAddress) ...[
+            if (deliveryAddress['firstName'] != null ||
+                deliveryAddress['lastName'] != null) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Хүлээн авагч:',
+                      style: TextStyle(color: Colors.grey.shade600)),
+                  Text(
+                      '${deliveryAddress['firstName'] ?? ''} ${deliveryAddress['lastName'] ?? ''}'
+                          .trim(),
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+            if (deliveryAddress['phone'] != null) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Утас:', style: TextStyle(color: Colors.grey.shade600)),
+                  Text(deliveryAddress['phone'].toString(),
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Хаяг:', style: TextStyle(color: Colors.grey.shade600)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                      displayAddress.isNotEmpty
+                          ? displayAddress
+                          : 'Хаяг байхгүй',
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+            if (deliveryAddress['city'] != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Хот:', style: TextStyle(color: Colors.grey.shade600)),
+                  Text(deliveryAddress['city'].toString(),
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ],
+            if (deliveryAddress['postalCode'] != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Шуудангийн код:',
+                      style: TextStyle(color: Colors.grey.shade600)),
+                  Text(deliveryAddress['postalCode'].toString(),
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ],
+          ] else ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Хаяг:', style: TextStyle(color: Colors.grey.shade600)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                      displayAddress.isNotEmpty
+                          ? displayAddress
+                          : 'Хаяг байхгүй',
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductsSection(List<Map<String, dynamic>> productDetails) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.purple.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.purple.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.inventory_2_outlined,
+                  color: Colors.purple.shade600, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Захиалсан бүтээгдэхүүн',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...productDetails
+              .map((product) => Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.purple.shade100),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.grey.shade200,
+                          ),
+                          child: product['image'].isNotEmpty
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    product['image'],
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Icon(
+                                        Icons.inventory_2,
+                                        size: 24,
+                                        color: Colors.grey.shade400),
+                                  ),
+                                )
+                              : Icon(Icons.inventory_2,
+                                  size: 24, color: Colors.grey.shade400),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product['name'],
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.w600),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (product['variant'].isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Хувилбар: ${product['variant']}',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600),
+                                ),
+                              ],
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Тоо: ${product['quantity']}',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600),
+                                  ),
+                                  Text(
+                                    '₮${(product['price'] * product['quantity']).toStringAsFixed(0)}',
+                                    style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              if (product['remainingStock'] != null) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Үлдэгдэл: ${product['remainingStock']} ширхэг',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: product['remainingStock'] <= 5
+                                          ? Colors.red.shade600
+                                          : Colors.grey.shade600),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ))
+              .toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentInfoSection(
+      String paymentMethod, String paymentIntentId, double total) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.teal.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.teal.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.payment, color: Colors.teal.shade600, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Төлбөрийн мэдээлэл',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Төлбөрийн хэрэгсэл:',
+                  style: TextStyle(color: Colors.grey.shade600)),
+              Text(_getPaymentMethodDisplay(paymentMethod),
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+            ],
+          ),
+          if (paymentIntentId.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Гүйлгээний дугаар:',
+                    style: TextStyle(color: Colors.grey.shade600)),
+                Text(
+                    '••••${paymentIntentId.substring(paymentIntentId.length - 4)}',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ],
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Нийт төлсөн дүн:',
+                  style: TextStyle(color: Colors.grey.shade600)),
+              Text('₮${total.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShippingInstructionsSection(Map<String, dynamic> data) {
+    final notes = data['notes'] as String? ?? '';
+    final specialInstructions = data['specialInstructions'] as String? ?? '';
+    final deliveryPreference = data['deliveryPreference'] as String? ?? '';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.indigo.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.indigo.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.local_shipping_outlined,
+                  color: Colors.indigo.shade600, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Хүргэлтийн заавар',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (notes.isNotEmpty) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Тэмдэглэл:',
+                    style: TextStyle(color: Colors.grey.shade600)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(notes,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (specialInstructions.isNotEmpty) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Тусгай заавар:',
+                    style: TextStyle(color: Colors.grey.shade600)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(specialInstructions,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (deliveryPreference.isNotEmpty) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Хүргэлтийн хүсэлт:',
+                    style: TextStyle(color: Colors.grey.shade600)),
+                Text(deliveryPreference,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ],
+          if (notes.isEmpty &&
+              specialInstructions.isEmpty &&
+              deliveryPreference.isEmpty)
+            Text(
+              'Тусгай заавар байхгүй',
+              style: TextStyle(
+                  color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+            ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.indigo.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline,
+                    color: Colors.indigo.shade700, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Хүргэлтийн өмнө хэрэглэгчтэй холбогдож баталгаажуулна уу',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.indigo.shade700,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getPaymentMethodDisplay(String paymentMethod) {
+    switch (paymentMethod.toLowerCase()) {
+      case 'qpay':
+        return 'QPay';
+      case 'card':
+      case 'visa':
+      case 'mastercard':
+        return 'Карт';
+      case 'cash':
+      case 'bank_transfer':
+        return 'Банкны шилжүүлэг';
+      default:
+        return 'Карт';
     }
   }
 
@@ -388,9 +1210,9 @@ class _OrdersPageState extends State<OrdersPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(
+                            const Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
+                              children: [
                                 Text('Захиалгууд',
                                     style: TextStyle(
                                         fontSize: 28,
@@ -822,10 +1644,13 @@ class _OrdersPageState extends State<OrdersPage> {
         // Actions cell
         DataCell(Row(children: [
           IconButton(
-            icon: const Icon(Icons.visibility, size: 18),
-            onPressed: () {
-              // TODO: Navigate to order details
-            },
+            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+            onPressed: () => _showDeleteOrderDialog(id, customer),
+            tooltip: 'Захиалга устгах',
+          ),
+          IconButton(
+            icon: const Icon(Icons.visibility, size: 18, color: Colors.blue),
+            onPressed: () => _showOrderDetailsDialog(doc),
             tooltip: 'Дэлгэрэнгүй харах',
           ),
           IconButton(
@@ -864,7 +1689,7 @@ class _OrdersPageState extends State<OrdersPage> {
             // Product column with fixed height and scrolling
             Expanded(
               flex: 2,
-              child: Container(
+              child: SizedBox(
                 height: 80,
                 child: SingleChildScrollView(
                   child: cells[1].child,

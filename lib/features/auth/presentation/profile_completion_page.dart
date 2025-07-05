@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'package:avii/core/utils/validation_utils.dart';
 
 class ProfileCompletionPage extends StatefulWidget {
   const ProfileCompletionPage({Key? key}) : super(key: key);
@@ -101,15 +102,7 @@ class _ProfileCompletionPageState extends State<ProfileCompletionPage> {
                               BorderSide(color: Color(0xFF1F226C), width: 2),
                         ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Нэрээ оруулна уу';
-                        }
-                        if (value.trim().length < 2) {
-                          return 'Нэр хамгийн багадаа 2 тэмдэгт байх ёстой';
-                        }
-                        return null;
-                      },
+                      validator: ValidationUtils.validateName,
                     ),
 
                     const SizedBox(height: 60),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/address_model.dart';
 import '../providers/address_provider.dart';
+import 'package:avii/core/utils/validation_utils.dart';
 
 class AddEditAddressPage extends StatefulWidget {
   final AddressModel? address;
@@ -86,7 +87,9 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
       decoration:
           InputDecoration(labelText: label, border: const OutlineInputBorder()),
       validator: required
-          ? (v) => (v == null || v.isEmpty) ? 'Заавал бөглөнө уу' : null
+          ? (label.toLowerCase().contains('phone')
+              ? ValidationUtils.validatePhoneNumber
+              : ValidationUtils.validateAddress)
           : null,
       keyboardType: keyboard,
       onSaved: (v) => onSaved(v ?? ''),

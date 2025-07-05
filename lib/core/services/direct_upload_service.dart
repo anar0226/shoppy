@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
@@ -23,7 +22,7 @@ class DirectUploadService {
       debugPrint('🚀 Got auth token');
 
       // Build upload URL
-      final bucketName = 'shoppy-6d81f.firebasestorage.app';
+      const bucketName = 'shoppy-6d81f.firebasestorage.app';
       final filePath = 'stores/$storeId/products/$productId/$fileName';
       final uploadUrl =
           'https://firebasestorage.googleapis.com/v0/b/$bucketName/o?name=${Uri.encodeComponent(filePath)}';

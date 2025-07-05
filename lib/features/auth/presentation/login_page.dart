@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'signup_page.dart';
+import 'package:avii/core/utils/validation_utils.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -14,6 +15,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   String _email = '';
   String _password = '';
+  bool _passwordVisible = false;
 
   @override
   Widget build(BuildContext context) {
@@ -63,10 +65,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           keyboardType: TextInputType.emailAddress,
-                          validator: (value) =>
-                              value != null && value.contains('@')
-                                  ? null
-                                  : 'бодит имэйл хаягаа оруулна уу',
+                          validator: ValidationUtils.validateEmail,
                           onSaved: (val) => _email = val!.trim(),
                         ),
                         const SizedBox(height: 24),
@@ -74,25 +73,34 @@ class _LoginPageState extends State<LoginPage> {
                         // Password field
                         TextFormField(
                           style: const TextStyle(color: Colors.black),
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'нууц үг',
-                            labelStyle: TextStyle(color: Colors.grey),
-                            border: UnderlineInputBorder(
+                            labelStyle: const TextStyle(color: Colors.grey),
+                            border: const UnderlineInputBorder(
                               borderSide: BorderSide(color: Colors.grey),
                             ),
-                            enabledBorder: UnderlineInputBorder(
+                            enabledBorder: const UnderlineInputBorder(
                               borderSide: BorderSide(color: Colors.grey),
                             ),
-                            focusedBorder: UnderlineInputBorder(
+                            focusedBorder: const UnderlineInputBorder(
                               borderSide: BorderSide(
                                   color: Color(0xFF1F226C), width: 2),
                             ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                  _passwordVisible
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                  color: Colors.grey),
+                              onPressed: () {
+                                setState(() {
+                                  _passwordVisible = !_passwordVisible;
+                                });
+                              },
+                            ),
                           ),
-                          obscureText: true,
-                          validator: (value) =>
-                              value != null && value.length >= 6
-                                  ? null
-                                  : 'хамгийн багадаа 6 тэмдэгт оруулна уу',
+                          obscureText: !_passwordVisible,
+                          validator: ValidationUtils.validatePassword,
                           onSaved: (val) => _password = val!.trim(),
                         ),
                         const SizedBox(height: 8),

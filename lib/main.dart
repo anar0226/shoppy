@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'features/home/presentation/home_screen.dart' as front_home;
 import 'features/stores/presentation/store_screen.dart';
-import 'features/stores/data/sample_stores.dart';
 import 'features/home/presentation/main_scaffold.dart';
 import 'package:avii/features/Profile/profile_page.dart';
 import 'package:provider/provider.dart';
@@ -16,10 +15,7 @@ import 'firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:avii/features/products/models/product_model.dart';
 import 'package:avii/features/stores/models/store_model.dart';
-import 'features/home/domain/models.dart';
-import 'features/home/presentation/widgets/seller_card.dart';
 import 'features/saved/saved_screen.dart';
-import 'features/orders/presentation/order_detail_page.dart';
 import 'features/orders/presentation/order_tracking_page.dart';
 import 'search/women/women_category_page.dart';
 import 'search/men/men_category_page.dart';
@@ -33,6 +29,11 @@ import 'features/reviews/widgets/review_submission_dialog.dart';
 import 'core/services/order_fulfillment_service.dart';
 import 'core/utils/popup_utils.dart';
 import 'features/auth/presentation/profile_completion_page.dart';
+import 'package:firebase_performance/firebase_performance.dart';
+import 'core/config/environment_config.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'bootstrap.dart' as boot;
+import 'core/widgets/paginated_firestore_list.dart';
 
 /// Initialize payment services (Bank Transfer and Order Fulfillment)
 Future<void> _initializePaymentServices() async {
@@ -40,14 +41,14 @@ Future<void> _initializePaymentServices() async {
     // Initialize Order Fulfillment Service
     final fulfillmentService = OrderFulfillmentService();
     await fulfillmentService.initialize(
-      // Temporary bank transfer setup - will be replaced with TDB API
-      qpayUsername: 'bank_transfer', // Placeholder for bank transfer
-      qpayPassword: 'bank_transfer', // Placeholder for bank transfer
+      // Production payment configuration - using environment variables
+      qpayUsername: EnvironmentConfig.qpayUsername,
+      qpayPassword: EnvironmentConfig.qpayPassword,
 
       // UBCab Configuration
-      ubcabApiKey: 'test_ubcab_key', // Replace with actual UBCab API key
-      ubcabMerchantId: 'test_merchant_id', // Replace with actual merchant ID
-      ubcabProduction: false,
+      ubcabApiKey: EnvironmentConfig.ubcabApiKey,
+      ubcabMerchantId: EnvironmentConfig.ubcabMerchantId,
+      ubcabProduction: EnvironmentConfig.ubcabProduction,
     );
 
     // Payment services initialized successfully
@@ -58,20 +59,7 @@ Future<void> _initializePaymentServices() async {
   }
 }
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  // Register FCM background message handler
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-
-  // Initialize QPay service for payment processing
-  await _initializePaymentServices();
-
-  runApp(const ShopUBApp());
-}
+void main() => boot.bootstrap();
 
 class ShopUBApp extends StatefulWidget {
   const ShopUBApp({super.key});
@@ -172,7 +160,7 @@ class _ShopUBAppState extends State<ShopUBApp> {
             '/home': (_) => const front_home.HomeScreen(),
             '/search': (_) => const SearchScreen(),
             '/orders': (_) => const OrdersScreen(),
-            '/account': (_) => ProfilePage(),
+            '/account': (_) => const ProfilePage(),
             '/saved': (_) => const SavedScreen(),
             '/profile-completion': (_) => const ProfileCompletionPage(),
           },
@@ -180,12 +168,16 @@ class _ShopUBAppState extends State<ShopUBApp> {
             // Handle store routes
             if (settings.name != null && settings.name!.startsWith('/store/')) {
               final storeId = settings.name!.split('/')[2];
-              final storeData = SampleStores.getStoreById(storeId);
-              if (storeData != null) {
-                return MaterialPageRoute(
-                  builder: (context) => StoreScreen(storeData: storeData),
-                );
-              }
+              // Store routes now handled by Firestore data in the app
+              // This fallback should not be needed in production
+              return MaterialPageRoute(
+                builder: (context) => Scaffold(
+                  appBar: AppBar(title: const Text('Store not found')),
+                  body: const Center(
+                    child: Text('Store route handling moved to Firestore'),
+                  ),
+                ),
+              );
             }
 
             // Handle product routes
@@ -369,291 +361,26 @@ class _SearchScreenState extends State<SearchScreen> {
     super.dispose();
   }
 
-  Future<void> _performSearch(String query) async {
-    if (query.trim().isEmpty) {
-      setState(() {
-        _searchQuery = '';
-        _searchResults = [];
-        _isSearching = false;
-      });
-      return;
-    }
+  // === Search helpers for paginator ===
+  bool _matchesProductSearch(ProductModel p) {
+    final term = _searchQuery.toLowerCase();
+    if (term.isEmpty) return false;
+    return p.name.toLowerCase().contains(term) ||
+        p.category.toLowerCase().contains(term);
+  }
 
+  bool _matchesStoreSearch(StoreModel s) {
+    final term = _searchQuery.toLowerCase();
+    if (term.isEmpty) return false;
+    return s.name.toLowerCase().contains(term) ||
+        s.description.toLowerCase().contains(term);
+  }
+
+  // Lightweight search: just update query; paginator handles fetching.
+  void _performSearch(String query) {
     setState(() {
-      _isSearching = true;
-      _searchQuery = query;
+      _searchQuery = query.trim();
     });
-
-    try {
-      final results = <SearchResult>[];
-      // Searching for query
-
-      // Search products
-      if (_selectedFilter == 'Бүгд' || _selectedFilter == 'Бүтээгдэхүүн') {
-        final productResults = await _searchProducts(query);
-        results.addAll(productResults);
-        // Found products
-      }
-
-      // Search stores
-      if (_selectedFilter == 'Бүгд' || _selectedFilter == 'Дэлгүүр') {
-        final storeResults = await _searchStores(query);
-        results.addAll(storeResults);
-        // Found stores
-      }
-
-      // Total results processed
-
-      setState(() {
-        _searchResults = results;
-        _isSearching = false;
-      });
-    } catch (e) {
-      // Search error occurred
-      setState(() {
-        _isSearching = false;
-      });
-      if (mounted) {
-        PopupUtils.showError(
-          context: context,
-          message: 'Хайлт хийхэд алдаа гарлаа: $e',
-        );
-      }
-    }
-  }
-
-  Future<List<SearchResult>> _searchProducts(String query) async {
-    final results = <SearchResult>[];
-    final db = FirebaseFirestore.instance;
-    final searchTerm = query.toLowerCase().trim();
-
-    try {
-      // Get all active products and filter in memory for better matching
-      final productsQuery = await db
-          .collection('products')
-          .where('isActive', isEqualTo: true)
-          .limit(50) // Get more products to filter through
-          .get();
-
-      for (final doc in productsQuery.docs) {
-        try {
-          final product = ProductModel.fromFirestore(doc);
-          final productName = product.name.toLowerCase();
-          final productCategory = product.category.toLowerCase();
-
-          // Check if search term matches product name or category
-          if (productName.contains(searchTerm) ||
-              productCategory.contains(searchTerm)) {
-            results.add(SearchResult(
-              id: product.id,
-              title: product.name,
-              subtitle: 'Бүтээгдэхүүн • ₮${product.price.toStringAsFixed(0)}',
-              imageUrl: product.images.isNotEmpty ? product.images.first : '',
-              type: SearchResultType.product,
-              data: product,
-            ));
-          }
-        } catch (e) {
-          // Error processing product
-        }
-      }
-
-      // If still no results, try a broader search
-      if (results.isEmpty && searchTerm.length >= 2) {
-        final broadQuery = await db
-            .collection('products')
-            .where('isActive', isEqualTo: true)
-            .limit(100)
-            .get();
-
-        for (final doc in broadQuery.docs) {
-          try {
-            final product = ProductModel.fromFirestore(doc);
-            final productName = product.name.toLowerCase();
-            final productDescription = product.description.toLowerCase();
-
-            // More flexible matching
-            if (productName.contains(searchTerm) ||
-                productDescription.contains(searchTerm)) {
-              results.add(SearchResult(
-                id: product.id,
-                title: product.name,
-                subtitle: 'Бүтээгдэхүүн • ₮${product.price.toStringAsFixed(0)}',
-                imageUrl: product.images.isNotEmpty ? product.images.first : '',
-                type: SearchResultType.product,
-                data: product,
-              ));
-            }
-          } catch (e) {
-            // Error processing product
-          }
-        }
-      }
-
-      // Final fallback: word-based search
-      if (results.isEmpty && searchTerm.length >= 3) {
-        final words =
-            searchTerm.split(' ').where((w) => w.length >= 2).toList();
-        if (words.isNotEmpty) {
-          final wordQuery = await db
-              .collection('products')
-              .where('isActive', isEqualTo: true)
-              .limit(200)
-              .get();
-
-          for (final doc in wordQuery.docs) {
-            try {
-              final product = ProductModel.fromFirestore(doc);
-              final productName = product.name.toLowerCase();
-
-              // Check if any word matches
-              for (final word in words) {
-                if (productName.contains(word)) {
-                  results.add(SearchResult(
-                    id: product.id,
-                    title: product.name,
-                    subtitle:
-                        'Бүтээгдэхүүн • ₮${product.price.toStringAsFixed(0)}',
-                    imageUrl:
-                        product.images.isNotEmpty ? product.images.first : '',
-                    type: SearchResultType.product,
-                    data: product,
-                  ));
-                  break; // Found a match, no need to check other words
-                }
-              }
-            } catch (e) {
-              // Error processing product
-            }
-          }
-        }
-      }
-    } catch (e) {
-      // Error searching products
-    }
-
-    // Remove duplicates and limit results
-    final uniqueResults = <String, SearchResult>{};
-    for (final result in results) {
-      uniqueResults[result.id] = result;
-    }
-
-    return uniqueResults.values.take(10).toList();
-  }
-
-  Future<List<SearchResult>> _searchStores(String query) async {
-    final results = <SearchResult>[];
-    final db = FirebaseFirestore.instance;
-    final searchTerm = query.toLowerCase().trim();
-
-    try {
-      // Get all active stores and filter in memory for better matching
-      final storesQuery = await db
-          .collection('stores')
-          .where('isActive', isEqualTo: true)
-          .limit(50)
-          .get();
-
-      for (final doc in storesQuery.docs) {
-        try {
-          final store = StoreModel.fromFirestore(doc);
-          final storeName = store.name.toLowerCase();
-          final storeDescription = store.description.toLowerCase();
-
-          // Check if search term matches store name or description
-          if (storeName.contains(searchTerm) ||
-              storeDescription.contains(searchTerm)) {
-            results.add(SearchResult(
-              id: store.id,
-              title: store.name,
-              subtitle:
-                  'Дэлгүүр • ${store.description.isNotEmpty ? store.description : 'Онлайн дэлгүүр'}',
-              imageUrl: store.logo.isNotEmpty ? store.logo : store.banner,
-              type: SearchResultType.store,
-              data: store,
-            ));
-          }
-        } catch (e) {
-          // Error processing store
-        }
-      }
-
-      // If no results found, try even broader search
-      if (results.isEmpty && searchTerm.length >= 2) {
-        // Try searching without the isActive filter in case that's causing issues
-        final broadQuery = await db.collection('stores').limit(100).get();
-
-        for (final doc in broadQuery.docs) {
-          try {
-            final data = doc.data() as Map<String, dynamic>;
-            final storeName = (data['name'] ?? '').toString().toLowerCase();
-            final storeDescription =
-                (data['description'] ?? '').toString().toLowerCase();
-
-            if (storeName.contains(searchTerm) ||
-                storeDescription.contains(searchTerm)) {
-              final store = StoreModel.fromFirestore(doc);
-              results.add(SearchResult(
-                id: store.id,
-                title: store.name,
-                subtitle:
-                    'Дэлгүүр • ${store.description.isNotEmpty ? store.description : 'Онлайн дэлгүүр'}',
-                imageUrl: store.logo.isNotEmpty ? store.logo : store.banner,
-                type: SearchResultType.store,
-                data: store,
-              ));
-            }
-          } catch (e) {
-            // Error processing store
-          }
-        }
-      }
-
-      // Final fallback: word-based search for stores
-      if (results.isEmpty && searchTerm.length >= 3) {
-        final words =
-            searchTerm.split(' ').where((w) => w.length >= 2).toList();
-        if (words.isNotEmpty) {
-          final wordQuery = await db.collection('stores').limit(200).get();
-
-          for (final doc in wordQuery.docs) {
-            try {
-              final data = doc.data() as Map<String, dynamic>;
-              final storeName = (data['name'] ?? '').toString().toLowerCase();
-
-              // Check if any word matches
-              for (final word in words) {
-                if (storeName.contains(word)) {
-                  final store = StoreModel.fromFirestore(doc);
-                  results.add(SearchResult(
-                    id: store.id,
-                    title: store.name,
-                    subtitle:
-                        'Дэлгүүр • ${store.description.isNotEmpty ? store.description : 'Онлайн дэлгүүр'}',
-                    imageUrl: store.logo.isNotEmpty ? store.logo : store.banner,
-                    type: SearchResultType.store,
-                    data: store,
-                  ));
-                  break; // Found a match, no need to check other words
-                }
-              }
-            } catch (e) {
-              // Error processing store
-            }
-          }
-        }
-      }
-    } catch (e) {
-      // Error searching stores
-    }
-
-    // Remove duplicates and limit results
-    final uniqueResults = <String, SearchResult>{};
-    for (final result in results) {
-      uniqueResults[result.id] = result;
-    }
-
-    return uniqueResults.values.take(10).toList();
   }
 
   @override
@@ -780,93 +507,67 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildSearchResults() {
-    if (_isSearching) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text(
-              'Хайж байна...',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
+    if (_searchQuery.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    Widget _empty() => Center(
+          child: Text('"$_searchQuery" хайлтаар илэрц олдсонгүй'),
+        );
+
+    if (_selectedFilter == 'Дэлгүүр') {
+      return PaginatedFirestoreList<DocumentSnapshot>(
+        query: FirebaseFirestore.instance
+            .collection('stores')
+            .where('status', isEqualTo: 'active')
+            .orderBy('createdAt', descending: true),
+        pageSize: 20,
+        fromDoc: (doc) => doc,
+        emptyBuilder: (_) => _empty(),
+        itemBuilder: (ctx, doc) {
+          final store = StoreModel.fromFirestore(doc);
+          if (!_matchesStoreSearch(store)) return const SizedBox.shrink();
+          final result = SearchResult(
+            id: store.id,
+            title: store.name,
+            subtitle:
+                'Дэлгүүр • ${store.description.isNotEmpty ? store.description : 'Онлайн дэлгүүр'}',
+            imageUrl: store.logo.isNotEmpty ? store.logo : store.banner,
+            type: SearchResultType.store,
+            data: store,
+          );
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: _buildSearchResultCard(result),
+          );
+        },
       );
     }
 
-    if (_searchResults.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.search_off,
-              size: 64,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '"$_searchQuery" хайлтаар илэрц олдсонгүй',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Хайлтын зөвлөмж:',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 40),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('• Товч түлхүүр үг ашиглана уу',
-                      style: TextStyle(color: Colors.grey)),
-                  Text('• Үсгийн алдаа шалгана уу',
-                      style: TextStyle(color: Colors.grey)),
-                  Text('• Өөр түлхүүр үг ашиглана уу',
-                      style: TextStyle(color: Colors.grey)),
-                  Text('• Бүх шүүлтүүр "Бүгд" болгоно уу',
-                      style: TextStyle(color: Colors.grey)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _selectedFilter = 'Бүгд';
-                });
-                _performSearch(_searchQuery);
-              },
-              child: const Text('Дахин хайх'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _searchResults.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final result = _searchResults[index];
-        return _buildSearchResultCard(result);
+    // Products (default)
+    return PaginatedFirestoreList<DocumentSnapshot>(
+      query: FirebaseFirestore.instance
+          .collection('products')
+          .where('isActive', isEqualTo: true)
+          .orderBy('createdAt', descending: true),
+      pageSize: 20,
+      fromDoc: (doc) => doc,
+      emptyBuilder: (_) => _empty(),
+      itemBuilder: (ctx, doc) {
+        final product = ProductModel.fromFirestore(doc);
+        if (!_matchesProductSearch(product)) return const SizedBox.shrink();
+        final result = SearchResult(
+          id: product.id,
+          title: product.name,
+          subtitle: 'Бүтээгдэхүүн • ₮${product.price.toStringAsFixed(0)}',
+          imageUrl: product.images.isNotEmpty ? product.images.first : '',
+          type: SearchResultType.product,
+          data: product,
+        );
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: _buildSearchResultCard(result),
+        );
       },
     );
   }
@@ -892,7 +593,7 @@ class _SearchScreenState extends State<SearchScreen> {
             // Image
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Container(
+              child: SizedBox(
                 width: 60,
                 height: 60,
                 child: result.imageUrl.isNotEmpty
@@ -1209,6 +910,21 @@ class _OrdersScreenState extends State<OrdersScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
 
+  // Helper: check if an order matches current search query
+  bool _matchesSearch(QueryDocumentSnapshot doc) {
+    if (_searchQuery.isEmpty) return true;
+    final data = doc.data() as Map<String, dynamic>;
+    final orderId = doc.id.toLowerCase();
+    final items = List<Map<String, dynamic>>.from(data['items'] ?? []);
+    final searchLower = _searchQuery.toLowerCase();
+    if (orderId.contains(searchLower)) return true;
+    for (final item in items) {
+      final productName = (item['name'] ?? '').toString().toLowerCase();
+      if (productName.contains(searchLower)) return true;
+    }
+    return false;
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -1232,64 +948,25 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 child: auth.user == null
                     ? const Center(
                         child: Text('Нэвтэрч орж захиалгын жагсаалтыг үзэх'))
-                    : StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
+                    : PaginatedFirestoreList<QueryDocumentSnapshot>(
+                        query: FirebaseFirestore.instance
                             .collection('users')
                             .doc(auth.user!.uid)
                             .collection('orders')
-                            .orderBy('createdAt', descending: true)
-                            .snapshots(),
-                        builder: (context, snap) {
-                          if (snap.connectionState == ConnectionState.waiting) {
-                            return const Center(
-                                child: CircularProgressIndicator());
+                            .orderBy('createdAt', descending: true),
+                        pageSize: 20,
+                        fromDoc: (doc) => doc as QueryDocumentSnapshot,
+                        emptyBuilder: (ctx) => _searchQuery.isEmpty
+                            ? _buildEmptyState()
+                            : _buildNoSearchResults(),
+                        itemBuilder: (ctx, order) {
+                          if (!_matchesSearch(order)) {
+                            return const SizedBox.shrink();
                           }
-
-                          final docs = snap.data?.docs ?? [];
-
-                          // Filter orders based on search query
-                          final filteredDocs = _searchQuery.isEmpty
-                              ? docs
-                              : docs.where((doc) {
-                                  final data =
-                                      doc.data() as Map<String, dynamic>;
-                                  final orderId = doc.id.toLowerCase();
-                                  final items = List<Map<String, dynamic>>.from(
-                                      data['items'] ?? []);
-                                  final searchLower =
-                                      _searchQuery.toLowerCase();
-
-                                  // Search by order ID
-                                  if (orderId.contains(searchLower))
-                                    return true;
-
-                                  // Search by product names
-                                  for (final item in items) {
-                                    final productName = (item['name'] ?? '')
-                                        .toString()
-                                        .toLowerCase();
-                                    if (productName.contains(searchLower))
-                                      return true;
-                                  }
-
-                                  return false;
-                                }).toList();
-
-                          if (filteredDocs.isEmpty) {
-                            return _searchQuery.isEmpty
-                                ? _buildEmptyState()
-                                : _buildNoSearchResults();
-                          }
-
-                          return ListView.separated(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: filteredDocs.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 16),
-                            itemBuilder: (context, index) {
-                              final order = filteredDocs[index];
-                              return _buildOrderCard(context, order);
-                            },
+                          return Padding(
+                            padding: const EdgeInsets.only(
+                                left: 16, right: 16, bottom: 16),
+                            child: _buildOrderCard(ctx, order),
                           );
                         },
                       ),
@@ -2508,18 +2185,6 @@ class ReceiptPage extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share, color: Colors.black),
-            onPressed: () {
-              // Share receipt functionality
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Баримт хуваалцах функц удахгүй нэмэгдэнэ')),
-              );
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -2886,7 +2551,7 @@ class ReceiptPage extends StatelessWidget {
                 '+976 9999 9999';
           }
         } catch (e) {
-          print('Error fetching user data for receipt: $e');
+          // Error fetching user data for receipt
         }
       }
 
@@ -2920,7 +2585,7 @@ class ReceiptPage extends StatelessWidget {
         'phone': phone,
       };
     } catch (e) {
-      print('Error getting receipt user info: $e');
+      // Error getting receipt user info
       return {
         'name': 'Хэрэглэгч',
         'address': 'Улаанbaatar, Монгол улс',

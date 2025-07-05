@@ -381,7 +381,7 @@ class NotificationService {
       storeId: storeId,
       ownerId: ownerId,
       title: 'Low Stock Alert',
-      message: '$productName is running low (${currentStock} remaining)',
+      message: '$productName is running low ($currentStock remaining)',
       type: NotificationType.product,
       data: {'productName': productName, 'stock': currentStock},
     );

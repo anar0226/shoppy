@@ -1,9 +1,6 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'dart:io' if (dart.library.html) 'dart:html' as html;
 
 class ImageUploadService {
   static final FirebaseStorage _storage = FirebaseStorage.instance;
@@ -290,7 +287,7 @@ class ImageUploadService {
   static String generateFileName(String originalName) {
     final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
     final String extension = _getFileExtension(originalName);
-    return 'image_${timestamp}.$extension';
+    return 'image_$timestamp.$extension';
   }
 
   /// Get file extension

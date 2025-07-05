@@ -26,8 +26,9 @@ class TypeUtils {
     if (value == null) return defaultValue;
     if (value is double) return value;
     if (value is int) return value.toDouble();
-    if (value is String)
+    if (value is String) {
       return safeParseDouble(value, defaultValue: defaultValue);
+    }
     return defaultValue;
   }
 

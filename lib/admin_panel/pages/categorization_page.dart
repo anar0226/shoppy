@@ -383,7 +383,7 @@ class _CategorizationPageState extends State<CategorizationPage> {
                     color: AppThemes.primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.category,
                     color: AppThemes.primaryColor,
                     size: 24,

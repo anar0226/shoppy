@@ -7,7 +7,6 @@ import 'package:avii/features/home/presentation/main_scaffold.dart';
 import 'package:avii/features/settings/settings_page.dart';
 import 'package:avii/features/saved/saved_screen.dart';
 import 'package:avii/features/Profile/widgets/edit_profile_popup.dart';
-import 'package:avii/features/payment/add_card_page.dart';
 import 'package:avii/features/products/presentation/product_page.dart';
 import 'package:provider/provider.dart';
 import 'package:avii/features/profile/providers/recently_viewed_provider.dart';
@@ -18,6 +17,8 @@ import 'package:avii/features/following/following_screen.dart';
 import 'package:avii/core/constants/assets.dart';
 
 class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
+
   @override
   _ProfilePageState createState() => _ProfilePageState();
 }
@@ -220,7 +221,7 @@ class _ProfilePageState extends State<ProfilePage> {
             // Recently Viewed
             Row(
               mainAxisAlignment: MainAxisAlignment.start,
-              children: [
+              children: const [
                 Text('Үзсэн Бараанууд',
                     style:
                         TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -383,7 +384,7 @@ class _ProfilePageState extends State<ProfilePage> {
     const iconWidth = 40.0;
     const iconSpacing = 4.0;
 
-    final availableWidth = cardWidth - horizontalPadding;
+    const availableWidth = cardWidth - horizontalPadding;
     final maxIcons =
         ((availableWidth + iconSpacing) / (iconWidth + iconSpacing)).floor();
     final displayIcons = icons.take(maxIcons).toList();
@@ -548,7 +549,7 @@ class _ProfilePageState extends State<ProfilePage> {
     required Widget iconWidget,
   }) {
     return Container(
-      height: 120,
+      height: 130,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: backgroundColor,

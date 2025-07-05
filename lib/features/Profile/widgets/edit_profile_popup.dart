@@ -6,7 +6,7 @@ import 'dart:io';
 
 void showEditProfilePopup(
     BuildContext context, String userName, String profileImageUrl) {
-  File? _pickedImage;
+  File? pickedImage;
   final picker = ImagePicker();
   final TextEditingController controller =
       TextEditingController(text: userName);
@@ -46,13 +46,13 @@ void showEditProfilePopup(
                     final XFile? img =
                         await picker.pickImage(source: ImageSource.gallery);
                     if (img != null) {
-                      setState(() => _pickedImage = File(img.path));
+                      setState(() => pickedImage = File(img.path));
                     }
                   },
                   child: CircleAvatar(
                     radius: 40,
-                    backgroundImage: _pickedImage != null
-                        ? FileImage(_pickedImage!)
+                    backgroundImage: pickedImage != null
+                        ? FileImage(pickedImage!)
                         : NetworkImage(profileImageUrl) as ImageProvider,
                   ),
                 ),
@@ -101,7 +101,7 @@ void showEditProfilePopup(
                       final auth = context.read<AuthProvider>();
                       await auth.updateProfile(
                         displayName: newName.isNotEmpty ? newName : null,
-                        photo: _pickedImage,
+                        photo: pickedImage,
                       );
                       if (context.mounted) Navigator.pop(context);
                     },

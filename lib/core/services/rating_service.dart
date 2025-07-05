@@ -138,10 +138,8 @@ class RatingService {
         final data = productDoc.data() as Map<String, dynamic>;
         final storeId = TypeUtils.extractStoreId(data['storeId']);
 
-        if (storeId != null) {
-          return await getStoreRating(storeId);
-        }
-      }
+        return await getStoreRating(storeId);
+            }
 
       return StoreRatingData.placeholder();
     } catch (e) {

@@ -1,6 +1,24 @@
 import 'package:flutter/material.dart';
 import '../auth/super_admin_auth_service.dart';
 
+// Simple wrapper for compatibility with existing backup management page
+class SideMenu extends StatelessWidget {
+  final String selected;
+
+  const SideMenu({super.key, required this.selected});
+
+  @override
+  Widget build(BuildContext context) {
+    return SuperAdminSideMenu(
+      currentPage: selected,
+      onPageSelected: (page) {
+        // Simple navigation - you can enhance this later
+        // Navigation to $page
+      },
+    );
+  }
+}
+
 class SuperAdminSideMenu extends StatelessWidget {
   final String currentPage;
   final Function(String) onPageSelected;
@@ -93,6 +111,11 @@ class SuperAdminSideMenu extends StatelessWidget {
                   'Commission',
                   Icons.account_balance_wallet,
                   'Commission',
+                ),
+                _buildMenuItem(
+                  'Backup Management',
+                  Icons.backup,
+                  'Backup Management',
                 ),
                 const Divider(height: 32),
                 _buildMenuItem(

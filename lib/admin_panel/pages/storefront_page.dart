@@ -9,8 +9,6 @@ import '../../features/products/services/product_service.dart';
 import '../../features/products/models/product_model.dart';
 import '../../core/services/image_upload_service.dart';
 import '../auth/auth_service.dart';
-import '../../features/stores/presentation/store_screen.dart';
-import '../../features/home/presentation/home_screen.dart';
 
 class StorefrontPage extends StatefulWidget {
   const StorefrontPage({super.key});
@@ -585,7 +583,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
                     Chip(
                       label: Text('${_selectedProductIds.length}/4'),
                       backgroundColor: AppThemes.primaryColor.withOpacity(0.1),
-                      labelStyle: TextStyle(
+                      labelStyle: const TextStyle(
                         color: AppThemes.primaryColor,
                         fontWeight: FontWeight.bold,
                       ),
@@ -679,7 +677,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
                                           top: 8,
                                           right: 8,
                                           child: Container(
-                                            decoration: BoxDecoration(
+                                            decoration: const BoxDecoration(
                                               color: AppThemes.primaryColor,
                                               shape: BoxShape.circle,
                                             ),

@@ -6,12 +6,9 @@ import '../widgets/stat_card.dart';
 import '../widgets/charts/charts.dart';
 import '../widgets/store_setup_dialog.dart';
 import '../auth/auth_service.dart';
-import '../services/notification_service.dart';
-import 'package:provider/provider.dart';
 import '../../features/analytics/analytics.dart';
 import '../../features/orders/services/order_service.dart';
 import '../../features/settings/themes/app_themes.dart';
-import '../../features/settings/providers/app_settings_provider.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -171,17 +168,19 @@ class _DashboardPageState extends State<DashboardPage> {
 
     try {
       final recentActivity = <Map<String, dynamic>>[];
+      final last24Hours = DateTime.now().subtract(const Duration(hours: 24));
 
-      // Recent orders
+      // 1. Recent orders (new orders)
       final ordersSnapshot = await FirebaseFirestore.instance
           .collection('orders')
           .where('storeId', isEqualTo: _currentStoreId)
           .orderBy('createdAt', descending: true)
-          .limit(2)
+          .limit(3)
           .get();
 
       for (final doc in ordersSnapshot.docs) {
         final data = doc.data();
+        final total = data['total'] ?? 0.0;
         final userEmail = data['userEmail'] ?? data['customerEmail'] ?? '';
         final customerName = userEmail.isNotEmpty
             ? userEmail
@@ -193,44 +192,159 @@ class _DashboardPageState extends State<DashboardPage> {
                     ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
                     : word)
                 .join(' ')
-            : 'Customer';
+            : 'Хэрэглэгч';
 
-        recentActivity.add({
-          'type': 'order',
-          'icon': Icons.shopping_cart_outlined,
-          'color': Colors.green,
-          'title':
-              'New order #${doc.id.substring(0, 4).toUpperCase()} received from $customerName',
-          'time': _formatTime(data['createdAt']),
-          'timestamp': data['createdAt'],
-        });
+        // High-value order alert
+        if (total >= 100000) {
+          recentActivity.add({
+            'type': 'high_value_order',
+            'icon': Icons.monetization_on,
+            'color': Colors.amber.shade700,
+            'title':
+                'Том захиалга: ₮${total.toStringAsFixed(0)} - $customerName',
+            'time': _formatTime(data['createdAt']),
+            'timestamp': data['createdAt'],
+            'priority': 'high',
+          });
+        } else {
+          recentActivity.add({
+            'type': 'order',
+            'icon': Icons.shopping_cart_outlined,
+            'color': Colors.green,
+            'title':
+                'Захиалга #${doc.id.substring(0, 4).toUpperCase()} - $customerName',
+            'time': _formatTime(data['createdAt']),
+            'timestamp': data['createdAt'],
+            'priority': 'normal',
+          });
+        }
       }
 
-      // Recent product updates
-      final productsSnapshot = await FirebaseFirestore.instance
+      // 2. Low stock alerts
+      final lowStockSnapshot = await FirebaseFirestore.instance
           .collection('products')
           .where('storeId', isEqualTo: _currentStoreId)
+          .where('stock', isLessThanOrEqualTo: 5)
+          .where('isActive', isEqualTo: true)
+          .orderBy('stock')
+          .limit(2)
+          .get();
+
+      for (final doc in lowStockSnapshot.docs) {
+        final data = doc.data();
+        final stock = data['stock'] ?? 0;
+        final productName = data['name'] ?? 'Үл мэдэгдэх бүтээгдэхүүн';
+
+        if (stock == 0) {
+          recentActivity.add({
+            'type': 'out_of_stock',
+            'icon': Icons.warning,
+            'color': Colors.red,
+            'title': 'Дууссан: $productName',
+            'time': 'Одоо',
+            'timestamp': Timestamp.now(),
+            'priority': 'urgent',
+          });
+        } else {
+          recentActivity.add({
+            'type': 'low_stock',
+            'icon': Icons.inventory,
+            'color': Colors.orange,
+            'title': 'Цөөхөн үлдсэн: $productName ($stock ширхэг)',
+            'time': 'Одоо',
+            'timestamp': Timestamp.now(),
+            'priority': 'high',
+          });
+        }
+      }
+
+      // 3. Order status changes (delivered, cancelled)
+      final deliveredOrdersSnapshot = await FirebaseFirestore.instance
+          .collection('orders')
+          .where('storeId', isEqualTo: _currentStoreId)
+          .where('status', isEqualTo: 'delivered')
+          .where('updatedAt', isGreaterThan: Timestamp.fromDate(last24Hours))
           .orderBy('updatedAt', descending: true)
           .limit(2)
           .get();
 
-      for (final doc in productsSnapshot.docs) {
+      for (final doc in deliveredOrdersSnapshot.docs) {
         final data = doc.data();
+        final userEmail = data['userEmail'] ?? data['customerEmail'] ?? '';
+        final customerName = userEmail.isNotEmpty
+            ? userEmail.split('@').first.replaceAll('.', ' ')
+            : 'Хэрэглэгч';
+
         recentActivity.add({
-          'type': 'product',
-          'icon': Icons.inventory_2_outlined,
-          'color': Colors.blue,
-          'title': 'Product ${data['name'] ?? 'Unknown'} inventory updated',
+          'type': 'delivered',
+          'icon': Icons.check_circle_outline,
+          'color': Colors.green.shade700,
+          'title':
+              'Хүргэгдлээ #${doc.id.substring(0, 4).toUpperCase()} - $customerName',
           'time': _formatTime(data['updatedAt'] ?? data['createdAt']),
           'timestamp': data['updatedAt'] ?? data['createdAt'],
+          'priority': 'normal',
         });
       }
 
-      // Add shipped orders
+      // 4. Cancelled orders
+      final cancelledOrdersSnapshot = await FirebaseFirestore.instance
+          .collection('orders')
+          .where('storeId', isEqualTo: _currentStoreId)
+          .where('status', isEqualTo: 'cancelled')
+          .where('updatedAt', isGreaterThan: Timestamp.fromDate(last24Hours))
+          .orderBy('updatedAt', descending: true)
+          .limit(1)
+          .get();
+
+      for (final doc in cancelledOrdersSnapshot.docs) {
+        final data = doc.data();
+        final userEmail = data['userEmail'] ?? data['customerEmail'] ?? '';
+        final customerName = userEmail.isNotEmpty
+            ? userEmail.split('@').first.replaceAll('.', ' ')
+            : 'Хэрэглэгч';
+
+        recentActivity.add({
+          'type': 'cancelled',
+          'icon': Icons.cancel_outlined,
+          'color': Colors.red.shade600,
+          'title':
+              'Цуцлагдлаа #${doc.id.substring(0, 4).toUpperCase()} - $customerName',
+          'time': _formatTime(data['updatedAt'] ?? data['createdAt']),
+          'timestamp': data['updatedAt'] ?? data['createdAt'],
+          'priority': 'normal',
+        });
+      }
+
+      // 5. New product additions (in last 7 days)
+      final weekAgo = DateTime.now().subtract(const Duration(days: 7));
+      final newProductsSnapshot = await FirebaseFirestore.instance
+          .collection('products')
+          .where('storeId', isEqualTo: _currentStoreId)
+          .where('createdAt', isGreaterThan: Timestamp.fromDate(weekAgo))
+          .orderBy('createdAt', descending: true)
+          .limit(1)
+          .get();
+
+      for (final doc in newProductsSnapshot.docs) {
+        final data = doc.data();
+        recentActivity.add({
+          'type': 'new_product',
+          'icon': Icons.add_box_outlined,
+          'color': Colors.blue.shade600,
+          'title': 'Шинэ бүтээгдэхүүн: ${data['name'] ?? 'Үл мэдэгдэх'}',
+          'time': _formatTime(data['createdAt']),
+          'timestamp': data['createdAt'],
+          'priority': 'low',
+        });
+      }
+
+      // 6. Shipped orders
       final shippedOrdersSnapshot = await FirebaseFirestore.instance
           .collection('orders')
           .where('storeId', isEqualTo: _currentStoreId)
           .where('status', isEqualTo: 'shipped')
+          .where('updatedAt', isGreaterThan: Timestamp.fromDate(last24Hours))
           .orderBy('updatedAt', descending: true)
           .limit(1)
           .get();
@@ -239,30 +353,33 @@ class _DashboardPageState extends State<DashboardPage> {
         final data = doc.data();
         final userEmail = data['userEmail'] ?? data['customerEmail'] ?? '';
         final customerName = userEmail.isNotEmpty
-            ? userEmail
-                .split('@')
-                .first
-                .replaceAll('.', ' ')
-                .split(' ')
-                .map((word) => word.isNotEmpty
-                    ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
-                    : word)
-                .join(' ')
-            : 'Customer';
+            ? userEmail.split('@').first.replaceAll('.', ' ')
+            : 'Хэрэглэгч';
 
         recentActivity.add({
           'type': 'shipping',
           'icon': Icons.local_shipping_outlined,
-          'color': Colors.orange,
+          'color': Colors.purple.shade600,
           'title':
-              'Order #${doc.id.substring(0, 4).toUpperCase()} shipped to $customerName',
+              'Илгээгдлээ #${doc.id.substring(0, 4).toUpperCase()} - $customerName',
           'time': _formatTime(data['updatedAt'] ?? data['createdAt']),
           'timestamp': data['updatedAt'] ?? data['createdAt'],
+          'priority': 'normal',
         });
       }
 
-      // Sort by timestamp (most recent first)
+      // Sort by priority and timestamp
       recentActivity.sort((a, b) {
+        // First sort by priority (urgent > high > normal > low)
+        final priorityOrder = {'urgent': 0, 'high': 1, 'normal': 2, 'low': 3};
+        final aPriority = priorityOrder[a['priority']] ?? 2;
+        final bPriority = priorityOrder[b['priority']] ?? 2;
+
+        if (aPriority != bPriority) {
+          return aPriority.compareTo(bPriority);
+        }
+
+        // Then sort by timestamp (most recent first)
         final aTime = a['timestamp'];
         final bTime = b['timestamp'];
         if (aTime == null || bTime == null) return 0;
@@ -273,8 +390,9 @@ class _DashboardPageState extends State<DashboardPage> {
         return bDate.compareTo(aDate);
       });
 
-      return recentActivity.take(4).toList();
+      return recentActivity.take(6).toList();
     } catch (e) {
+      print('Error loading recent activity: $e');
       return [];
     }
   }
@@ -711,7 +829,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Recent activity',
+                      'Сүүлийн үйл ажиллагаа',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -728,7 +846,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         minimumSize: Size.zero,
                       ),
                       child: const Text(
-                        'View all',
+                        'Бүгдийг харах',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -766,11 +884,11 @@ class _DashboardPageState extends State<DashboardPage> {
     return Column(
       children: [
         // Table header
-        Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 16),
           child: Row(
             children: [
-              const Expanded(
+              Expanded(
                 flex: 2,
                 child: Text(
                   'Захиалгийн дугаар',
@@ -781,7 +899,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
               ),
-              const Expanded(
+              Expanded(
                 flex: 3,
                 child: Text(
                   'Үйлчлүүлэгч',
@@ -792,7 +910,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
               ),
-              const Expanded(
+              Expanded(
                 flex: 2,
                 child: Text(
                   'Үнийн дүн',
@@ -803,7 +921,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
               ),
-              const Expanded(
+              Expanded(
                 flex: 2,
                 child: Text(
                   'Статус',
@@ -894,7 +1012,7 @@ class _DashboardPageState extends State<DashboardPage> {
         height: 200,
         child: Center(
           child: Text(
-            'No recent activity',
+            'Сүүлийн үйл ажиллагаа байхгүй',
             style: TextStyle(
               color: Colors.grey,
               fontSize: 16,
@@ -905,10 +1023,10 @@ class _DashboardPageState extends State<DashboardPage> {
     }
 
     return SizedBox(
-      height: 240,
+      height: 320,
       child: ListView.separated(
         itemCount: _recentActivity.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 20),
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           final activity = _recentActivity[index];
           return _buildActivityItem(activity);
@@ -918,48 +1036,185 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildActivityItem(Map<String, dynamic> activity) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: (activity['color'] as Color).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Icon(
-            activity['icon'] as IconData,
-            size: 20,
-            color: activity['color'] as Color,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final priority = activity['priority'] as String? ?? 'normal';
+    final isPriorityHigh = priority == 'urgent' || priority == 'high';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isPriorityHigh
+            ? (activity['color'] as Color).withOpacity(0.05)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        border: isPriorityHigh
+            ? Border.all(
+                color: (activity['color'] as Color).withOpacity(0.2),
+                width: 1,
+              )
+            : null,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
             children: [
-              Text(
-                activity['title']?.toString() ?? '',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: (activity['color'] as Color).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  activity['icon'] as IconData,
+                  size: 20,
+                  color: activity['color'] as Color,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                activity['time']?.toString() ?? '',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey.shade600,
+              // Priority indicator
+              if (priority == 'urgent')
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                  ),
                 ),
-              ),
+              if (priority == 'high')
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.orange,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                  ),
+                ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        activity['title']?.toString() ?? '',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: isPriorityHigh
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (priority == 'urgent')
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade100,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          'Яаралтай',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      activity['time']?.toString() ?? '',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _getActivityTypeName(activity['type'] as String),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Action indicator for some activity types
+          if (activity['type'] == 'low_stock' ||
+              activity['type'] == 'out_of_stock')
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: (activity['color'] as Color).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Icon(
+                Icons.arrow_forward_ios,
+                size: 12,
+                color: activity['color'] as Color,
+              ),
+            ),
+        ],
+      ),
     );
+  }
+
+  String _getActivityTypeName(String type) {
+    switch (type) {
+      case 'order':
+        return 'Захиалга';
+      case 'high_value_order':
+        return 'Том захиалга';
+      case 'low_stock':
+        return 'Цөөхөн үлдэгдэл';
+      case 'out_of_stock':
+        return 'Дууссан';
+      case 'delivered':
+        return 'Хүргэгдсэн';
+      case 'cancelled':
+        return 'Цуцлагдсан';
+      case 'new_product':
+        return 'Шинэ бүтээгдэхүүн';
+      case 'shipping':
+        return 'Илгээгдсэн';
+      default:
+        return 'Үйл ажиллагаа';
+    }
   }
 
   Map<String, dynamic> _getStatusInfo(String status) {

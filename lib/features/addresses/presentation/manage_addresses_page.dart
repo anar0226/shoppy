@@ -52,7 +52,7 @@ class ManageAddressesPage extends StatelessWidget {
                     ElevatedButton.icon(
                       onPressed: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => AddEditAddressPage()),
+                        MaterialPageRoute(builder: (_) => const AddEditAddressPage()),
                       ),
                       icon: const Icon(Icons.add, color: Colors.white),
                       label: const Text(
@@ -162,7 +162,7 @@ class ManageAddressesPage extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
         child: ElevatedButton(
           onPressed: () => Navigator.push(
-              context, MaterialPageRoute(builder: (_) => AddEditAddressPage())),
+              context, MaterialPageRoute(builder: (_) => const AddEditAddressPage())),
           style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16)),
           child: const Text('Хүргэлтийн хаяг шинээр нэмэх'),
         ),

@@ -528,9 +528,9 @@ class _CategoriesPageState extends State<CategoriesPage> {
                           onPressed: () => _showEditCategoryDialog(category),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 8),
-                            side: BorderSide(color: AppThemes.primaryColor),
+                            side: const BorderSide(color: AppThemes.primaryColor),
                           ),
-                          child: Text(
+                          child: const Text(
                             'Засах',
                             style: TextStyle(
                               fontSize: 12,
@@ -816,7 +816,6 @@ class _CreateEditCategoryDialog extends StatefulWidget {
   final VoidCallback onCategoryChanged;
 
   const _CreateEditCategoryDialog({
-    super.key,
     required this.storeId,
     this.category,
     required this.onCategoryChanged,
@@ -1222,7 +1221,7 @@ class __CreateEditCategoryDialogState extends State<_CreateEditCategoryDialog> {
                 : Colors.grey.shade50,
           ),
           child: selectedImage != null
-              ? _buildSelectedImagePreview(selectedImage!)
+              ? _buildSelectedImagePreview(selectedImage)
               : currentImageUrl != null && !isRemoved
                   ? _buildCurrentImagePreview(currentImageUrl)
                   : _buildImagePlaceholder(),
@@ -1232,7 +1231,7 @@ class __CreateEditCategoryDialogState extends State<_CreateEditCategoryDialog> {
         if (selectedImage != null) ...[
           const SizedBox(height: 8),
           FutureBuilder<int>(
-            future: selectedImage!.readAsBytes().then((bytes) => bytes.length),
+            future: selectedImage.readAsBytes().then((bytes) => bytes.length),
             builder: (context, snapshot) {
               if (snapshot.hasData) {
                 final sizeInMB =
@@ -1252,7 +1251,7 @@ class __CreateEditCategoryDialogState extends State<_CreateEditCategoryDialog> {
                           size: 16, color: Colors.green.shade600),
                       const SizedBox(width: 6),
                       Text(
-                        '${selectedImage!.name} • ${sizeInMB}MB',
+                        '${selectedImage.name} • ${sizeInMB}MB',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.green.shade700,
@@ -1290,7 +1289,7 @@ class __CreateEditCategoryDialogState extends State<_CreateEditCategoryDialog> {
                 style: OutlinedButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  side: BorderSide(color: AppThemes.primaryColor),
+                  side: const BorderSide(color: AppThemes.primaryColor),
                   foregroundColor: AppThemes.primaryColor,
                 ),
               ),

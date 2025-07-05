@@ -36,7 +36,7 @@ class _PreferencesDialogState extends State<PreferencesDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
                 Icon(Icons.person, color: Colors.blue, size: 28),
                 SizedBox(width: 8),
@@ -53,7 +53,7 @@ class _PreferencesDialogState extends State<PreferencesDialog> {
                 ),
               ],
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               'Таны дуртай дэлгүүрүүдийг харуулахад тусална уу',
               style: TextStyle(
@@ -61,17 +61,17 @@ class _PreferencesDialogState extends State<PreferencesDialog> {
                 fontSize: 14,
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
 
             // Shopping for section
-            Text(
+            const Text(
               'Өөрийнхөө сонирхсон ангиллыг сонгоно уу:',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               children: shoppingOptions.map((option) {
@@ -92,17 +92,17 @@ class _PreferencesDialogState extends State<PreferencesDialog> {
               }).toList(),
             ),
 
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
 
             // Interests section
-            Text(
+            const Text(
               'Өөрийнхөө сонирхсон ангиллыг сонгоно уу:',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 4,
@@ -129,7 +129,7 @@ class _PreferencesDialogState extends State<PreferencesDialog> {
               }).toList(),
             ),
 
-            SizedBox(height: 32),
+            const SizedBox(height: 32),
 
             // Buttons
             Row(
@@ -141,9 +141,9 @@ class _PreferencesDialogState extends State<PreferencesDialog> {
                       : () {
                           Navigator.of(context).pop(false);
                         },
-                  child: Text('Алгасах'),
+                  child: const Text('Алгасах'),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: isLoading || !_canSave() ? null : _savePreferences,
                   style: ElevatedButton.styleFrom(
@@ -154,7 +154,7 @@ class _PreferencesDialogState extends State<PreferencesDialog> {
                     ),
                   ),
                   child: isLoading
-                      ? SizedBox(
+                      ? const SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
@@ -163,7 +163,7 @@ class _PreferencesDialogState extends State<PreferencesDialog> {
                                 AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : Text('Хадгалах'),
+                      : const Text('Хадгалах'),
                 ),
               ],
             ),

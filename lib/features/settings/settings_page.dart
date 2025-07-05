@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:avii/features/home/presentation/floating_nav_bar.dart';
 import 'package:provider/provider.dart';
-import 'package:avii/features/theme/theme_provider.dart';
 import 'package:avii/features/addresses/presentation/manage_addresses_page.dart';
 import 'package:avii/features/auth/providers/auth_provider.dart';
 import 'package:avii/features/auth/presentation/login_page.dart';
 import 'package:avii/features/settings/notifications_page.dart';
-import '../../core/utils/popup_utils.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});

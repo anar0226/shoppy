@@ -326,35 +326,7 @@ class SellerCard extends StatelessWidget {
               ),
             ),
 
-            // Recommended badge
-            if (isRecommended)
-              Positioned(
-                top: 12,
-                right: 12,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade600,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Text(
-                    'Зөвлөж байна',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
+            // Removed recommended badge for production
           ],
         ),
       ),
@@ -505,7 +477,7 @@ class _SellerProductCardState extends State<SellerProductCard> {
             // Background image filling the entire card
             ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: Container(
+              child: SizedBox(
                 width: double.infinity,
                 height: double.infinity,
                 child: Image.network(

@@ -51,7 +51,7 @@ class _UserDetailDialogState extends State<UserDetailDialog>
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      child: Container(
+      child: SizedBox(
         width: 800,
         height: 600,
         child: Column(

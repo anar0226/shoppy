@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'package:avii/core/utils/validation_utils.dart';
+import 'dart:math';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({Key? key}) : super(key: key);
@@ -17,12 +19,78 @@ class _SignUpPageState extends State<SignUpPage> {
   String _email = '';
   String _password = '';
   String _confirmPassword = '';
+  bool _passwordVisible = false;
+  bool _confirmPasswordVisible = false;
 
   @override
   void dispose() {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  Future<bool> _showGmailConfirmationDialog(String email) async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Имэйл баталгаажуулах'),
+            content: Text('$_email хаяг руу баталгаажуулах имэйл илгээх үү?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Үгүй'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Тийм'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _requireEmailVerified(AuthProvider auth) async {
+    if (auth.user == null) return;
+    await auth.user!.sendEmailVerification();
+    bool verified = false;
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Имэйл баталгаажуулах'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                  'Танд баталгаажуулах имэйл илгээгдлээ. Линк дээр дарж имэйлээ баталгаажуулаад "Баталгаажуулсан" товч дээр дарна уу.'),
+              const SizedBox(height: 12),
+              Text(
+                auth.user!.email ?? '',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                await auth.user!.reload();
+                verified = auth.user!.emailVerified;
+                if (verified) {
+                  Navigator.of(context).pop();
+                } else {
+                  setState(() {});
+                }
+              },
+              child: const Text('Баталгаажуулсан'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -74,9 +142,7 @@ class _SignUpPageState extends State<SignUpPage> {
                               BorderSide(color: Color(0xFF1F226C), width: 2),
                         ),
                       ),
-                      validator: (value) => value != null && value.isNotEmpty
-                          ? null
-                          : 'нэрээ оруулна уу',
+                      validator: ValidationUtils.validateName,
                       onSaved: (val) => _name = val!.trim(),
                     ),
                     const SizedBox(height: 24),
@@ -99,9 +165,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                       ),
                       keyboardType: TextInputType.emailAddress,
-                      validator: (value) => value != null && value.contains('@')
-                          ? null
-                          : 'бодит имэйл хаягаа оруулна уу',
+                      validator: ValidationUtils.validateEmail,
                       onSaved: (val) => _email = val!.trim(),
                     ),
                     const SizedBox(height: 24),
@@ -110,24 +174,34 @@ class _SignUpPageState extends State<SignUpPage> {
                     TextFormField(
                       controller: _passwordController,
                       style: const TextStyle(color: Colors.black),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'нууц үг',
-                        labelStyle: TextStyle(color: Colors.grey),
-                        border: UnderlineInputBorder(
+                        labelStyle: const TextStyle(color: Colors.grey),
+                        border: const UnderlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey),
                         ),
-                        enabledBorder: UnderlineInputBorder(
+                        enabledBorder: const UnderlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey),
                         ),
-                        focusedBorder: UnderlineInputBorder(
+                        focusedBorder: const UnderlineInputBorder(
                           borderSide:
                               BorderSide(color: Color(0xFF1F226C), width: 2),
                         ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                              _passwordVisible
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Colors.grey),
+                          onPressed: () {
+                            setState(() {
+                              _passwordVisible = !_passwordVisible;
+                            });
+                          },
+                        ),
                       ),
-                      obscureText: true,
-                      validator: (value) => value != null && value.length >= 6
-                          ? null
-                          : 'хамгийн багадаа 6 тэмдэгт оруулна уу',
+                      obscureText: !_passwordVisible,
+                      validator: ValidationUtils.validatePassword,
                       onSaved: (val) => _password = val!.trim(),
                     ),
                     const SizedBox(height: 24),
@@ -136,21 +210,34 @@ class _SignUpPageState extends State<SignUpPage> {
                     TextFormField(
                       controller: _confirmPasswordController,
                       style: const TextStyle(color: Colors.black),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'нууц үг давтах',
-                        labelStyle: TextStyle(color: Colors.grey),
-                        border: UnderlineInputBorder(
+                        labelStyle: const TextStyle(color: Colors.grey),
+                        border: const UnderlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey),
                         ),
-                        enabledBorder: UnderlineInputBorder(
+                        enabledBorder: const UnderlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey),
                         ),
-                        focusedBorder: UnderlineInputBorder(
+                        focusedBorder: const UnderlineInputBorder(
                           borderSide:
                               BorderSide(color: Color(0xFF1F226C), width: 2),
                         ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                              _confirmPasswordVisible
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Colors.grey),
+                          onPressed: () {
+                            setState(() {
+                              _confirmPasswordVisible =
+                                  !_confirmPasswordVisible;
+                            });
+                          },
+                        ),
                       ),
-                      obscureText: true,
+                      obscureText: !_confirmPasswordVisible,
                       validator: (value) {
                         if (value != _passwordController.text) {
                           return 'нууц үг таарахгүй байна';
@@ -179,10 +266,40 @@ class _SignUpPageState extends State<SignUpPage> {
                                     false) {
                                   _formKey.currentState!.save();
                                   try {
+                                    // Gmail confirmation
+                                    bool proceed = true;
+                                    if (_email
+                                        .toLowerCase()
+                                        .endsWith('@gmail.com')) {
+                                      proceed =
+                                          await _showGmailConfirmationDialog(
+                                              _email);
+                                    }
+                                    if (!proceed) return;
+
                                     await auth.signUp(_name, _email, _password);
-                                    if (context.mounted) {
-                                      Navigator.of(context)
-                                          .pushReplacementNamed('/home');
+
+                                    if (auth.user != null &&
+                                        !auth.user!.emailVerified &&
+                                        _email
+                                            .toLowerCase()
+                                            .endsWith('@gmail.com')) {
+                                      await _requireEmailVerified(auth);
+                                    }
+
+                                    if (auth.user != null &&
+                                        auth.user!.emailVerified) {
+                                      if (context.mounted) {
+                                        Navigator.of(context)
+                                            .pushReplacementNamed('/home');
+                                      }
+                                    } else {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(const SnackBar(
+                                                content: Text(
+                                                    'Имэйл баталгаажаагүй тул нэвтрэх боломжгүй.')));
+                                      }
                                     }
                                   } catch (e) {
                                     ScaffoldMessenger.of(context).showSnackBar(

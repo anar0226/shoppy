@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:avii/features/products/models/product_model.dart';
 import 'package:provider/provider.dart';
 import 'package:avii/features/cart/providers/cart_provider.dart';
@@ -16,7 +15,6 @@ import 'dart:async';
 import 'package:avii/features/stores/models/store_model.dart';
 import 'package:avii/features/stores/presentation/store_screen.dart';
 import 'package:avii/features/home/presentation/main_scaffold.dart';
-import '../../../core/services/rating_service.dart';
 
 class ProductPage extends StatefulWidget {
   final ProductModel product;
@@ -54,7 +52,7 @@ class _ProductPageState extends State<ProductPage> {
   final GlobalKey _imageKey = GlobalKey();
 
   // Dynamic variant data
-  List<Map<String, dynamic>> _availableVariants = [];
+  final List<Map<String, dynamic>> _availableVariants = [];
   String _variantType = '';
 
   @override
@@ -585,7 +583,7 @@ class _ProductPageState extends State<ProductPage> {
       child: Row(
         children: [
           Text(
-            '\₮${widget.product.price.toStringAsFixed(2)}',
+            '₮${widget.product.price.toStringAsFixed(2)}',
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -626,7 +624,7 @@ class _ProductPageState extends State<ProductPage> {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              'Save \₮${(widget.product.price * widget.product.discountPercent / 100).toStringAsFixed(0)}',
+              'Save ₮${(widget.product.price * widget.product.discountPercent / 100).toStringAsFixed(0)}',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -635,10 +633,10 @@ class _ProductPageState extends State<ProductPage> {
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(
+          const Expanded(
             child: Text(
               'on orders over ₮45',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 color: Colors.purple,
                 fontWeight: FontWeight.w600,
@@ -1160,7 +1158,7 @@ class _ProductPageState extends State<ProductPage> {
     }
     final original =
         widget.product.price / (1 - widget.product.discountPercent / 100);
-    return '\₮${original.toStringAsFixed(2)}';
+    return '₮${original.toStringAsFixed(2)}';
   }
 
   void _addToCart() {
@@ -1218,7 +1216,7 @@ class _ProductPageState extends State<ProductPage> {
       context,
       MaterialPageRoute(
         builder: (_) => CheckoutPage(
-          email: '${fb_auth.FirebaseAuth.instance.currentUser?.email ?? ''}',
+          email: fb_auth.FirebaseAuth.instance.currentUser?.email ?? '',
           fullAddress: fullAddress,
           subtotal: widget.product.price * _quantity,
           shippingCost: 0,
@@ -1242,7 +1240,6 @@ class _ProductPageState extends State<ProductPage> {
 
   void _animateAddToCart() {
     final overlay = Overlay.of(context);
-    if (overlay == null) return;
 
     final renderBox =
         _imageKey.currentContext?.findRenderObject() as RenderBox?;
@@ -1685,7 +1682,6 @@ class _ProductPageState extends State<ProductPage> {
   void _showPopupMessage(String message,
       {Color? backgroundColor, bool isError = false}) {
     final overlay = Overlay.of(context);
-    if (overlay == null) return;
 
     final overlayEntry = OverlayEntry(
       builder: (context) => _PopupMessage(

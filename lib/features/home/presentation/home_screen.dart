@@ -8,18 +8,14 @@ import 'package:avii/features/stores/models/store_model.dart';
 import 'package:avii/features/products/models/product_model.dart';
 import '../../notifications/notifications_inbox_page.dart';
 import '../domain/models.dart';
-import 'floating_nav_bar.dart';
 import 'main_scaffold.dart';
-import 'firestore_store_screen.dart';
 import 'package:avii/features/stores/presentation/store_screen.dart';
-import 'package:avii/features/stores/presentation/store_screen.dart'
-    show StoreData, StoreProduct;
 import 'package:avii/features/products/presentation/product_page.dart';
 import 'widgets/seller_card.dart';
-import 'package:avii/features/reviews/services/reviews_service.dart';
 import '../../../core/services/rating_service.dart';
 import '../../recommendations/services/simple_recommendation_service.dart';
 import '../../recommendations/presentation/preferences_dialog.dart';
+import '../../../core/widgets/paginated_firestore_list.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -39,7 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Pagination variables
   int _currentPage = 0;
   static const int _storesPerPage = 30;
-  List<String> _loadedStoreIds = [];
+  final List<String> _loadedStoreIds = [];
 
   @override
   void initState() {
@@ -61,8 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _checkAndShowPreferencesDialog() async {
     try {
       final preferences = await _recommendationService.getUserPreferences();
-      print(
-          '🔍 Checking user preferences: ${preferences != null ? "Found" : "Not found"}');
+      // Checking user preferences
 
       if (preferences == null) {
         // Check if we've already shown the dialog this session using SharedPreferences
@@ -81,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
     } catch (e) {
-      print('Error checking user preferences: $e');
+      // Error checking user preferences
     }
   }
 
@@ -112,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
         await prefs.setBool('preferences_dialog_shown_$userId', true);
       }
     } catch (e) {
-      print('Error saving dialog shown flag: $e');
+      // Error saving dialog shown flag
     }
   }
 
@@ -132,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<List<SellerData>> _loadSellers() async {
     try {
-      print('🔍 Loading sellers - Page $_currentPage');
+      // Loading sellers
       final List<SellerData> result = [];
 
       // Step 1: Load recommended stores (only on first page)
@@ -264,6 +259,8 @@ class _HomeScreenState extends State<HomeScreen> {
         // Load default products if no featured products are set
         products = await _fetchProducts(storeModel.id);
       }
+
+      // Allow even if no products
 
       if (products.isEmpty) return null;
 
@@ -502,19 +499,18 @@ class _HomeScreenState extends State<HomeScreen> {
               // Header
               _buildHeader(context),
 
-              // Scrollable Content
+              // Scrollable Content (refactored with pagination)
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: _refreshStores,
-                  child: SingleChildScrollView(
+                  child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 16),
+                    slivers: [
+                      SliverToBoxAdapter(child: const SizedBox(height: 16)),
 
-                        // Following Section
-                        FutureBuilder<List<Store>>(
+                      // Following Section
+                      SliverToBoxAdapter(
+                        child: FutureBuilder<List<Store>>(
                           future: _followingFuture,
                           builder: (context, snap) {
                             if (!snap.hasData) {
@@ -526,50 +522,50 @@ class _HomeScreenState extends State<HomeScreen> {
                             return _buildFollowingSection(context, snap.data!);
                           },
                         ),
+                      ),
 
-                        const SizedBox(height: 24),
+                      SliverToBoxAdapter(child: const SizedBox(height: 24)),
 
-                        // Your Offers Section
-                        _buildYourOffersSection(context),
+                      // Your Offers Section
+                      SliverToBoxAdapter(
+                          child: _buildYourOffersSection(context)),
 
-                        const SizedBox(height: 24),
+                      SliverToBoxAdapter(child: const SizedBox(height: 24)),
 
-                        // Seller Cards (dynamic)
-                        FutureBuilder<List<SellerData>>(
-                          future: _sellersFuture,
-                          builder: (context, snap) {
-                            if (!snap.hasData) {
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
-                            final data = snap.data!;
-                            if (data.isEmpty) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 16),
+                      // Seller Cards with pagination
+                      SliverFillRemaining(
+                        hasScrollBody: true,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: PaginatedFirestoreList<DocumentSnapshot>(
+                            query: FirebaseFirestore.instance
+                                .collection('stores')
+                                .where('status', isEqualTo: 'active')
+                                .orderBy('createdAt', descending: true),
+                            pageSize: 10,
+                            fromDoc: (doc) => doc,
+                            emptyBuilder: (ctx) => const Center(
                                 child: Text(
-                                    'Одоогоор идэвхтэй дэлгүүр байхгүй байна'),
+                                    'Одоогоор идэвхтэй дэлгүүр байхгүй байна')),
+                            itemBuilder: (ctx, doc) {
+                              return FutureBuilder<SellerData?>(
+                                future: _storeDocToSellerData(doc),
+                                builder: (context, snap) {
+                                  if (!snap.hasData) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  final seller = snap.data!;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 24),
+                                    child: _buildSellerCard(context, seller),
+                                  );
+                                },
                               );
-                            }
-                            return Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              child: Column(
-                                children: data
-                                    .map((seller) => Padding(
-                                          padding:
-                                              const EdgeInsets.only(bottom: 24),
-                                          child:
-                                              _buildSellerCard(context, seller),
-                                        ))
-                                    .toList(),
-                              ),
-                            );
-                          },
+                            },
+                          ),
                         ),
-
-                        const SizedBox(height: 80), // Space for bottom nav
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -737,11 +733,11 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Following header
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
-              const Text(
+              Text(
                 'Таны дагадаг дэлгүүрүүд',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
@@ -749,8 +745,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.black87,
                 ),
               ),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right, size: 20, color: Colors.black54),
+              SizedBox(width: 4),
+              Icon(Icons.chevron_right, size: 20, color: Colors.black54),
             ],
           ),
         ),
@@ -1211,6 +1207,12 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
     return ''; // Product not in any category
+  }
+
+  // Convert store firestore doc to SellerData for paginator
+  Future<SellerData?> _storeDocToSellerData(DocumentSnapshot doc) {
+    final storeModel = StoreModel.fromFirestore(doc);
+    return _convertStoreToSellerData(storeModel, isRecommended: false);
   }
 }
 

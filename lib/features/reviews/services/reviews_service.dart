@@ -69,7 +69,7 @@ class ReviewsService {
 
       return true;
     } catch (e) {
-      debugPrint('Error submitting review: $e');
+      // Error submitting review
       return false;
     }
   }

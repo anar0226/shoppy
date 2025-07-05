@@ -98,9 +98,9 @@ class _DiscountsPageState extends State<DiscountsPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
+                  const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text('Хөнгөлөлтийн код',
                           style: TextStyle(
                               fontSize: 28, fontWeight: FontWeight.bold)),

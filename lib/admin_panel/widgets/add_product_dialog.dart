@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import '../auth/auth_service.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:typed_data';
 import '../../core/services/image_upload_service.dart';
 import '../../core/services/direct_upload_service.dart';
 import '../../features/discounts/models/discount_model.dart';
@@ -59,7 +55,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
   // Variant management
   bool _hasVariants = false;
   String _variantType = 'Size'; // Size, Color, etc.
-  List<ProductVariant> _variants = [];
+  final List<ProductVariant> _variants = [];
   final _variantNameCtrl = TextEditingController();
   final _variantInventoryCtrl = TextEditingController();
 
@@ -897,8 +893,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
                               validator: (v) {
                                 if (!_hasVariants) {
                                   final n = int.tryParse(v ?? '');
-                                  if (n == null || n < 0)
+                                  if (n == null || n < 0) {
                                     return 'Enter valid inventory';
+                                  }
                                 }
                                 return null;
                               },

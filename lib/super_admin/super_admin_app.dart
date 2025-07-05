@@ -13,6 +13,7 @@ import 'pages/commission_management_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/featured_stores_page.dart';
 import 'pages/featured_products_page.dart';
+import 'pages/backup_management_page.dart';
 import 'widgets/side_menu.dart';
 import 'widgets/top_nav_bar.dart';
 
@@ -125,6 +126,7 @@ class _SuperAdminMainScreenState extends State<SuperAdminMainScreen> {
     'Users': const UsersManagementPage(),
     'Notifications': const NotificationsPage(),
     'Commission': const CommissionManagementPage(),
+    'Backup Management': const BackupManagementPage(),
     'Settings': const SettingsPage(),
   };
 

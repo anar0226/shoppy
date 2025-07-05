@@ -31,32 +31,34 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
                   fontWeight: FontWeight.w700,
                   color: AppThemes.getTextColor(context),
                 )),
-            const Spacer(),
-            SizedBox(
-              width: 360,
-              height: 40,
-              child: TextField(
-                style: TextStyle(color: AppThemes.getTextColor(context)),
-                decoration: InputDecoration(
-                  hintText: 'Search',
-                  hintStyle: TextStyle(
-                      color: AppThemes.getSecondaryTextColor(context)),
-                  prefixIcon: Icon(Icons.search,
-                      color: AppThemes.getSecondaryTextColor(context)),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide:
-                        BorderSide(color: AppThemes.getBorderColor(context)),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 360),
+                height: 40,
+                child: TextField(
+                  style: TextStyle(color: AppThemes.getTextColor(context)),
+                  decoration: InputDecoration(
+                    hintText: 'Search',
+                    hintStyle: TextStyle(
+                        color: AppThemes.getSecondaryTextColor(context)),
+                    prefixIcon: Icon(Icons.search,
+                        color: AppThemes.getSecondaryTextColor(context)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide:
+                          BorderSide(color: AppThemes.getBorderColor(context)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide:
+                          BorderSide(color: AppThemes.getBorderColor(context)),
+                    ),
+                    fillColor: AppThemes.getCardColor(context),
+                    filled: true,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide:
-                        BorderSide(color: AppThemes.getBorderColor(context)),
-                  ),
-                  fillColor: AppThemes.getCardColor(context),
-                  filled: true,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                 ),
               ),
             ),
@@ -253,19 +255,20 @@ class NotificationsDialog extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextButton(
+                    IconButton(
                       onPressed: () async {
                         await NotificationService().markAllAsRead();
                       },
-                      child: const Text('бүгдийг уншсан гэж тэмдэглэх'),
+                      tooltip: 'Уншсан гэж тэмдэглэх',
+                      icon: const Icon(Icons.done_all),
                     ),
-                    TextButton(
+                    IconButton(
                       onPressed: () async {
                         // Show confirmation dialog
                         final confirmed = await showDialog<bool>(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: const Text('Бүх мэдэгдэл устгах'),
+                            title: const Text('Устгах'),
                             content: const Text(
                               'Бүх мэдэгдэл устгах уу?',
                             ),
@@ -291,13 +294,12 @@ class NotificationsDialog extends StatelessWidget {
                           await NotificationService().clearAllNotifications();
                         }
                       },
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.red,
-                      ),
-                      child: const Text('Бүгдийг устгах'),
+                      tooltip: 'Бүгдийг устгах',
+                      icon: const Icon(Icons.delete_sweep, color: Colors.red),
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
+                      tooltip: 'Хаах',
                       icon: const Icon(Icons.close),
                     ),
                   ],

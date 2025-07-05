@@ -1,5 +1,6 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { enforceRateLimit } from './rate_limiter';
 
 // Initialize Firebase Admin
 admin.initializeApp();
@@ -7,6 +8,9 @@ admin.initializeApp();
 // Export Super Admin functions (after Firebase initialization)
 export * from './super-admin-setup';
 export * from './simple-admin-setup';
+
+// Export Backup & Recovery functions
+export * from './firestore-backup';
 
 // QPay Configuration can be added here when implementing actual QPay API integration
 
@@ -157,6 +161,8 @@ async function handleFailedPayment(paymentId: string, invoiceId: string, objectI
 
 // QPay Payment Status Check (for polling)
 export const checkQPayPaymentStatus = functions.https.onCall(async (data, context) => {
+  await enforceRateLimit((context.auth?.uid || context.rawRequest.ip) as string);
+
   try {
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
@@ -206,6 +212,8 @@ export const checkQPayPaymentStatus = functions.https.onCall(async (data, contex
 
 // Function to create order after successful payment
 export const createOrder = functions.https.onCall(async (data, context) => {
+  await enforceRateLimit((context.auth?.uid || context.rawRequest.ip) as string, 20, 60);
+
   try {
     // Verify user is authenticated
     if (!context.auth) {
