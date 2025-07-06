@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../utils/type_utils.dart';
+import '../utils/cache_utils.dart';
 
 /// A safe image widget that handles null/empty URLs and provides proper fallbacks
 class SafeImage extends StatelessWidget {
@@ -64,6 +65,7 @@ class SafeImage extends StatelessWidget {
             ),
           ),
       errorWidget: (context, url, error) => errorWidget ?? defaultFallback,
+      cacheManager: AviiCacheManager.instance,
     );
 
     // Apply border radius if specified

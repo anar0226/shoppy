@@ -30,7 +30,7 @@ class OrderService {
               'imageUrl':
                   c.product.images.isNotEmpty ? c.product.images.first : '',
               'price': c.product.price,
-              'variant': c.variant ?? '',
+              'variant': c.variantDisplayText,
               'quantity': c.quantity,
             })
         .toList();

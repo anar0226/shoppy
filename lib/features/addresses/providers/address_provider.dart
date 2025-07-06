@@ -54,9 +54,11 @@ class AddressProvider extends ChangeNotifier {
             id: d.id,
             firstName: data['firstName'] ?? '',
             lastName: data['lastName'] ?? '',
+            district: data['district'] ?? '',
             line1: data['line1'] ?? '',
             apartment: data['apartment'] ?? '',
             phone: data['phone'] ?? '',
+            khoroo: (data['khoroo'] ?? 1) as int,
           );
         }));
       notifyListeners();
@@ -84,9 +86,11 @@ class AddressProvider extends ChangeNotifier {
         .set({
       'firstName': addr.firstName,
       'lastName': addr.lastName,
+      'district': addr.district,
       'line1': addr.line1,
       'apartment': addr.apartment,
       'phone': addr.phone,
+      'khoroo': addr.khoroo,
     });
   }
 
@@ -108,9 +112,11 @@ class AddressProvider extends ChangeNotifier {
         .update({
       'firstName': addr.firstName,
       'lastName': addr.lastName,
+      'district': addr.district,
       'line1': addr.line1,
       'apartment': addr.apartment,
       'phone': addr.phone,
+      'khoroo': addr.khoroo,
     });
   }
 
@@ -133,9 +139,11 @@ class AddressProvider extends ChangeNotifier {
         id: const Uuid().v4(),
         firstName: '',
         lastName: '',
+        district: '',
         line1: '',
         apartment: '',
         phone: '',
+        khoroo: 1,
       );
 
   Future<void> setDefaultAddress(String id) async {

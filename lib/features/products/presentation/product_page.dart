@@ -15,6 +15,10 @@ import 'dart:async';
 import 'package:avii/features/stores/models/store_model.dart';
 import 'package:avii/features/stores/presentation/store_screen.dart';
 import 'package:avii/features/home/presentation/main_scaffold.dart';
+import 'package:avii/core/widgets/stock_indicator.dart';
+import 'package:avii/core/services/inventory_service.dart';
+import 'package:avii/core/services/rate_limiter_service.dart';
+import 'package:avii/core/constants/shipping.dart';
 
 class ProductPage extends StatefulWidget {
   final ProductModel product;
@@ -54,6 +58,8 @@ class _ProductPageState extends State<ProductPage> {
   // Dynamic variant data
   final List<Map<String, dynamic>> _availableVariants = [];
   String _variantType = '';
+  final InventoryService _inventoryService = InventoryService();
+  bool _addingToCart = false;
 
   @override
   void initState() {
@@ -719,7 +725,6 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   Widget _buildSizeSelector() {
-    // Don't show size selector if no variants are configured
     if (_availableVariants.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -730,7 +735,7 @@ class _ProductPageState extends State<ProductPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _variantType.isNotEmpty ? _variantType : 'Size',
+            _variantType.isNotEmpty ? _variantType : 'Хэмжээ',
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 18,
@@ -739,77 +744,27 @@ class _ProductPageState extends State<ProductPage> {
           ),
           const SizedBox(height: 12),
           Wrap(
-            spacing: 12,
+            spacing: 8,
             runSpacing: 8,
-            children: _availableVariants
-                .map((variant) => _buildSizeChip(variant))
-                .toList(),
+            children: _availableVariants.map((variant) {
+              final size = variant['size'] as String;
+              final inventory = variant['inventory'] as int? ?? 0;
+              final isSelected = _selectedSize == size;
+              final isAvailable = inventory > 0;
+
+              return VariantOptionChip(
+                label: size,
+                isSelected: isSelected,
+                isInStock: isAvailable,
+                onTap: () {
+                  setState(() {
+                    _selectedSize = isSelected ? '' : size;
+                  });
+                },
+              );
+            }).toList(),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSizeChip(Map<String, dynamic> variant) {
-    final variantName = variant['size'] as String;
-    final isSelected = _selectedSize == variantName;
-    final isAvailable = variant['available'] as bool? ?? false;
-
-    // Determine if the variant name is short enough for a circular button
-    final isShortName = variantName.length <= 3;
-    // Make buttons 50% smaller
-    final buttonWidth =
-        isShortName ? 30.0 : (variantName.length * 6.0).clamp(30.0, 60.0);
-    const buttonHeight = 30.0; // 50% of original 60
-
-    return GestureDetector(
-      onTap: isAvailable
-          ? () {
-              setState(() {
-                _selectedSize = variantName;
-              });
-            }
-          : null,
-      child: Container(
-        width: buttonWidth,
-        height: buttonHeight,
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.black : Colors.white,
-          border: Border.all(
-            color: isAvailable ? Colors.black : Colors.grey.shade300,
-            width: isSelected ? 2 : 1,
-          ),
-          // Use circular shape for short names, stadium shape for longer names
-          borderRadius: BorderRadius.circular(isShortName ? 15 : 15),
-        ),
-        child: Stack(
-          children: [
-            Center(
-              child: Text(
-                variantName,
-                style: TextStyle(
-                  color: isSelected
-                      ? Colors.white
-                      : isAvailable
-                          ? Colors.black
-                          : Colors.grey.shade400,
-                  fontWeight: FontWeight.w600,
-                  fontSize: variantName.length > 3
-                      ? 12
-                      : 16, // Keep text size the same
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            // Cross out unavailable sizes
-            if (!isAvailable)
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _CrossOutPainter(),
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }
@@ -879,6 +834,29 @@ class _ProductPageState extends State<ProductPage> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         children: [
+          // Stock indicator
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              children: [
+                StockIndicator(
+                  product: widget.product,
+                  selectedVariants: _selectedSize.isNotEmpty
+                      ? {_variantType.toLowerCase(): _selectedSize}
+                      : null,
+                ),
+                const Spacer(),
+                if (_availableVariants.isNotEmpty && _selectedSize.isNotEmpty)
+                  Text(
+                    'Боломжит тоо: ${_getSelectedVariantStock()}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+              ],
+            ),
+          ),
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -889,7 +867,8 @@ class _ProductPageState extends State<ProductPage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: _addToCart,
+              onPressed:
+                  _addingToCart || !_isProductAvailable() ? null : _addToCart,
               child: const Text(
                 'Сагсанд нэмэх',
                 style: TextStyle(
@@ -911,7 +890,8 @@ class _ProductPageState extends State<ProductPage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: _buyNow,
+              onPressed:
+                  _addingToCart || !_isProductAvailable() ? null : _buyNow,
               child: const Text(
                 'Шууд авах',
                 style: TextStyle(
@@ -925,6 +905,31 @@ class _ProductPageState extends State<ProductPage> {
         ],
       ),
     );
+  }
+
+  bool _isProductAvailable() {
+    if (_availableVariants.isEmpty) {
+      return widget.product.hasStock;
+    }
+
+    if (_selectedSize.isEmpty) {
+      return false; // Must select variant
+    }
+
+    return _getSelectedVariantStock() > 0;
+  }
+
+  int _getSelectedVariantStock() {
+    if (_availableVariants.isEmpty || _selectedSize.isEmpty) {
+      return 0;
+    }
+
+    final variant = _availableVariants.firstWhere(
+      (v) => v['size'] == _selectedSize,
+      orElse: () => {'inventory': 0},
+    );
+
+    return variant['inventory'] ?? 0;
   }
 
   Widget _buildDescriptionSection() {
@@ -1173,16 +1178,41 @@ class _ProductPageState extends State<ProductPage> {
       return;
     }
 
-    final cart = Provider.of<CartProvider>(context, listen: false);
-    cart.addItem(CartItem(
-      product: widget.product,
-      variant: _selectedSize.isNotEmpty ? _selectedSize : null,
-      quantity: _quantity,
-    ));
+    _addToCartAsync();
+  }
 
-    _showPopupMessage('сагсанд нэмлээ');
+  Future<void> _addToCartAsync() async {
+    setState(() => _addingToCart = true);
 
-    _animateAddToCart();
+    try {
+      final cart = Provider.of<CartProvider>(context, listen: false);
+
+      // Create cart item with selected variants
+      final selectedVariants = _selectedSize.isNotEmpty
+          ? {_variantType.toLowerCase(): _selectedSize}
+          : null;
+
+      final cartItem = CartItem(
+        product: widget.product,
+        selectedVariants: selectedVariants,
+        quantity: _quantity,
+      );
+
+      await cart.addItem(cartItem);
+
+      _showPopupMessage('Сагсанд нэмлээ');
+      _animateAddToCart();
+    } catch (e) {
+      if (e is RateLimitExceededException) {
+        _showPopupMessage(
+            'Хэт олон хүсэлт илгээлээ. ${e.retryAfterSeconds} секундын дараа дахин оролдоно уу.',
+            isError: true);
+      } else {
+        _showPopupMessage('Сагсанд нэмэхэд алдаа гарлаа: $e', isError: true);
+      }
+    } finally {
+      setState(() => _addingToCart = false);
+    }
   }
 
   void _buyNow() {
@@ -1219,7 +1249,7 @@ class _ProductPageState extends State<ProductPage> {
           email: fb_auth.FirebaseAuth.instance.currentUser?.email ?? '',
           fullAddress: fullAddress,
           subtotal: widget.product.price * _quantity,
-          shippingCost: 0,
+          shippingCost: kStandardShippingFee,
           tax: (widget.product.price * _quantity) * 0.0825,
           items: [
             CheckoutItem(

@@ -8,12 +8,29 @@ import 'core/services/order_fulfillment_service.dart';
 import 'core/config/environment_config.dart';
 import 'features/notifications/fcm_service.dart';
 import 'main.dart' show ShopUBApp; // Re-use existing root widget
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 /// Initialise services & run the Flutter app.
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Load environment file (bundled as asset)
+  // Global Flutter error handling
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+  };
+
+  // Catch all uncaught async errors
+  runZonedGuarded(() async {
+    await _internalBootstrap();
+  }, (error, stack) {
+    debugPrint('Uncaught zone error: $error');
+  });
+}
+
+// Internal bootstrap moved here to allow zone wrapper
+Future<void> _internalBootstrap() async {
+  // 1. Load environment file
   await dotenv.load(fileName: 'assets/env/prod.env');
 
   // 2. Firebase

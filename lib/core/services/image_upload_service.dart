@@ -14,7 +14,8 @@ class ImageUploadService {
     try {
       debugPrint('Starting simple upload...');
 
-      final Uint8List imageBytes = await imageFile.readAsBytes();
+      // Apply compression even in the simple path
+      final Uint8List imageBytes = await _getOptimizedImageBytes(imageFile);
       debugPrint('Image bytes read: ${imageBytes.length}');
 
       final String fileName = generateFileName(imageFile.name);
@@ -25,8 +26,12 @@ class ImageUploadService {
 
       // Simple upload without progress tracking
       debugPrint('Starting putData operation...');
-      final TaskSnapshot snapshot =
-          await storageRef.putData(imageBytes).timeout(
+      final TaskSnapshot snapshot = await storageRef
+          .putData(
+              imageBytes,
+              SettableMetadata(
+                  cacheControl: 'public,max-age=31536000,immutable'))
+          .timeout(
         const Duration(seconds: 30),
         onTimeout: () {
           throw Exception('putData operation timed out after 30 seconds');
@@ -63,6 +68,7 @@ class ImageUploadService {
       // Set metadata
       final SettableMetadata metadata = SettableMetadata(
         contentType: _getContentType(imageFile.name),
+        cacheControl: 'public,max-age=31536000,immutable',
         customMetadata: {
           'uploadedAt': DateTime.now().toIso8601String(),
           'originalName': imageFile.name,
@@ -171,6 +177,7 @@ class ImageUploadService {
       // Set metadata
       final SettableMetadata metadata = SettableMetadata(
         contentType: _getContentType(imageFile.name),
+        cacheControl: 'public,max-age=31536000,immutable',
         customMetadata: {
           'uploadedAt': DateTime.now().toIso8601String(),
           'originalName': imageFile.name,

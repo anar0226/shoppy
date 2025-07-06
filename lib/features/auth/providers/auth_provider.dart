@@ -6,8 +6,9 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import '../../../core/services/rate_limiter_service.dart';
 
-class AuthProvider extends ChangeNotifier {
+class AuthProvider extends ChangeNotifier with RateLimitedService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
@@ -27,6 +28,7 @@ class AuthProvider extends ChangeNotifier {
 
   /// Sign in with email and password
   Future<User?> signIn(String email, String password) async {
+    checkRateLimit('auth_attempt');
     try {
       await _setLoading(true);
       final credential = await _auth.signInWithEmailAndPassword(
@@ -47,6 +49,7 @@ class AuthProvider extends ChangeNotifier {
 
   /// Sign up with email and password
   Future<User?> signUp(String name, String email, String password) async {
+    checkRateLimit('auth_attempt');
     try {
       await _setLoading(true);
       final cred = await _auth.createUserWithEmailAndPassword(
@@ -155,6 +158,7 @@ class AuthProvider extends ChangeNotifier {
 
   /// Send verification code to phone number
   Future<void> sendPhoneVerificationCode(String phoneNumber) async {
+    checkRateLimit('auth_attempt');
     try {
       await _setLoading(true);
 
@@ -353,5 +357,66 @@ class AuthProvider extends ChangeNotifier {
       default:
         return 'Нэвтрэхэд алдаа гарлаа';
     }
+  }
+
+  /// Check if current user's email is verified
+  bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
+
+  /// Send email verification
+  Future<void> sendEmailVerification() async {
+    checkRateLimit('email_verification');
+    try {
+      await _setLoading(true);
+      final user = _auth.currentUser;
+      if (user != null && !user.emailVerified) {
+        await user.sendEmailVerification();
+      }
+    } catch (e) {
+      if (e is RateLimitExceededException) {
+        throw 'Хэт олон хүсэлт илгээлээ. ${e.retryAfterSeconds} секундын дараа дахин оролдоно уу.';
+      } else {
+        throw 'Имэйл илгээхэд алдаа гарлаа: $e';
+      }
+    } finally {
+      await _setLoading(false);
+    }
+  }
+
+  /// Send password reset email
+  Future<void> sendPasswordResetEmail(String email) async {
+    checkRateLimit('password_reset');
+    try {
+      await _setLoading(true);
+      await _auth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      if (e is RateLimitExceededException) {
+        throw 'Хэт олон хүсэлт илгээлээ. ${e.retryAfterSeconds} секундын дараа дахин оролдоно уу.';
+      } else {
+        throw 'Нууц үг сэргээх имэйл илгээхэд алдаа гарлаа: $e';
+      }
+    } finally {
+      await _setLoading(false);
+    }
+  }
+
+  /// Force email verification check
+  Future<bool> checkEmailVerification() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await user.reload();
+      final refreshedUser = _auth.currentUser;
+      notifyListeners();
+      return refreshedUser?.emailVerified ?? false;
+    }
+    return false;
+  }
+
+  /// Check if user can perform purchase operations
+  bool get canPurchase {
+    final currentUser = user;
+    if (currentUser == null) return false;
+
+    // Must have verified email to purchase
+    return currentUser.emailVerified;
   }
 }

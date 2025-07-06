@@ -34,6 +34,7 @@ import 'core/config/environment_config.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'bootstrap.dart' as boot;
 import 'core/widgets/paginated_firestore_list.dart';
+import 'core/providers/connectivity_provider.dart';
 
 /// Initialize payment services (Bank Transfer and Order Fulfillment)
 Future<void> _initializePaymentServices() async {
@@ -144,6 +145,7 @@ class _ShopUBAppState extends State<ShopUBApp> {
         ChangeNotifierProvider(create: (_) => RecentlyViewedProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AddressProvider()),
+        ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (_, themeProvider, __) => MaterialApp(

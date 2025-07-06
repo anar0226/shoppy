@@ -16,6 +16,8 @@ import '../../../core/services/rating_service.dart';
 import '../../recommendations/services/simple_recommendation_service.dart';
 import '../../recommendations/presentation/preferences_dialog.dart';
 import '../../../core/widgets/paginated_firestore_list.dart';
+import 'package:avii/core/constants/assets.dart';
+import '../../../core/widgets/safe_image.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -34,8 +36,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Pagination variables
   int _currentPage = 0;
-  static const int _storesPerPage = 30;
+  static const int _storesPerPage = 12;
   final List<String> _loadedStoreIds = [];
+  // Pagination pointer for Firestore
+  DocumentSnapshot? _lastActiveStoreDoc;
 
   @override
   void initState() {
@@ -95,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _currentPage = 0; // Reset to first page
         _loadedStoreIds.clear(); // Clear loaded stores
+        _lastActiveStoreDoc = null; // Reset pagination pointer
         _sellersFuture = _loadSellers();
       });
     }
@@ -140,8 +145,10 @@ class _HomeScreenState extends State<HomeScreen> {
           for (final storeModel in recommendedStores) {
             if (result.length >= _storesPerPage) break;
 
-            final sellerData = await _convertStoreToSellerData(storeModel,
-                isRecommended: true);
+            final sellerData = await _convertStoreToSellerData(
+              storeModel,
+              isRecommended: true,
+            );
             if (sellerData != null) {
               result.add(sellerData);
               _loadedStoreIds.add(storeModel.id);
@@ -152,53 +159,56 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      // Step 2: Fill remaining slots with other active stores
+      // Step 2: Fill remaining slots with other active stores using startAfter pagination
       final int remainingSlots = _storesPerPage - result.length;
       if (remainingSlots > 0) {
         try {
           // Get user's not interested stores to exclude them
           final notInterestedStores = await _getNotInterestedStores();
 
-          // Calculate how many stores to skip based on current page and already loaded stores
-          final int skipCount = (_currentPage * _storesPerPage) - result.length;
-
-          final storesSnapshot = await _db
+          Query query = _db
               .collection('stores')
               .where('status', isEqualTo: 'active')
-              .limit(remainingSlots +
-                  skipCount +
-                  50) // Get extra to account for filtering
-              .get();
+              .orderBy('createdAt', descending: true);
+
+          if (_lastActiveStoreDoc != null) {
+            query = query.startAfterDocument(_lastActiveStoreDoc!);
+          }
+
+          // Fetch a bit more than needed to account for filtering
+          final storesSnapshot = await query.limit(remainingSlots + 50).get();
+
+          if (storesSnapshot.docs.isNotEmpty) {
+            _lastActiveStoreDoc = storesSnapshot.docs.last;
+          }
 
           print(
-              '📋 Found ${storesSnapshot.docs.length} active stores from Firestore');
+              '📋 Retrieved ${storesSnapshot.docs.length} active store docs (after pagination pointer).');
 
           int addedCount = 0;
-          int skippedCount = 0;
 
           for (final doc in storesSnapshot.docs) {
             if (addedCount >= remainingSlots) break;
 
             final storeModel = StoreModel.fromFirestore(doc);
 
-            // Skip if already loaded
-            if (_loadedStoreIds.contains(storeModel.id)) {
+            // Skip if already loaded or user not interested
+            if (_loadedStoreIds.contains(storeModel.id) ||
+                notInterestedStores.contains(storeModel.id)) {
               continue;
             }
 
-            // Skip if user marked as not interested
-            if (notInterestedStores.contains(storeModel.id)) {
-              continue;
-            }
+            // Try to use precomputed rating data if available in the store document
+            final data = doc.data() as Map<String, dynamic>;
+            final double? aggRating = (data['ratingAvg'] as num?)?.toDouble();
+            final int? aggReviews = data['reviewCount'] as int?;
 
-            // Skip the first few stores if this is not the first page
-            if (skippedCount < skipCount) {
-              skippedCount++;
-              continue;
-            }
-
-            final sellerData = await _convertStoreToSellerData(storeModel,
-                isRecommended: false);
+            final sellerData = await _convertStoreToSellerData(
+              storeModel,
+              isRecommended: false,
+              precomputedRating: aggRating,
+              precomputedReviewCount: aggReviews,
+            );
             if (sellerData != null) {
               result.add(sellerData);
               _loadedStoreIds.add(storeModel.id);
@@ -221,8 +231,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Helper method to convert StoreModel to SellerData
-  Future<SellerData?> _convertStoreToSellerData(StoreModel storeModel,
-      {required bool isRecommended}) async {
+  Future<SellerData?> _convertStoreToSellerData(
+    StoreModel storeModel, {
+    required bool isRecommended,
+    double? precomputedRating,
+    int? precomputedReviewCount,
+  }) async {
     try {
       // Load seller card settings
       final sellerCardDoc =
@@ -242,18 +256,20 @@ class _HomeScreenState extends State<HomeScreen> {
       List<ProductModel> products;
 
       if (featuredProductIds.isNotEmpty) {
-        // Load the specific featured products
-        products = [];
-        for (final productId in featuredProductIds.take(4)) {
-          try {
-            final productDoc =
-                await _db.collection('products').doc(productId).get();
-            if (productDoc.exists) {
-              products.add(ProductModel.fromFirestore(productDoc));
-            }
-          } catch (e) {
-            print('Error loading featured product $productId: $e');
-          }
+        // Batch load the specific featured products (max 10 allowed per whereIn)
+        try {
+          final ids = featuredProductIds.take(4).toList();
+          final prodsSnap = await _db
+              .collection('products')
+              .where(FieldPath.documentId, whereIn: ids)
+              .get();
+
+          products = prodsSnap.docs
+              .map((doc) => ProductModel.fromFirestore(doc))
+              .toList();
+        } catch (e) {
+          print('Error batch loading featured products: $e');
+          products = [];
         }
       } else {
         // Load default products if no featured products are set
@@ -272,29 +288,35 @@ class _HomeScreenState extends State<HomeScreen> {
               ))
           .toList();
 
-      // Load real ratings from reviews
-      double storeRating = 0.0;
-      int reviewCount = 0;
+      // Optimized rating retrieval
+      double storeRating = precomputedRating ?? 0.0;
+      int reviewCount = precomputedReviewCount ?? 0;
 
-      try {
-        final reviewsSnapshot = await _db
-            .collection('stores')
-            .doc(storeModel.id)
-            .collection('reviews')
-            .where('status', isEqualTo: 'active')
-            .get();
+      final bool needSubcollectionFetch =
+          precomputedRating == null || precomputedReviewCount == null;
 
-        if (reviewsSnapshot.docs.isNotEmpty) {
-          final reviews = reviewsSnapshot.docs;
-          final totalRating = reviews.fold<double>(0, (sum, doc) {
-            final data = doc.data();
-            return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
-          });
-          storeRating = totalRating / reviews.length;
-          reviewCount = reviews.length;
+      if (needSubcollectionFetch) {
+        try {
+          final reviewsSnapshot = await _db
+              .collection('stores')
+              .doc(storeModel.id)
+              .collection('reviews')
+              .where('status', isEqualTo: 'active')
+              .get();
+
+          if (reviewsSnapshot.docs.isNotEmpty) {
+            final reviews = reviewsSnapshot.docs;
+            final totalRating = reviews.fold<double>(0, (sum, doc) {
+              final data = doc.data();
+              return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+            });
+            storeRating = totalRating / reviews.length;
+            reviewCount = reviews.length;
+          }
+        } catch (reviewError) {
+          print(
+              '⚠️ Error loading reviews for ${storeModel.name}: $reviewError');
         }
-      } catch (reviewError) {
-        print('⚠️ Error loading reviews for ${storeModel.name}: $reviewError');
       }
 
       return SellerData(
@@ -503,14 +525,13 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: _refreshStores,
-                  child: CustomScrollView(
+                  child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      SliverToBoxAdapter(child: const SizedBox(height: 16)),
-
-                      // Following Section
-                      SliverToBoxAdapter(
-                        child: FutureBuilder<List<Store>>(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
+                        FutureBuilder<List<Store>>(
                           future: _followingFuture,
                           builder: (context, snap) {
                             if (!snap.hasData) {
@@ -522,50 +543,24 @@ class _HomeScreenState extends State<HomeScreen> {
                             return _buildFollowingSection(context, snap.data!);
                           },
                         ),
-                      ),
-
-                      SliverToBoxAdapter(child: const SizedBox(height: 24)),
-
-                      // Your Offers Section
-                      SliverToBoxAdapter(
-                          child: _buildYourOffersSection(context)),
-
-                      SliverToBoxAdapter(child: const SizedBox(height: 24)),
-
-                      // Seller Cards with pagination
-                      SliverFillRemaining(
-                        hasScrollBody: true,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: PaginatedFirestoreList<DocumentSnapshot>(
-                            query: FirebaseFirestore.instance
-                                .collection('stores')
-                                .where('status', isEqualTo: 'active')
-                                .orderBy('createdAt', descending: true),
-                            pageSize: 10,
-                            fromDoc: (doc) => doc,
-                            emptyBuilder: (ctx) => const Center(
-                                child: Text(
-                                    'Одоогоор идэвхтэй дэлгүүр байхгүй байна')),
-                            itemBuilder: (ctx, doc) {
-                              return FutureBuilder<SellerData?>(
-                                future: _storeDocToSellerData(doc),
-                                builder: (context, snap) {
-                                  if (!snap.hasData) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  final seller = snap.data!;
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 24),
-                                    child: _buildSellerCard(context, seller),
-                                  );
-                                },
-                              );
-                            },
-                          ),
+                        const SizedBox(height: 24),
+                        _buildYourOffersSection(context),
+                        const SizedBox(height: 24),
+                        FutureBuilder<List<SellerData>>(
+                          future: _sellersFuture,
+                          builder: (context, snap) {
+                            if (!snap.hasData) {
+                              return const SizedBox(
+                                  height: 80,
+                                  child: Center(
+                                      child: CircularProgressIndicator()));
+                            }
+                            return _buildSellerCards(context, snap.data!);
+                          },
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 80),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -709,16 +704,29 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 12),
 
               // Profile
-              GestureDetector(
-                onTap: () {
-                  Navigator.pushNamed(context, '/account');
+              Consumer<AuthProvider>(
+                builder: (context, auth, _) {
+                  final user = auth.user;
+
+                  ImageProvider avatarImage;
+                  if (user?.photoURL != null && user!.photoURL!.isNotEmpty) {
+                    avatarImage = NetworkImage(user.photoURL!);
+                  } else {
+                    avatarImage =
+                        const AssetImage(AppAssets.defaultProfilePicture);
+                  }
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/account');
+                    },
+                    child: CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.grey.shade200,
+                      backgroundImage: avatarImage,
+                    ),
+                  );
                 },
-                child: const CircleAvatar(
-                  radius: 20,
-                  backgroundImage: AssetImage(
-                    'assets/images/placeholders/ASAP.jpg',
-                  ),
-                ),
               ),
             ],
           ),
@@ -790,16 +798,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: Image.network(
-                          store.imageUrl,
+                        child: SafeImage(
+                          imageUrl: store.imageUrl,
+                          width: 65,
+                          height: 65,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey[200],
-                              child:
-                                  const Icon(Icons.store, color: Colors.grey),
-                            );
-                          },
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
                     ),
@@ -917,20 +921,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             borderRadius: BorderRadius.circular(20),
                             child: Stack(
                               children: [
-                                Image.network(
-                                  offer.imageUrl,
+                                SafeImage(
+                                  imageUrl: offer.imageUrl,
                                   width: 185,
                                   height: 191,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      width: 185,
-                                      height: 191,
-                                      color: Colors.grey[300],
-                                      child: const Icon(Icons.image,
-                                          size: 50, color: Colors.grey),
-                                    );
-                                  },
+                                  borderRadius: BorderRadius.zero,
                                 ),
                                 // 70% opacity overlay
                                 Container(
@@ -1003,6 +999,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildSellerCards(BuildContext context, List<SellerData> sellers) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics:
+          const NeverScrollableScrollPhysics(), // outer scroll view handles scrolling
+      itemCount: sellers.length,
+      itemBuilder: (ctx, index) {
+        return _buildSellerCard(ctx, sellers[index]);
+      },
+    );
+  }
+
   Widget _buildSellerCard(BuildContext context, SellerData seller) {
     return SellerCard(
       sellerName: seller.name,
@@ -1052,18 +1060,11 @@ class _HomeScreenState extends State<HomeScreen> {
             // Product Image
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                product.imageUrl,
+              child: SafeImage(
+                imageUrl: product.imageUrl,
                 width: double.infinity,
                 height: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.grey[200],
-                    child:
-                        const Icon(Icons.image, size: 50, color: Colors.grey),
-                  );
-                },
               ),
             ),
 
@@ -1207,12 +1208,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
     return ''; // Product not in any category
-  }
-
-  // Convert store firestore doc to SellerData for paginator
-  Future<SellerData?> _storeDocToSellerData(DocumentSnapshot doc) {
-    final storeModel = StoreModel.fromFirestore(doc);
-    return _convertStoreToSellerData(storeModel, isRecommended: false);
   }
 }
 

@@ -48,14 +48,27 @@ class _CheckoutPageState extends State<CheckoutPage> {
   String? _discountError;
   bool _isProcessingOrder = false;
 
+  // Calculate subtotal for a specific store
+  double _subtotalForStore(String storeId) {
+    double sum = 0.0;
+    for (final item in widget.items) {
+      if (item.storeId == storeId) {
+        sum += item.price;
+      }
+    }
+    return sum;
+  }
+
   double get _discountAmount {
     if (_appliedDiscount == null) return 0.0;
 
+    final storeSubtotal = _subtotalForStore(_appliedDiscount!.storeId);
+
     switch (_appliedDiscount!.type) {
       case DiscountType.percentage:
-        return widget.subtotal * (_appliedDiscount!.value / 100);
+        return storeSubtotal * (_appliedDiscount!.value / 100);
       case DiscountType.fixedAmount:
-        return _appliedDiscount!.value;
+        return _appliedDiscount!.value.clamp(0, storeSubtotal);
       case DiscountType.freeShipping:
         return widget.shippingCost;
     }
@@ -65,8 +78,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return (widget.subtotal - _discountAmount) +
         (_appliedDiscount?.type == DiscountType.freeShipping
             ? 0
-            : widget.shippingCost) +
-        widget.tax;
+            : widget.shippingCost);
   }
 
   @override
@@ -85,19 +97,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
     });
 
     try {
-      // Check if cart has products from multiple stores
-      final uniqueStoreIds = widget.items
-          .map((item) => item.storeId)
-          .where((storeId) => storeId != null)
-          .toSet();
-
-      if (uniqueStoreIds.length > 1) {
-        setState(() {
-          _discountError =
-              'Хөнгөлөлтийн код зөвхөн нэг дэлгүүрийн бүтээгдэхүүнд хэрэглэж болно';
-        });
-        return;
-      }
+      // Collect unique store IDs present in the cart
+      final uniqueStoreIds =
+          widget.items.map((item) => item.storeId).whereType<String>().toSet();
 
       // Find the discount by code
       final discountQuery = await FirebaseFirestore.instance
@@ -132,6 +134,24 @@ class _CheckoutPageState extends State<CheckoutPage> {
         setState(() {
           _discountError =
               'Энэ хөнгөлөлтийн код ашиглах хязгаартаа хүрсэн байна';
+        });
+        return;
+      }
+
+      // Check start / end dates (using raw data to avoid missing fields)
+      final now = DateTime.now();
+      final data = discountDoc.data();
+      final Timestamp? startTs = data['startDate'];
+      final Timestamp? endTs = data['endDate'];
+      if (startTs != null && now.isBefore(startTs.toDate())) {
+        setState(() {
+          _discountError = 'Энэ хөнгөлөлт хараахан эхлээгүй байна';
+        });
+        return;
+      }
+      if (endTs != null && now.isAfter(endTs.toDate())) {
+        setState(() {
+          _discountError = 'Энэ хөнгөлөлтийн хугацаа дууссан байна';
         });
         return;
       }
@@ -271,7 +291,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
           product: product,
           quantity:
               1, // Default quantity to 1 since CheckoutItem doesn't have quantity
-          variant: item.variant.isNotEmpty ? item.variant : null,
+          selectedVariants:
+              item.variant.isNotEmpty ? {'variant': item.variant} : null,
         ));
       }
 
@@ -415,7 +436,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     _appliedDiscount?.type == DiscountType.freeShipping
                         ? 0
                         : widget.shippingCost),
-                _priceRow('Татвар', widget.tax),
+                if (widget.tax != 0) _priceRow('Татвар', widget.tax),
                 const Divider(height: 32),
                 _priceRow('Нийт дүн', _finalTotal, isTotal: true),
                 const SizedBox(height: 32),
@@ -442,6 +463,26 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   message:
                                       'Please log in to continue with payment',
                                 );
+                                return;
+                              }
+
+                              // Check if email is verified
+                              if (!user.emailVerified) {
+                                PopupUtils.showError(
+                                  context: context,
+                                  message:
+                                      'Төлбөр хийхээс өмнө имэйл хаягаа баталгаажуулна уу. Баталгаажуулах холбоосыг имэйл хаягтаа илгээлээ.',
+                                );
+                                // Send verification email
+                                try {
+                                  await user.sendEmailVerification();
+                                  PopupUtils.showSuccess(
+                                    context: context,
+                                    message: 'Баталгаажуулах имэйл илгээгдлээ',
+                                  );
+                                } catch (e) {
+                                  // Ignore error if verification email fails
+                                }
                                 return;
                               }
 

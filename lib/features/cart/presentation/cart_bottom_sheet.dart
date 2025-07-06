@@ -8,6 +8,7 @@ import 'package:avii/features/addresses/providers/address_provider.dart';
 import 'package:avii/features/addresses/presentation/manage_addresses_page.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import '../../../core/utils/popup_utils.dart';
+import 'package:avii/core/constants/shipping.dart';
 
 class CartBottomSheet extends StatelessWidget {
   const CartBottomSheet({super.key});
@@ -87,7 +88,9 @@ class CartBottomSheet extends StatelessWidget {
                                   ? cartItem.product.images.first
                                   : '',
                               name: cartItem.product.name,
-                              variant: cartItem.variant ?? 'Standard',
+                              variant: cartItem.variantDisplayText.isNotEmpty
+                                  ? cartItem.variantDisplayText
+                                  : 'Standard',
                               price: cartItem.product.price,
                               storeId: cartItem.product
                                   .storeId, // Include storeId for validation
@@ -98,12 +101,13 @@ class CartBottomSheet extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (_) => CheckoutPage(
-                          email:
-                              fb_auth.FirebaseAuth.instance.currentUser?.email ?? '',
+                          email: fb_auth
+                                  .FirebaseAuth.instance.currentUser?.email ??
+                              '',
                           fullAddress: shippingAddr.formatted(),
                           subtotal: cart.subtotal,
-                          shippingCost: 0,
-                          tax: cart.subtotal * 0.0825,
+                          shippingCost: kStandardShippingFee,
+                          tax: 0, // Tax disabled for Mongolia
                           items: checkoutItems, // Pass all items
                         ),
                       ),
@@ -177,7 +181,10 @@ class CartBottomSheet extends StatelessWidget {
                     style: const TextStyle(
                         color: Colors.white, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text(item.variant ?? 'стандарт',
+                Text(
+                    item.variantDisplayText.isNotEmpty
+                        ? item.variantDisplayText
+                        : 'стандарт',
                     style: const TextStyle(color: Colors.white70)),
                 const SizedBox(height: 8),
                 Row(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'floating_nav_bar.dart';
 import 'package:avii/features/cart/presentation/cart_button.dart';
+import 'package:provider/provider.dart';
+import '../../../core/providers/connectivity_provider.dart';
 
 class MainScaffold extends StatelessWidget {
   final Widget child;
@@ -34,6 +36,30 @@ class MainScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
+        // Connectivity banner
+        Consumer<ConnectivityProvider>(
+          builder: (_, connectivity, __) {
+            if (connectivity.isOnline) return const SizedBox.shrink();
+            return Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                color: Colors.redAccent,
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: const SafeArea(
+                  bottom: false,
+                  child: Center(
+                    child: Text(
+                      'Офлайн горим – интернет холболт алга',
+                      style: TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
         child,
         if (showBackButton)
           Positioned(

@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import '../models/address_model.dart';
 import '../providers/address_provider.dart';
 import 'package:avii/core/utils/validation_utils.dart';
+import 'package:avii/core/constants/ub_location.dart';
+
+const Color kPrimaryBlue = Color.fromARGB(255, 22, 14, 179);
 
 class AddEditAddressPage extends StatefulWidget {
   final AddressModel? address;
@@ -16,9 +19,11 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
   final _formKey = GlobalKey<FormState>();
   late String firstName;
   late String lastName;
+  late String district;
   late String line1;
   String apartment = '';
   late String phone;
+  late int khoroo;
 
   @override
   void initState() {
@@ -26,15 +31,18 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
     final a = widget.address;
     firstName = a?.firstName ?? '';
     lastName = a?.lastName ?? '';
+    district = a?.district ?? kUbDistricts.first;
     line1 = a?.line1 ?? '';
     apartment = a?.apartment ?? '';
     phone = a?.phone ?? '';
+    khoroo = a?.khoroo ?? kUbDistrictKhoroos[district]!.first;
   }
 
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.address != null;
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Хүргэлтийн хаягууд'),
         centerTitle: true,
@@ -51,8 +59,45 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
               const SizedBox(height: 12),
               _field('Нэр', initial: lastName, onSaved: (v) => lastName = v),
               const SizedBox(height: 12),
-              _field('Xороо болон Дүүрэг',
-                  initial: line1, onSaved: (v) => line1 = v),
+              DropdownButtonFormField<String>(
+                value: district,
+                decoration: InputDecoration(
+                  labelText: 'Дүүрэг',
+                  labelStyle: const TextStyle(color: kPrimaryBlue),
+                  border: OutlineInputBorder(
+                      borderSide: BorderSide(color: kPrimaryBlue)),
+                  enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: kPrimaryBlue)),
+                  focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: kPrimaryBlue, width: 2)),
+                ),
+                items: kUbDistricts
+                    .map((d) => DropdownMenuItem(value: d, child: Text(d)))
+                    .toList(),
+                onChanged: (v) => setState(() {
+                  district = v!;
+                  khoroo = kUbDistrictKhoroos[district]!.first;
+                }),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                value: khoroo,
+                decoration: InputDecoration(
+                  labelText: 'Хороо',
+                  labelStyle: const TextStyle(color: kPrimaryBlue),
+                  border: OutlineInputBorder(
+                      borderSide: BorderSide(color: kPrimaryBlue)),
+                  enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: kPrimaryBlue)),
+                  focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: kPrimaryBlue, width: 2)),
+                ),
+                items: kUbDistrictKhoroos[district]!
+                    .map((k) =>
+                        DropdownMenuItem(value: k, child: Text('$k-р хороо')))
+                    .toList(),
+                onChanged: (v) => setState(() => khoroo = v!),
+              ),
               const SizedBox(height: 12),
               _field('Гэрийн хаяг',
                   initial: apartment,
@@ -84,12 +129,27 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
       TextInputType keyboard = TextInputType.text}) {
     return TextFormField(
       initialValue: initial,
-      decoration:
-          InputDecoration(labelText: label, border: const OutlineInputBorder()),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: kPrimaryBlue),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: kPrimaryBlue),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: kPrimaryBlue, width: 2),
+        ),
+      ),
       validator: required
-          ? (label.toLowerCase().contains('phone')
-              ? ValidationUtils.validatePhoneNumber
-              : ValidationUtils.validateAddress)
+          ? () {
+              final lower = label.toLowerCase();
+              if (lower.contains('phone')) {
+                return ValidationUtils.validatePhoneNumber;
+              } else if (lower.contains('овог') || lower.contains('нэр')) {
+                return ValidationUtils.validateName;
+              } else {
+                return ValidationUtils.validateAddress;
+              }
+            }()
           : null,
       keyboardType: keyboard,
       onSaved: (v) => onSaved(v ?? ''),
@@ -105,6 +165,8 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
           id: provider.generateEmpty().id,
           firstName: firstName,
           lastName: lastName,
+          district: district,
+          khoroo: khoroo,
           line1: line1,
           apartment: apartment,
           phone: phone));
@@ -113,6 +175,8 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
           id: widget.address!.id,
           firstName: firstName,
           lastName: lastName,
+          district: district,
+          khoroo: khoroo,
           line1: line1,
           apartment: apartment,
           phone: phone));

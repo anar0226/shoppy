@@ -12,6 +12,18 @@ export * from './simple-admin-setup';
 // Export Backup & Recovery functions
 export * from './firestore-backup';
 
+// Export Store aggregate update triggers
+export * from './store-aggregates';
+
+// Export Inventory management functions
+export * from './inventory-management';
+
+// Export Rate Limiting functions
+export * from './rate-limiting';
+
+// Export Data Consistency functions
+export * from './data-consistency';
+
 // QPay Configuration can be added here when implementing actual QPay API integration
 
 // QPay Webhook Handler

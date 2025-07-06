@@ -25,6 +25,14 @@ __exportStar(require("./super-admin-setup"), exports);
 __exportStar(require("./simple-admin-setup"), exports);
 // Export Backup & Recovery functions
 __exportStar(require("./firestore-backup"), exports);
+// Export Store aggregate update triggers
+__exportStar(require("./store-aggregates"), exports);
+// Export Inventory management functions
+__exportStar(require("./inventory-management"), exports);
+// Export Rate Limiting functions
+__exportStar(require("./rate-limiting"), exports);
+// Export Data Consistency functions
+__exportStar(require("./data-consistency"), exports);
 // QPay Configuration can be added here when implementing actual QPay API integration
 // QPay Webhook Handler
 exports.handleQPayWebhook = functions.https.onRequest(async (req, res) => {

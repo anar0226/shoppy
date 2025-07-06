@@ -96,17 +96,77 @@ class ProductModel {
     if (ts is Timestamp) return ts.toDate();
     return DateTime.now();
   }
+
+  // Inventory management methods
+
+  /// Check if product has any stock available
+  bool get hasStock {
+    if (variants.isNotEmpty) {
+      // For products with variants, check if any variant has stock
+      return variants.any((variant) => variant.hasStock);
+    }
+    // For simple products, check main stock
+    return stock > 0;
+  }
+
+  /// Get available stock for a specific variant option
+  int getStockForVariant(String variantName, String option) {
+    final variant = variants.firstWhere(
+      (v) => v.name == variantName,
+      orElse: () => ProductVariant(name: '', options: [], priceAdjustments: {}),
+    );
+    return variant.getStockForOption(option);
+  }
+
+  /// Check if a specific variant combination is in stock
+  bool isVariantInStock(Map<String, String> selectedVariants) {
+    if (variants.isEmpty) return stock > 0;
+
+    for (final entry in selectedVariants.entries) {
+      final variantName = entry.key;
+      final selectedOption = entry.value;
+
+      final variant = variants.firstWhere(
+        (v) => v.name == variantName,
+        orElse: () =>
+            ProductVariant(name: '', options: [], priceAdjustments: {}),
+      );
+
+      if (variant.trackInventory &&
+          variant.getStockForOption(selectedOption) <= 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Get total available stock across all variants
+  int get totalAvailableStock {
+    if (variants.isNotEmpty) {
+      return variants.fold(0, (sum, variant) => sum + variant.totalStock);
+    }
+    return stock;
+  }
+
+  /// Check if product should be hidden due to no stock
+  bool get shouldHideFromListing {
+    return !isActive || !hasStock;
+  }
 }
 
 class ProductVariant {
   final String name;
   final List<String> options;
   final Map<String, double> priceAdjustments;
+  final Map<String, int> stockByOption;
+  final bool trackInventory;
 
   ProductVariant({
     required this.name,
     required this.options,
     required this.priceAdjustments,
+    this.stockByOption = const {},
+    this.trackInventory = false,
   });
 
   factory ProductVariant.fromMap(Map<String, dynamic> map) {
@@ -130,6 +190,8 @@ class ProductVariant {
       options: opts,
       priceAdjustments: _convertPriceAdj(
           map['priceAdjustments'] ?? map['PriceAdjustments'] ?? {}),
+      stockByOption: _convertStockMap(map['stockByOption'] ?? {}),
+      trackInventory: map['trackInventory'] ?? false,
     );
   }
 
@@ -138,6 +200,8 @@ class ProductVariant {
       'name': name,
       'options': options,
       'priceAdjustments': priceAdjustments,
+      'stockByOption': stockByOption,
+      'trackInventory': trackInventory,
     };
   }
 
@@ -149,5 +213,30 @@ class ProductVariant {
       });
     }
     return result;
+  }
+
+  static Map<String, int> _convertStockMap(dynamic raw) {
+    final Map<String, int> result = {};
+    if (raw is Map) {
+      raw.forEach((key, value) {
+        result[key.toString()] = (value as num?)?.toInt() ?? 0;
+      });
+    }
+    return result;
+  }
+
+  int getStockForOption(String option) {
+    if (!trackInventory) return 999;
+    return stockByOption[option] ?? 0;
+  }
+
+  bool get hasStock {
+    if (!trackInventory) return true;
+    return stockByOption.values.any((stock) => stock > 0);
+  }
+
+  int get totalStock {
+    if (!trackInventory) return 999;
+    return stockByOption.values.fold(0, (sum, stock) => sum + stock);
   }
 }

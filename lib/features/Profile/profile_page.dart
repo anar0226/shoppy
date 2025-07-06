@@ -170,7 +170,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: CircleAvatar(
                     radius: 45,
                     backgroundColor: Colors.grey.shade200,
-                    backgroundImage: userAvatarUrl != null
+                    backgroundImage: (userAvatarUrl != null &&
+                            userAvatarUrl.isNotEmpty)
                         ? (userAvatarUrl.startsWith('http')
                             ? NetworkImage(userAvatarUrl)
                             : FileImage(File(userAvatarUrl))) as ImageProvider
@@ -233,7 +234,7 @@ class _ProfilePageState extends State<ProfilePage> {
             Consumer<RecentlyViewedProvider>(
               builder: (_, recent, __) {
                 if (recent.items.isEmpty) {
-                  return const Text('No recently viewed items');
+                  return const Text('Үзсэн бараа байхгүй байна');
                 }
                 return SizedBox(
                   height: 119,

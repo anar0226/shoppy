@@ -10,6 +10,7 @@ class ManageAddressesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Хүргэлтийн хаягууд'),
         centerTitle: true,
@@ -52,7 +53,8 @@ class ManageAddressesPage extends StatelessWidget {
                     ElevatedButton.icon(
                       onPressed: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const AddEditAddressPage()),
+                        MaterialPageRoute(
+                            builder: (_) => const AddEditAddressPage()),
                       ),
                       icon: const Icon(Icons.add, color: Colors.white),
                       label: const Text(
@@ -161,8 +163,8 @@ class ManageAddressesPage extends StatelessWidget {
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
         child: ElevatedButton(
-          onPressed: () => Navigator.push(
-              context, MaterialPageRoute(builder: (_) => const AddEditAddressPage())),
+          onPressed: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const AddEditAddressPage())),
           style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16)),
           child: const Text('Хүргэлтийн хаяг шинээр нэмэх'),
         ),
