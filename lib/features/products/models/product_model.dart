@@ -143,7 +143,24 @@ class ProductModel {
   /// Get total available stock across all variants
   int get totalAvailableStock {
     if (variants.isNotEmpty) {
-      return variants.fold(0, (sum, variant) => sum + variant.totalStock);
+      int totalStock = 0;
+      bool hasUnlimitedStock = false;
+
+      for (final variant in variants) {
+        if (variant.trackInventory) {
+          totalStock += variant.totalStock;
+        } else {
+          // If any variant doesn't track inventory, consider it unlimited
+          hasUnlimitedStock = true;
+        }
+      }
+
+      // If any variant has unlimited stock, return a reasonable large number
+      if (hasUnlimitedStock) {
+        return 999;
+      }
+
+      return totalStock;
     }
     return stock;
   }

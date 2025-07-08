@@ -24,7 +24,16 @@ export * from './rate-limiting';
 // Export Data Consistency functions
 export * from './data-consistency';
 
-// QPay Configuration can be added here when implementing actual QPay API integration
+// Export Order Cleanup functions
+export * from './order-cleanup';
+
+// QPay Configuration
+const QPAY_CONFIG = {
+  username: process.env.QPAY_USERNAME || 'AVII_MN',
+  password: process.env.QPAY_PASSWORD || 'zAX35zpc',
+  invoiceCode: process.env.QPAY_INVOICE_CODE || 'AVII_MN_INVOICE',
+  baseUrl: process.env.QPAY_BASE_URL || 'https://merchant.qpay.mn/v2',
+};
 
 // QPay Webhook Handler
 export const handleQPayWebhook = functions.https.onRequest(async (req, res) => {

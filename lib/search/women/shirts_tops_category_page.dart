@@ -111,7 +111,7 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
   static const List<_SubCat> _subCats = [
     _SubCat('Футболк', 'assets/images/categories/Women/WomenTshirt.jpg',
         Color(0xFF2D8A47)),
-    _SubCat('Худи', 'assets/images/categories/Women/shoes/hoodie.jpg',
+    _SubCat('Малгайтай цамц', 'assets/images/categories/Women/shoes/hoodie.jpg',
         Color(0xFFD97841)),
   ];
 

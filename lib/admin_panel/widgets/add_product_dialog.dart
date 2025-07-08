@@ -63,50 +63,27 @@ class _AddProductDialogState extends State<AddProductDialog> {
 
   final _catMap = const {
     'Men': {
-      'Shoes': ['Sneakers', 'Boots', 'Dress Shoes', 'Sandals', 'Slippers'],
-      'Jackets & Tops': [
-        'Hoodies',
-        'Jackets',
-        'Polo Shirts',
-        'T-Shirts',
-        'Tank Tops'
-      ],
-      'Pants': ['Jeans', 'Chinos', 'Shorts', 'Sweatpants', 'Dress Pants'],
-      'Accessories': ['Watches', 'Belts', 'Hats', 'Bags', 'Sunglasses'],
+      'Гутал': ['Пүүз', 'Шаахай', 'Гутал', 'Спорт гутал'],
+      'Гадуур хувцас': ['Куртка', 'Малгайтай цамц', 'Поло', 'Цамц'],
+      'Бусад': ['Бусад'],
+      'Өмд': ['Өмд'],
+      'Футболк': ['Футболк'],
+      'Спорт хувцас': ['Спорт хувцас'],
     },
     'Women': {
-      'Shoes': ['Heels', 'Flats', 'Sneakers', 'Boots', 'Sandals'],
-      'Intimates': ['Bras', 'Lingerie', 'Shapewear', 'Underwear'],
-      'Activewear': ['Sports Bras', 'Leggings', 'Tank Tops', 'Hoodies'],
-      'Dresses': ['Casual', 'Formal', 'Cocktail', 'Maxi', 'Mini'],
+      'Гадуур хувцас & Футболк': ['Футболк', 'Малгайтай цамц'],
+      'Гутал': ['Өндөр өсгийт', 'Шаахай', 'Пүүз', 'Бусад'],
+      'Даашинз': ['Даашинз'],
+      'Өмд': ['Өмд'],
+      'Дотуур хувцас': ['Лифчик', 'Ланжери', 'Биеийн даруулга', 'Дотоож'],
+      'Спорт хувцас': ['Актив хувцас'],
     },
-    'Beauty': {
-      'Skincare': ['Cleansers', 'Moisturizers', 'Serums', 'Sunscreen'],
-      'Makeup': ['Foundation', 'Lipstick', 'Eyeshadow', 'Mascara'],
-      'Hair': ['Shampoo', 'Conditioner', 'Styling', 'Tools'],
-    },
-    'Electronics': {
-      'Phones': ['Smartphones', 'Cases', 'Chargers', 'Screen Protectors'],
-      'Laptops': ['Gaming', 'Business', 'Ultrabooks', 'Accessories'],
-      'Accessories': ['Headphones', 'Speakers', 'Cables', 'Power Banks'],
-    },
-    'Home': {
-      'Furniture': ['Chairs', 'Tables', 'Sofas', 'Storage'],
-      'Decor': ['Wall Art', 'Candles', 'Plants', 'Mirrors'],
-      'Kitchen': ['Cookware', 'Appliances', 'Utensils', 'Storage'],
-    },
-    'Sports': {
-      'Fitness': ['Weights', 'Cardio', 'Yoga', 'Accessories'],
-      'Outdoor': ['Camping', 'HIking', 'Water Sports', 'Winter Sports'],
-      'Teams': ['Football', 'Basketball', 'Soccer', 'Baseball'],
-    },
-    'Kids': {
-      'Toys': ['Educational', 'Action Figures', 'Dolls', 'Games'],
-      'Clothing': ['Shirts', 'Pants', 'Dresses', 'Shoes'],
-    },
-    'Other': {
-      'Misc': ['General', 'Unique', 'Custom'],
-    },
+    'Beauty': {},
+    'Electronics': {},
+    'Home': {},
+    'Sports': {},
+    'Kids': {},
+    'Other': {},
   };
 
   @override
@@ -314,7 +291,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
 
       // 1. Get current user
       final uid = AuthService.instance.currentUser?.uid;
-      if (uid == null) throw Exception('Not signed in');
+      if (uid == null) throw Exception('Нэвтрээгүй байна');
 
       // 2. Fetch active store for this owner
       final storeSnap = await FirebaseFirestore.instance
@@ -325,7 +302,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
           .get();
 
       if (storeSnap.docs.isEmpty) {
-        throw Exception('Active store not found. Complete store setup first.');
+        throw Exception('Идэвхитэй дэлгүүр олдоогүй байна.');
       }
       final storeId = storeSnap.docs.first.id;
 
@@ -406,23 +383,25 @@ class _AddProductDialogState extends State<AddProductDialog> {
 
       // 6. Save product to Firestore
       await docRef.set(data);
-      debugPrint('Product saved to Firestore successfully');
+      debugPrint('Бүтээгдэхүүн амжилттай хадгалагдлаа');
 
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Product added successfully!')));
+            const SnackBar(content: Text('Амжилттай нэмэгдлээ!')));
       }
     } catch (e) {
-      debugPrint('ADD-PRODUCT ERROR: $e');
+      debugPrint('Бүтээгдэхүүн нэмэгдэхэд алдаа гарлаа: $e');
       if (mounted) {
-        String errorMessage = 'Failed to add product';
+        String errorMessage = 'Бүтээгдэхүүн нэмэгдэхэд алдаа гарлаа';
         if (e.toString().contains('permission-denied')) {
-          errorMessage = 'Permission denied. Check your Firebase rules.';
+          errorMessage =
+              'Зөвшөөрөл алдаа. Firebase тоглолтын дүрэмүүдийг шалгана уу.';
         } else if (e.toString().contains('network')) {
-          errorMessage = 'Network error. Check your connection.';
+          errorMessage = 'Интернет алдаа. Холболтоо шалгана уу.';
         } else if (e.toString().contains('storage')) {
-          errorMessage = 'Image upload failed. Try a smaller image.';
+          errorMessage =
+              'Зураг оруулах алдаа гарлаа. Жижиг хэмжээтэй зургийг оруулна уу.';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -459,7 +438,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                 Row(
                   children: [
                     const Expanded(
-                      child: Text('Add New Product',
+                      child: Text('Шинэ бүтээгдэхүүн нэмэх',
                           style: TextStyle(
                               fontSize: 20, fontWeight: FontWeight.w700)),
                     ),
@@ -475,16 +454,17 @@ class _AddProductDialogState extends State<AddProductDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label('Product Name'),
+                      _label('Бүтээгдэхүүний нэр'),
                       TextFormField(
                         controller: _nameCtrl,
                         decoration: const InputDecoration(
-                            hintText: 'Enter product name'),
-                        validator: (v) =>
-                            v == null || v.trim().isEmpty ? 'Required' : null,
+                            hintText: 'Бүтээгдэхүүний нэр оруулна уу'),
+                        validator: (v) => v == null || v.trim().isEmpty
+                            ? 'Заавал оруулна уу'
+                            : null,
                       ),
                       const SizedBox(height: 16),
-                      _label('Product Image'),
+                      _label('Бүтээгдэхүүний зураг'),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -504,7 +484,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                   },
                                   icon: const Icon(Icons.attach_file_outlined,
                                       size: 18),
-                                  label: const Text('Choose Image'),
+                                  label: const Text('Зураг сонгох'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.grey.shade200,
                                     foregroundColor: Colors.black87,
@@ -620,31 +600,33 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      _label('Description'),
+                      _label('Тодорхойлолт'),
                       TextFormField(
                         controller: _descCtrl,
                         decoration: const InputDecoration(
-                            hintText: 'Enter product description'),
+                            hintText: 'Бүтээгдэхүүний тодорхойлолт оруулна уу'),
                         maxLines: 3,
-                        validator: (v) =>
-                            v == null || v.trim().isEmpty ? 'Required' : null,
+                        validator: (v) => v == null || v.trim().isEmpty
+                            ? 'Заавал оруулна уу'
+                            : null,
                       ),
                       const SizedBox(height: 16),
-                      _label('Price'),
+                      _label('Үнэ'),
                       TextFormField(
                         controller: _priceCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
-                        decoration:
-                            const InputDecoration(hintText: 'Enter price'),
+                        decoration: const InputDecoration(
+                            hintText: 'Бүтээгдэхүүний үнэ оруулна уу'),
                         validator: (v) {
                           final p = double.tryParse(v ?? '');
-                          if (p == null || p <= 0) return 'Enter valid price';
+                          if (p == null || p <= 0)
+                            return 'Бүтээгдэхүүний үнэ оруулна уу';
                           return null;
                         },
                       ),
                       const SizedBox(height: 16),
-                      _label('Discount'),
+                      _label('Хөнгөлөлт'),
                       Row(
                         children: [
                           Checkbox(
@@ -655,14 +637,14 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                       _selectedDiscountId = null;
                                     }
                                   })),
-                          const Text('Apply Discount'),
+                          const Text('Хөнгөлөлт нэмэх'),
                           const SizedBox(width: 16),
                           if (_isDiscounted) ...[
                             Expanded(
                               child: _discountsLoaded
                                   ? _availableDiscounts.isEmpty
                                       ? const Text(
-                                          'No active discounts available',
+                                          'Идэвхитэй хөнгөлөлт байхгүй байна',
                                           style: TextStyle(
                                             color: Colors.orange,
                                             fontStyle: FontStyle.italic,
@@ -670,7 +652,8 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                         )
                                       : DropdownButtonFormField<String>(
                                           value: _selectedDiscountId,
-                                          hint: const Text('Select a discount'),
+                                          hint: const Text('Хөнгөлөлт сонгох'),
+                                          itemHeight: null,
                                           items: _availableDiscounts
                                               .map((discount) {
                                             return DropdownMenuItem<String>(
@@ -716,9 +699,15 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                           }).toList(),
                                           onChanged: (value) => setState(() =>
                                               _selectedDiscountId = value),
+                                          selectedItemBuilder: (context) {
+                                            return _availableDiscounts
+                                                .map<Widget>(
+                                                    (d) => Text(d.name))
+                                                .toList();
+                                          },
                                           validator: (v) {
                                             if (_isDiscounted && v == null) {
-                                              return 'Please select a discount';
+                                              return 'Хөнгөлөлт сонгоно уу';
                                             }
                                             return null;
                                           },
@@ -735,7 +724,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      _label('Inventory'),
+                      _label('Худалдан авах'),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -750,8 +739,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                   }
                                 }),
                               ),
-                              const Text(
-                                  'This product has variants (sizes, colors, etc.)'),
+                              const Text('Хэмжээ, өнгө зэрэг байгаа юу?'),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -764,21 +752,21 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                     value: _variantType,
                                     items: const [
                                       DropdownMenuItem(
-                                          value: 'Size', child: Text('Size')),
+                                          value: 'Size', child: Text('Хэмжээ')),
                                       DropdownMenuItem(
-                                          value: 'Color', child: Text('Color')),
+                                          value: 'Color', child: Text('Өнгө')),
                                       DropdownMenuItem(
                                           value: 'Material',
-                                          child: Text('Material')),
+                                          child: Text('Материал')),
                                       DropdownMenuItem(
-                                          value: 'Style', child: Text('Style')),
+                                          value: 'Style', child: Text('Үүрэг')),
                                       DropdownMenuItem(
-                                          value: 'Other', child: Text('Other')),
+                                          value: 'Other', child: Text('Бусад')),
                                     ],
                                     onChanged: (v) =>
                                         setState(() => _variantType = v!),
                                     decoration: const InputDecoration(
-                                      labelText: 'Variant Type',
+                                      labelText: 'Хэмжээ, өнгө зэрэг',
                                       isDense: true,
                                     ),
                                   ),
@@ -789,10 +777,10 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                   child: TextFormField(
                                     controller: _variantNameCtrl,
                                     decoration: InputDecoration(
-                                      labelText: 'Variant Name',
+                                      labelText: 'Хэмжээ, өнгө зэрэг',
                                       hintText: _variantType == 'Size'
-                                          ? 'e.g., M'
-                                          : 'e.g., Red',
+                                          ? 'Жишээ: M'
+                                          : 'Жишээ: Улаан',
                                       isDense: true,
                                     ),
                                   ),
@@ -803,7 +791,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                     controller: _variantInventoryCtrl,
                                     keyboardType: TextInputType.number,
                                     decoration: const InputDecoration(
-                                      labelText: 'Stock',
+                                      labelText: 'нөөц',
                                       hintText: '0',
                                       isDense: true,
                                     ),
@@ -834,7 +822,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Variants (${_variants.length})',
+                                      'Хэмжээ, өнгө зэрэг (${_variants.length})',
                                       style: const TextStyle(
                                           fontWeight: FontWeight.w600),
                                     ),
@@ -849,7 +837,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                           children: [
                                             Expanded(
                                               child: Text(
-                                                '${variant.name} (${variant.inventory} in stock)',
+                                                '${variant.name} (${variant.inventory} нөөц)',
                                                 style: const TextStyle(
                                                     fontSize: 14),
                                               ),
@@ -874,7 +862,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                     }).toList(),
                                     const Divider(),
                                     Text(
-                                      'Total Stock: ${_variants.fold<int>(0, (sum, v) => sum + v.inventory)}',
+                                      'Нийт нөөц: ${_variants.fold<int>(0, (sum, v) => sum + v.inventory)}',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w600,
                                         color: Colors.green,
@@ -889,12 +877,12 @@ class _AddProductDialogState extends State<AddProductDialog> {
                               controller: _invCtrl,
                               keyboardType: TextInputType.number,
                               decoration: const InputDecoration(
-                                  hintText: 'Enter inventory count'),
+                                  hintText: 'Нөөц оруулна уу'),
                               validator: (v) {
                                 if (!_hasVariants) {
                                   final n = int.tryParse(v ?? '');
                                   if (n == null || n < 0) {
-                                    return 'Enter valid inventory';
+                                    return 'Нөөц оруулна уу';
                                   }
                                 }
                                 return null;
@@ -904,24 +892,26 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      _label('Status'),
+                      _label('Төлөв'),
                       DropdownButtonFormField<String>(
                         value: _status,
                         items: const [
                           DropdownMenuItem(
-                              value: 'Active', child: Text('Active')),
+                              value: 'Active', child: Text('Идэвхитэй')),
                           DropdownMenuItem(
-                              value: 'Inactive', child: Text('Inactive')),
+                              value: 'Inactive', child: Text('Идэвхигүй')),
                         ],
                         onChanged: (v) => setState(() => _status = v!),
                       ),
                       const SizedBox(height: 16),
-                      _label('Category (Optional)'),
+                      _label('Ангилал (заавал биш)'),
                       DropdownButtonFormField<String>(
                         value: _category,
                         items: _catMap.keys
-                            .map((c) =>
-                                DropdownMenuItem(value: c, child: Text(c)))
+                            .map<DropdownMenuItem<String>>((c) =>
+                                DropdownMenuItem<String>(
+                                    value: c as String,
+                                    child: Text(c as String)))
                             .toList(),
                         onChanged: (v) => setState(() {
                           _category = v;
@@ -929,18 +919,20 @@ class _AddProductDialogState extends State<AddProductDialog> {
                           _leafCategory = null;
                         }),
                         decoration: const InputDecoration(
-                          hintText: 'Select a category (optional)',
+                          hintText: 'Ангилал сонгох (заавал биш)',
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _label('Sub-category (Optional)'),
+                      _label('2 дугаар ангилал (заавал биш)'),
                       DropdownButtonFormField<String>(
                         value: _subcategory,
                         items: (_category != null)
                             ? _catMap[_category]!
                                 .keys
-                                .map((s) =>
-                                    DropdownMenuItem(value: s, child: Text(s)))
+                                .map<DropdownMenuItem<String>>((s) =>
+                                    DropdownMenuItem<String>(
+                                        value: s as String,
+                                        child: Text(s as String)))
                                 .toList()
                             : const [],
                         onChanged: _category == null
@@ -950,24 +942,26 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                   _leafCategory = null;
                                 }),
                         decoration: const InputDecoration(
-                          hintText: 'Select a sub-category (optional)',
+                          hintText: '2 дугаар ангилал сонгох (заавал биш)',
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _label('Product Type (Optional)'),
+                      _label('Бүтээгдэхүүний төрөл (заавал биш)'),
                       DropdownButtonFormField<String>(
                         value: _leafCategory,
                         items: (_category != null && _subcategory != null)
-                            ? _catMap[_category]![_subcategory]!
-                                .map((leaf) => DropdownMenuItem(
-                                    value: leaf, child: Text(leaf)))
+                            ? (_catMap[_category]![_subcategory]! as List)
+                                .map<DropdownMenuItem<String>>((leaf) =>
+                                    DropdownMenuItem<String>(
+                                        value: leaf as String,
+                                        child: Text(leaf as String)))
                                 .toList()
                             : const [],
                         onChanged: (_category == null || _subcategory == null)
                             ? null
                             : (v) => setState(() => _leafCategory = v),
                         decoration: const InputDecoration(
-                          hintText: 'Select a product type (optional)',
+                          hintText: 'Бүтээгдэхүүний төрөл сонгох (заавал биш)',
                         ),
                       ),
                     ],
@@ -979,7 +973,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                   children: [
                     OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
+                      child: const Text('Цуцалгах'),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton(
@@ -1009,10 +1003,10 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                 const SizedBox(width: 8),
                                 Text(_uploadProgress > 0
                                     ? 'Uploading ${(_uploadProgress * 100).toStringAsFixed(0)}%'
-                                    : 'Saving...'),
+                                    : 'Хадгалах...'),
                               ],
                             )
-                          : const Text('Save'),
+                          : const Text('Хадгалах'),
                     ),
                   ],
                 )

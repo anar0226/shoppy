@@ -12,9 +12,10 @@ import 'package:avii/features/orders/services/order_service.dart';
 import 'package:avii/features/cart/models/cart_item.dart';
 import 'package:avii/features/stores/models/store_model.dart';
 import 'package:avii/features/products/models/product_model.dart';
-// import 'qpay_checkout_page.dart'; // Removed - using direct order creation
+import 'qpay_payment_page.dart';
 import '../../../core/utils/popup_utils.dart';
 import '../../../admin_panel/services/notification_service.dart';
+import '../../../core/services/qpay_service.dart';
 
 class CheckoutPage extends StatefulWidget {
   final String email;
@@ -42,11 +43,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final _discountCodeController = TextEditingController();
   final _discountService = DiscountService();
   final _orderService = OrderService();
+  final _qpayService = QPayService();
 
   DiscountModel? _appliedDiscount;
   bool _isApplyingDiscount = false;
   String? _discountError;
   bool _isProcessingOrder = false;
+  // QPay is the only payment method
 
   // Calculate subtotal for a specific store
   double _subtotalForStore(String storeId) {
@@ -198,40 +201,77 @@ class _CheckoutPageState extends State<CheckoutPage> {
     try {
       final user = FirebaseAuth.instance.currentUser!;
 
-      // Get the actual store ID from the first item (assuming single store checkout)
-      final storeId = widget.items.first.storeId ?? 'shoppy-store';
+      // Group items by store ID
+      final Map<String, List<CheckoutItem>> itemsByStore = {};
+      for (final item in widget.items) {
+        final storeId = item.storeId ?? 'shoppy-store';
+        itemsByStore.putIfAbsent(storeId, () => []).add(item);
+      }
 
-      // Get the actual store from Firestore
-      StoreModel store;
-      try {
-        final storeDoc = await FirebaseFirestore.instance
-            .collection('stores')
-            .doc(storeId)
-            .get();
+      // Create separate orders for each store
+      final List<String> orderIds = [];
 
-        if (storeDoc.exists) {
-          store = StoreModel.fromFirestore(storeDoc);
-        } else {
-          // Get current user to use as store owner
-          final currentUser = FirebaseAuth.instance.currentUser;
-          final ownerId = currentUser?.uid ?? 'default-owner';
+      for (final entry in itemsByStore.entries) {
+        final storeId = entry.key;
+        final storeItems = entry.value;
 
-          // Create a default store with current user as owner
-          final defaultStoreData = {
-            'name': 'Shoppy Store',
-            'description': 'Default store for testing',
-            'banner': '',
-            'logo': '',
-            'ownerId': ownerId,
-            'isActive': true,
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          };
+        // Calculate totals for this store
+        final storeSubtotal =
+            storeItems.fold<double>(0, (sum, item) => sum + item.price);
+        final storeShipping = widget.shippingCost /
+            itemsByStore.length; // Distribute shipping cost
+        final storeTax =
+            (widget.tax / widget.subtotal) * storeSubtotal; // Proportional tax
 
-          await FirebaseFirestore.instance
+        // Get the store from Firestore
+        StoreModel store;
+        try {
+          final storeDoc = await FirebaseFirestore.instance
               .collection('stores')
               .doc(storeId)
-              .set(defaultStoreData);
+              .get();
+
+          if (storeDoc.exists) {
+            store = StoreModel.fromFirestore(storeDoc);
+          } else {
+            // Get current user to use as store owner
+            final currentUser = FirebaseAuth.instance.currentUser;
+            final ownerId = currentUser?.uid ?? 'default-owner';
+
+            // Create a default store with current user as owner
+            final defaultStoreData = {
+              'name': 'Shoppy Store',
+              'description': 'Default store for testing',
+              'banner': '',
+              'logo': '',
+              'ownerId': ownerId,
+              'isActive': true,
+              'createdAt': FieldValue.serverTimestamp(),
+              'updatedAt': FieldValue.serverTimestamp(),
+            };
+
+            await FirebaseFirestore.instance
+                .collection('stores')
+                .doc(storeId)
+                .set(defaultStoreData);
+
+            store = StoreModel(
+              id: storeId,
+              name: 'Shoppy Store',
+              description: 'Default store for testing',
+              banner: '',
+              logo: '',
+              ownerId: ownerId,
+              status: 'active',
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+              settings: {},
+            );
+          }
+        } catch (e) {
+          // Fallback store with current user as owner
+          final currentUser = FirebaseAuth.instance.currentUser;
+          final ownerId = currentUser?.uid ?? 'default-owner';
 
           store = StoreModel(
             id: storeId,
@@ -246,87 +286,74 @@ class _CheckoutPageState extends State<CheckoutPage> {
             settings: {},
           );
         }
-      } catch (e) {
-        // Fallback store with current user as owner
-        final currentUser = FirebaseAuth.instance.currentUser;
-        final ownerId = currentUser?.uid ?? 'default-owner';
 
-        store = StoreModel(
-          id: storeId,
-          name: 'Shoppy Store',
-          description: 'Default store for testing',
-          banner: '',
-          logo: '',
-          ownerId: ownerId,
-          status: 'active',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          settings: {},
+        // Convert checkout items to cart items for this store
+        final cartItems = <CartItem>[];
+
+        for (int i = 0; i < storeItems.length; i++) {
+          final item = storeItems[i];
+
+          // Create a product from checkout item data
+          final product = ProductModel(
+            id: 'product-${DateTime.now().millisecondsSinceEpoch}-$i',
+            storeId: storeId,
+            name: item.name,
+            description: 'Product from checkout',
+            price: item.price,
+            images: [item.imageUrl],
+            category: item.category ?? 'General',
+            stock: 1,
+            variants: [],
+            isActive: true,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+
+          cartItems.add(CartItem(
+            product: product,
+            quantity:
+                1, // Default quantity to 1 since CheckoutItem doesn't have quantity
+            selectedVariants:
+                item.variant.isNotEmpty ? {'variant': item.variant} : null,
+          ));
+        }
+
+        // Create the order for this store using OrderService
+        final orderId = await _orderService.createOrder(
+          user: user,
+          subtotal: storeSubtotal,
+          shipping: storeShipping,
+          tax: storeTax,
+          cart: cartItems,
+          store: store,
         );
-      }
 
-      // Convert checkout items to cart items using actual product IDs
-      final cartItems = <CartItem>[];
+        orderIds.add(orderId);
 
-      for (int i = 0; i < widget.items.length; i++) {
-        final item = widget.items[i];
-
-        // Create a product from checkout item data
-        final product = ProductModel(
-          id: 'product-${DateTime.now().millisecondsSinceEpoch}-$i',
-          storeId: storeId,
-          name: item.name,
-          description: 'Product from checkout',
-          price: item.price,
-          images: [item.imageUrl],
-          category: item.category ?? 'General',
-          stock: 1,
-          variants: [],
-          isActive: true,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
-
-        cartItems.add(CartItem(
-          product: product,
-          quantity:
-              1, // Default quantity to 1 since CheckoutItem doesn't have quantity
-          selectedVariants:
-              item.variant.isNotEmpty ? {'variant': item.variant} : null,
-        ));
-      }
-
-      // Create the order using OrderService
-      final orderId = await _orderService.createOrder(
-        user: user,
-        subtotal: widget.subtotal,
-        shipping: _appliedDiscount?.type == DiscountType.freeShipping
-            ? 0
-            : widget.shippingCost,
-        tax: widget.tax,
-        cart: cartItems,
-        store: store,
-      );
-
-      // Notify store owner about new order
-      try {
-        await NotificationService().notifyNewOrder(
-          storeId: store.id,
-          ownerId: store.ownerId,
-          orderId: orderId,
-          customerEmail: user.email ?? 'Unknown Customer',
-          total: _finalTotal,
-        );
-      } catch (e) {
-        print('Failed to send notification: $e');
-        // Don't fail the order creation if notification fails
+        // Notify store owner about new order
+        try {
+          await NotificationService().notifyNewOrder(
+            storeId: store.id,
+            ownerId: store.ownerId,
+            orderId: orderId,
+            customerEmail: user.email ?? 'Unknown Customer',
+            total: storeSubtotal + storeShipping + storeTax,
+          );
+        } catch (e) {
+          print('Failed to send notification: $e');
+          // Don't fail the order creation if notification fails
+        }
       }
 
       // Show success message
+      final orderCount = orderIds.length;
+      final message = orderCount > 1
+          ? 'Захиалга амжилттай үүсгэгдлээ! $orderCount дэлгүүрт захиалга илгээгдлээ.'
+          : 'Захиалга амжилттай үүсгэгдлээ! Таны захиалгыг боловсруулж байна.';
+
       PopupUtils.showSuccess(
         context: context,
-        message:
-            'Захиалга амжилттай үүсгэгдлээ! Таны захиалгыг боловсруулж байна.',
+        message: message,
       );
 
       // Navigate to orders page after a short delay
@@ -350,6 +377,64 @@ class _CheckoutPageState extends State<CheckoutPage> {
           _isProcessingOrder = false;
         });
       }
+    }
+  }
+
+  Future<void> _handleQPayPayment(
+    Map<String, dynamic> orderData,
+    String customerEmail,
+    Map<String, dynamic> deliveryAddress,
+  ) async {
+    setState(() {
+      _isProcessingOrder = true;
+    });
+
+    try {
+      // Generate order ID
+      final orderId = DateTime.now().millisecondsSinceEpoch.toString();
+
+      // Create order description
+      final itemNames = widget.items.map((item) => item.name).join(', ');
+      final description = 'Shoppy захиалга: $itemNames';
+
+      // Navigate to QPay payment page
+      final bool? paymentSuccess = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => QPayPaymentPage(
+            orderId: orderId,
+            amount: _finalTotal,
+            description: description,
+            customerEmail: customerEmail,
+            onPaymentSuccess: () {
+              Navigator.pop(context, true);
+            },
+            onPaymentCancel: () {
+              Navigator.pop(context, false);
+            },
+          ),
+        ),
+      );
+
+      if (paymentSuccess == true) {
+        // Payment successful - create the order
+        await _createOrder(orderData, customerEmail, deliveryAddress);
+      } else {
+        // Payment was cancelled or failed
+        PopupUtils.showWarning(
+          context: context,
+          message: 'Төлбөр цуцлагдсан',
+        );
+      }
+    } catch (e) {
+      PopupUtils.showError(
+        context: context,
+        message: 'QPay төлбөрт алдаа гарлаа: $e',
+      );
+    } finally {
+      setState(() {
+        _isProcessingOrder = false;
+      });
     }
   }
 
@@ -397,14 +482,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 const SizedBox(height: 16),
 
                 _paymentOptionTile(
-                    title: 'Одоо төлөх',
-                    subtitle: 'Одоо төлөх',
-                    selected: true),
-                const SizedBox(height: 12),
-                _paymentOptionTile(
-                    title: '4 хуваан төлөx',
-                    subtitle: '₮${(_finalTotal / 4).toStringAsFixed(2)}',
-                    selected: false),
+                    title: 'QPay',
+                    subtitle: 'QPay-ээр төлөх',
+                    selected: true,
+                    onTap: null),
                 const SizedBox(height: 24),
 
                 // Order summary
@@ -542,8 +623,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 'phone': shippingAddress.phone,
                               };
 
-                              // Create the order directly
-                              await _createOrder(
+                              // Handle QPay payment
+                              await _handleQPayPayment(
                                   orderData, user.email ?? '', deliveryAddress);
                             },
                       child: _isProcessingOrder
@@ -598,7 +679,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Widget _paymentOptionTile(
       {required String title,
       required String subtitle,
-      required bool selected}) {
+      required bool selected,
+      VoidCallback? onTap}) {
     return Container(
       decoration: BoxDecoration(
         color: selected ? Colors.grey.shade100 : Colors.white,
@@ -611,7 +693,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             Radio<bool>(value: true, groupValue: selected, onChanged: (_) {}),
         title: Text(title),
         subtitle: Text(subtitle),
-        onTap: () {},
+        onTap: onTap,
       ),
     );
   }

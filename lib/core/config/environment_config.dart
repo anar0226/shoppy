@@ -1,3 +1,5 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 /// Environment configuration for production deployment
 class EnvironmentConfig {
   // Environment type
@@ -6,11 +8,20 @@ class EnvironmentConfig {
   static const bool isDebug =
       bool.fromEnvironment('DEBUG', defaultValue: false);
 
-  // Payment configurations
-  static const String qpayUsername =
-      String.fromEnvironment('QPAY_USERNAME', defaultValue: '');
-  static const String qpayPassword =
-      String.fromEnvironment('QPAY_PASSWORD', defaultValue: '');
+  // Payment configurations - Load from dotenv at runtime
+  static String get qpayUsername =>
+      dotenv.env['QPAY_USERNAME'] ??
+      const String.fromEnvironment('QPAY_USERNAME', defaultValue: '');
+  static String get qpayPassword =>
+      dotenv.env['QPAY_PASSWORD'] ??
+      const String.fromEnvironment('QPAY_PASSWORD', defaultValue: '');
+  static String get qpayInvoiceCode =>
+      dotenv.env['QPAY_INVOICE_CODE'] ??
+      const String.fromEnvironment('QPAY_INVOICE_CODE', defaultValue: '');
+  static String get qpayBaseUrl =>
+      dotenv.env['QPAY_BASE_URL'] ??
+      const String.fromEnvironment('QPAY_BASE_URL',
+          defaultValue: 'https://merchant.qpay.mn/v2');
 
   // UBCab delivery configurations
   static const String ubcabApiKey =
@@ -42,7 +53,9 @@ class EnvironmentConfig {
 
   // Validation helpers
   static bool get hasPaymentConfig =>
-      qpayUsername.isNotEmpty && qpayPassword.isNotEmpty;
+      qpayUsername.isNotEmpty &&
+      qpayPassword.isNotEmpty &&
+      qpayInvoiceCode.isNotEmpty;
   static bool get hasDeliveryConfig =>
       ubcabApiKey.isNotEmpty && ubcabMerchantId.isNotEmpty;
 

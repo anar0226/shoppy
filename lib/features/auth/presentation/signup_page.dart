@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'package:avii/core/utils/validation_utils.dart';
+import 'package:avii/legal/terms_and_conditions_page.dart';
 import 'dart:math';
 
 class SignUpPage extends StatefulWidget {
@@ -21,6 +22,7 @@ class _SignUpPageState extends State<SignUpPage> {
   String _confirmPassword = '';
   bool _passwordVisible = false;
   bool _confirmPasswordVisible = false;
+  bool _agreeToTerms = false;
 
   @override
   void dispose() {
@@ -246,7 +248,71 @@ class _SignUpPageState extends State<SignUpPage> {
                       },
                       onSaved: (val) => _confirmPassword = val!.trim(),
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 24),
+
+                    // Terms and conditions agreement
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Checkbox(
+                          value: _agreeToTerms,
+                          onChanged: (value) {
+                            setState(() {
+                              _agreeToTerms = value ?? false;
+                            });
+                          },
+                          activeColor: const Color(0xFF1F226C),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _agreeToTerms = !_agreeToTerms;
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: RichText(
+                                text: TextSpan(
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                  ),
+                                  children: [
+                                    const TextSpan(text: 'Би '),
+                                    WidgetSpan(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const TermsAndConditionsPage(),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text(
+                                          'Үйлчилгээний нөхцөл',
+                                          style: TextStyle(
+                                            color: Color(0xFF1F226C),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            decoration:
+                                                TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                        text: '-тэй танилцаж, зөвшөөрч байна.'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
 
                     // Sign up button
                     SizedBox(
@@ -259,7 +325,7 @@ class _SignUpPageState extends State<SignUpPage> {
                               borderRadius: BorderRadius.circular(8)),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        onPressed: auth.loading
+                        onPressed: auth.loading || !_agreeToTerms
                             ? null
                             : () async {
                                 if (_formKey.currentState?.validate() ??

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../features/products/models/product_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StockIndicator extends StatelessWidget {
   final ProductModel product;
@@ -19,56 +20,129 @@ class StockIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stockInfo = _getStockInfo();
+    return FutureBuilder<StockInfo>(
+      future: _getStockInfoAsync(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox.shrink();
+        }
 
-    if (!stockInfo.hasStock) {
-      return _buildOutOfStockIndicator();
-    }
+        final stockInfo = snapshot.data ??
+            StockInfo(hasStock: false, quantity: 0, isLowStock: false);
 
-    if (stockInfo.isLowStock && showLowStockWarning) {
-      return _buildLowStockIndicator(stockInfo.quantity);
-    }
+        // If product has variants but no variant is selected, don't show stock info
+        if (stockInfo.requiresVariantSelection) {
+          return const SizedBox.shrink();
+        }
 
-    if (showQuantity) {
-      return _buildInStockIndicator(stockInfo.quantity);
-    }
+        if (!stockInfo.hasStock) {
+          return _buildOutOfStockIndicator();
+        }
 
-    return _buildSimpleInStockIndicator();
+        if (stockInfo.isLowStock && showLowStockWarning) {
+          return _buildLowStockIndicator(stockInfo.quantity);
+        }
+
+        if (showQuantity) {
+          return _buildInStockIndicator(stockInfo.quantity);
+        }
+
+        return _buildSimpleInStockIndicator();
+      },
+    );
   }
 
-  StockInfo _getStockInfo() {
+  Future<StockInfo> _getStockInfoAsync() async {
     if (!product.isActive) {
       return StockInfo(hasStock: false, quantity: 0, isLowStock: false);
     }
 
+    // Check if product has variants (both in ProductModel and Firestore)
+    bool hasVariants = product.variants.isNotEmpty;
+
+    // If no variants in ProductModel, check Firestore
+    if (!hasVariants) {
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('products')
+            .doc(product.id)
+            .get();
+
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>;
+          hasVariants = data['hasVariants'] ?? false;
+        }
+      } catch (e) {
+        // If Firestore check fails, use ProductModel variants
+        hasVariants = product.variants.isNotEmpty;
+      }
+    }
+
     if (selectedVariants != null && selectedVariants!.isNotEmpty) {
       // Check variant-specific stock
-      bool hasVariantStock = product.isVariantInStock(selectedVariants!);
-      if (!hasVariantStock) {
-        return StockInfo(hasStock: false, quantity: 0, isLowStock: false);
-      }
-
-      // Calculate total stock for selected variants
       int totalStock = 0;
+      bool hasAnyStock = false;
+      bool hasUnlimitedStock = false;
+
       for (final variant in product.variants) {
-        final selectedOption = selectedVariants![variant.name];
+        // Try to find the selected option for this variant
+        String? selectedOption;
+        for (final entry in selectedVariants!.entries) {
+          final variantName = entry.key;
+          final option = entry.value;
+
+          // Match variant name case-insensitively
+          if (variant.name.toLowerCase() == variantName.toLowerCase()) {
+            selectedOption = option;
+            break;
+          }
+        }
+
         if (selectedOption != null) {
-          totalStock += variant.getStockForOption(selectedOption);
+          if (!variant.trackInventory) {
+            // If inventory is not tracked, consider it unlimited
+            hasUnlimitedStock = true;
+            hasAnyStock = true;
+          } else {
+            final stock = variant.getStockForOption(selectedOption);
+            totalStock += stock;
+            if (stock > 0) hasAnyStock = true;
+          }
         }
       }
 
+      // If no variants found or no stock, check if this is a simple product
+      if (totalStock == 0 && !hasUnlimitedStock && product.variants.isEmpty) {
+        return StockInfo(
+          hasStock: product.stock > 0,
+          quantity: product.stock,
+          isLowStock: product.stock <= lowStockThreshold,
+        );
+      }
+
       return StockInfo(
-        hasStock: totalStock > 0,
-        quantity: totalStock,
-        isLowStock: totalStock <= lowStockThreshold,
+        hasStock: hasAnyStock,
+        quantity: hasUnlimitedStock ? 999 : totalStock,
+        isLowStock: totalStock > 0 && totalStock <= lowStockThreshold,
       );
     } else {
-      // Simple product stock
-      return StockInfo(
-        hasStock: product.stock > 0,
-        quantity: product.stock,
-        isLowStock: product.stock <= lowStockThreshold,
-      );
+      // No variant selected
+      if (hasVariants) {
+        // For products with variants but no selection, require variant selection
+        return StockInfo(
+          hasStock: false,
+          quantity: 0,
+          isLowStock: false,
+          requiresVariantSelection: true,
+        );
+      } else {
+        // Simple product stock
+        return StockInfo(
+          hasStock: product.stock > 0,
+          quantity: product.stock,
+          isLowStock: product.stock <= lowStockThreshold,
+        );
+      }
     }
   }
 
@@ -150,7 +224,7 @@ class StockIndicator extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            'Нөөцтэй: $quantity',
+            quantity >= 999 ? 'Нөөцтэй' : '$quantity ширхэг бэлэн байна',
             style: TextStyle(
               color: Colors.green.shade600,
               fontSize: 12,
@@ -197,11 +271,13 @@ class StockInfo {
   final bool hasStock;
   final int quantity;
   final bool isLowStock;
+  final bool requiresVariantSelection;
 
   StockInfo({
     required this.hasStock,
     required this.quantity,
     required this.isLowStock,
+    this.requiresVariantSelection = false,
   });
 }
 

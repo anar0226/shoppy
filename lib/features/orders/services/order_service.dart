@@ -12,6 +12,11 @@ class OrderService {
   DateTime get _last7Days => _today.subtract(const Duration(days: 7));
   DateTime get _last30Days => _today.subtract(const Duration(days: 30));
 
+  // **ORDER ARCHIVAL CONSTANTS**
+  static const int _archiveAfterDays = 30; // Archive after 30 days
+  static const int _compressAfterDays = 90; // Compress after 90 days
+  static const int _deleteAfterDays = 365; // Delete after 1 year
+
   // **CORE ORDER FUNCTIONALITY**
 
   Future<String> createOrder({
@@ -502,15 +507,30 @@ class OrderService {
 
   Future<Map<String, dynamic>?> getOrderById(String orderId) async {
     try {
-      final doc = await _db.collection('orders').doc(orderId).get();
-      if (doc.exists) {
-        final data = doc.data()!;
-        data['id'] = doc.id;
-        return data;
+      // First try main orders collection
+      final mainOrder = await _db.collection('orders').doc(orderId).get();
+      if (mainOrder.exists) {
+        return mainOrder.data();
       }
+
+      // Try archived orders
+      final archivedOrder =
+          await _db.collection('archived_orders').doc(orderId).get();
+      if (archivedOrder.exists) {
+        return archivedOrder.data();
+      }
+
+      // Try historical orders
+      final historicalOrder =
+          await _db.collection('historical_orders').doc(orderId).get();
+      if (historicalOrder.exists) {
+        return historicalOrder.data();
+      }
+
       return null;
     } catch (e) {
-      throw Exception('Failed to get order: $e');
+      print('Error fetching order $orderId: $e');
+      return null;
     }
   }
 
@@ -621,5 +641,245 @@ class OrderService {
     }
     if (value is int) return value != 0;
     return defaultValue;
+  }
+
+  // **ORDER ARCHIVAL AND CLEANUP METHODS**
+
+  /// Archive delivered orders older than specified days
+  Future<void> archiveOldOrders() async {
+    try {
+      final cutoffDate = _today.subtract(Duration(days: _archiveAfterDays));
+
+      // Get orders to archive
+      final ordersToArchive = await _db
+          .collection('orders')
+          .where('status', isEqualTo: 'delivered')
+          .where('updatedAt', isLessThan: Timestamp.fromDate(cutoffDate))
+          .limit(100) // Process in batches
+          .get();
+
+      final batch = _db.batch();
+
+      for (final doc in ordersToArchive.docs) {
+        final orderData = doc.data();
+
+        // Create archived version with reduced data
+        final archivedData = _createArchivedOrderData(orderData);
+
+        // Add to archived collection
+        final archivedRef = _db.collection('archived_orders').doc(doc.id);
+        batch.set(archivedRef, archivedData);
+
+        // Mark as archived in original collection
+        batch.update(doc.reference, {
+          'archived': true,
+          'archivedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+
+      print('Archived ${ordersToArchive.docs.length} orders');
+    } catch (e) {
+      print('Error archiving orders: $e');
+    }
+  }
+
+  /// Compress archived orders older than specified days
+  Future<void> compressOldArchivedOrders() async {
+    try {
+      final cutoffDate = _today.subtract(Duration(days: _compressAfterDays));
+
+      // Get archived orders to compress
+      final ordersToCompress = await _db
+          .collection('archived_orders')
+          .where('deliveredAt', isLessThan: Timestamp.fromDate(cutoffDate))
+          .limit(100) // Process in batches
+          .get();
+
+      final batch = _db.batch();
+
+      for (final doc in ordersToCompress.docs) {
+        final orderData = doc.data();
+
+        // Create compressed version with minimal data
+        final compressedData = _createCompressedOrderData(orderData);
+
+        // Add to historical collection
+        final historicalRef = _db.collection('historical_orders').doc(doc.id);
+        batch.set(historicalRef, compressedData);
+
+        // Delete from archived collection
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+
+      print('Compressed ${ordersToCompress.docs.length} archived orders');
+    } catch (e) {
+      print('Error compressing archived orders: $e');
+    }
+  }
+
+  /// Delete historical orders older than specified days
+  Future<void> deleteOldHistoricalOrders() async {
+    try {
+      final cutoffDate = _today.subtract(Duration(days: _deleteAfterDays));
+
+      // Get historical orders to delete
+      final ordersToDelete = await _db
+          .collection('historical_orders')
+          .where('deliveredAt', isLessThan: Timestamp.fromDate(cutoffDate))
+          .limit(100) // Process in batches
+          .get();
+
+      final batch = _db.batch();
+
+      for (final doc in ordersToDelete.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+
+      print('Deleted ${ordersToDelete.docs.length} historical orders');
+    } catch (e) {
+      print('Error deleting historical orders: $e');
+    }
+  }
+
+  /// Create archived order data with reduced fields
+  Map<String, dynamic> _createArchivedOrderData(
+      Map<String, dynamic> originalData) {
+    return {
+      'orderId': originalData['id'] ?? '',
+      'status': originalData['status'] ?? 'delivered',
+      'total': originalData['total'] ?? 0.0,
+      'subtotal': originalData['subtotal'] ?? 0.0,
+      'shippingCost': originalData['shippingCost'] ?? 0.0,
+      'tax': originalData['tax'] ?? 0.0,
+      'storeId': originalData['storeId'] ?? '',
+      'storeName': originalData['storeName'] ?? '',
+      'vendorId': originalData['vendorId'] ?? '',
+      'userId': originalData['userId'] ?? '',
+      'userEmail': originalData['userEmail'] ?? '',
+      'customerName': originalData['customerName'] ?? '',
+      'createdAt': originalData['createdAt'],
+      'deliveredAt': originalData['updatedAt'],
+      'archivedAt': FieldValue.serverTimestamp(),
+      'itemCount': originalData['itemCount'] ?? 0,
+      'items': _compressOrderItems(originalData['items'] ?? []),
+      // Keep analytics data
+      'analytics': originalData['analytics'] ?? {},
+    };
+  }
+
+  /// Create compressed order data with minimal fields for analytics
+  Map<String, dynamic> _createCompressedOrderData(
+      Map<String, dynamic> archivedData) {
+    return {
+      'orderId': archivedData['orderId'] ?? '',
+      'status': archivedData['status'] ?? 'delivered',
+      'total': archivedData['total'] ?? 0.0,
+      'storeId': archivedData['storeId'] ?? '',
+      'vendorId': archivedData['vendorId'] ?? '',
+      'userId': archivedData['userId'] ?? '',
+      'createdAt': archivedData['createdAt'],
+      'deliveredAt': archivedData['deliveredAt'],
+      'compressedAt': FieldValue.serverTimestamp(),
+      'itemCount': archivedData['itemCount'] ?? 0,
+      // Keep only essential analytics data
+      'analytics': archivedData['analytics'] ?? {},
+    };
+  }
+
+  /// Compress order items to reduce storage
+  List<Map<String, dynamic>> _compressOrderItems(List<dynamic> items) {
+    return items.map<Map<String, dynamic>>((item) {
+      if (item is Map<String, dynamic>) {
+        return {
+          'name': item['name'] ?? '',
+          'price': item['price'] ?? 0.0,
+          'quantity': item['quantity'] ?? 1,
+          'variant': item['variant'] ?? '',
+          // Remove imageUrl to save space
+        };
+      }
+      return {};
+    }).toList();
+  }
+
+  /// Get orders for a store from all collections
+  Future<List<Map<String, dynamic>>> getStoreOrders(
+    String storeId, {
+    String? status,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final List<Map<String, dynamic>> allOrders = [];
+
+    try {
+      // Get from main orders collection
+      Query mainQuery =
+          _db.collection('orders').where('storeId', isEqualTo: storeId);
+      if (status != null)
+        mainQuery = mainQuery.where('status', isEqualTo: status);
+      if (startDate != null)
+        mainQuery = mainQuery.where('createdAt',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
+      if (endDate != null)
+        mainQuery = mainQuery.where('createdAt',
+            isLessThanOrEqualTo: Timestamp.fromDate(endDate));
+
+      final mainOrders =
+          await mainQuery.orderBy('createdAt', descending: true).get();
+      allOrders.addAll(
+          mainOrders.docs.map((doc) => doc.data() as Map<String, dynamic>));
+
+      // Get from archived orders collection (if within date range)
+      if (startDate == null ||
+          startDate
+              .isAfter(_today.subtract(Duration(days: _archiveAfterDays)))) {
+        Query archivedQuery = _db
+            .collection('archived_orders')
+            .where('storeId', isEqualTo: storeId);
+        if (status != null)
+          archivedQuery = archivedQuery.where('status', isEqualTo: status);
+        if (startDate != null)
+          archivedQuery = archivedQuery.where('deliveredAt',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
+        if (endDate != null)
+          archivedQuery = archivedQuery.where('deliveredAt',
+              isLessThanOrEqualTo: Timestamp.fromDate(endDate));
+
+        final archivedOrders =
+            await archivedQuery.orderBy('deliveredAt', descending: true).get();
+        allOrders.addAll(archivedOrders.docs
+            .map((doc) => doc.data() as Map<String, dynamic>));
+      }
+
+      // Sort all orders by date
+      allOrders.sort((a, b) {
+        final aDate = (a['createdAt'] ?? a['deliveredAt']) as Timestamp?;
+        final bDate = (b['createdAt'] ?? b['deliveredAt']) as Timestamp?;
+        if (aDate == null || bDate == null) return 0;
+        return bDate.compareTo(aDate);
+      });
+
+      return allOrders;
+    } catch (e) {
+      print('Error fetching store orders: $e');
+      return [];
+    }
+  }
+
+  /// Run complete cleanup process
+  Future<void> runOrderCleanup() async {
+    print('Starting order cleanup process...');
+
+    await archiveOldOrders();
+    await compressOldArchivedOrders();
+    await deleteOldHistoricalOrders();
+
+    print('Order cleanup process completed');
   }
 }

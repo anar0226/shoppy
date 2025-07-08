@@ -1,45 +1,28 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-// import 'qpay_service.dart'; // Removed - using bank transfers now
+import 'qpay_service.dart';
 import 'ubcab_service.dart';
 
-/// Bank Transfer Payment Result (placeholder for TDB integration)
-class BankTransferPaymentResult {
+/// QPay Payment Result (for order fulfillment)
+class QPayPaymentResult {
   final bool success;
   final String? error;
-  final BankTransferInvoice? invoice;
+  final QPayInvoice? invoice;
 
-  const BankTransferPaymentResult({
+  const QPayPaymentResult({
     required this.success,
     this.error,
     this.invoice,
   });
 
-  factory BankTransferPaymentResult.success(BankTransferInvoice invoice) {
-    return BankTransferPaymentResult(success: true, invoice: invoice);
+  factory QPayPaymentResult.success(QPayInvoice invoice) {
+    return QPayPaymentResult(success: true, invoice: invoice);
   }
 
-  factory BankTransferPaymentResult.error(String error) {
-    return BankTransferPaymentResult(success: false, error: error);
+  factory QPayPaymentResult.error(String error) {
+    return QPayPaymentResult(success: false, error: error);
   }
-}
-
-/// Bank Transfer Invoice (placeholder for TDB integration)
-class BankTransferInvoice {
-  final String id;
-  final String orderId;
-  final double amount;
-  final String status;
-  final DateTime createdAt;
-
-  const BankTransferInvoice({
-    required this.id,
-    required this.orderId,
-    required this.amount,
-    required this.status,
-    required this.createdAt,
-  });
 }
 
 /// Order Fulfillment Status
@@ -64,6 +47,7 @@ class OrderFulfillmentService {
   factory OrderFulfillmentService() => _instance;
   OrderFulfillmentService._internal();
 
+  final QPayService _qpayService = QPayService();
   final UBCabService _ubcabService = UBCabService();
 
   /// Initialize the fulfillment service
@@ -183,8 +167,8 @@ class OrderFulfillmentService {
         .set(orderRecord);
   }
 
-  /// Process payment with Bank Transfer (placeholder for TDB integration)
-  Future<BankTransferPaymentResult> _processPayment(
+  /// Process payment with QPay
+  Future<QPayPaymentResult> _processPayment(
     String orderId,
     Map<String, dynamic> orderData,
     String customerEmail,
@@ -202,17 +186,46 @@ class OrderFulfillmentService {
         storeDoc.exists ? storeDoc.data()!['name'] ?? 'Store' : 'Store';
     final itemsCount = (orderData['items'] as List).length;
 
-    // Create bank transfer invoice (placeholder for TDB integration)
-    final invoiceId = '${orderId}_${DateTime.now().millisecondsSinceEpoch}';
-    final invoice = BankTransferInvoice(
-      id: invoiceId,
+    // Create QPay invoice
+    final description = 'Order #$orderId from $storeName ($itemsCount items)';
+
+    final qpayResult = await _qpayService.createInvoice(
       orderId: orderId,
       amount: (orderData['total'] as num).toDouble(),
-      status: 'pending',
-      createdAt: DateTime.now(),
+      description: description,
+      // Use a unique string for customerEmail (invoice_receiver_code)
+      customerEmail: customerEmail.replaceAll('@', '_').replaceAll('.', '_'),
+      // Do not pass metadata
     );
 
-    return BankTransferPaymentResult.success(invoice);
+    if (qpayResult.success && qpayResult.invoice != null) {
+      // Create pending payment record
+      final pendingPayment = {
+        'orderId': orderId,
+        'userId': user.uid,
+        'amount': orderData['total'],
+        'subtotal': orderData['subtotal'],
+        'tax': orderData['tax'],
+        'shippingCost': orderData['shipping'],
+        'email': customerEmail,
+        'item': orderData['items'][0], // First item for demo
+        'shippingAddress': orderData['deliveryAddress'],
+        'status': 'pending',
+        'qpayInvoiceId': qpayResult.invoice!.qpayInvoiceId,
+        'invoiceId': qpayResult.invoice!.id,
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+
+      await FirebaseFirestore.instance
+          .collection('pending_payments')
+          .doc(orderId)
+          .set(pendingPayment);
+
+      return QPayPaymentResult.success(qpayResult.invoice!);
+    } else {
+      return QPayPaymentResult.error(
+          qpayResult.error ?? 'Failed to create QPay invoice');
+    }
   }
 
   /// Request delivery from UBCab
@@ -513,7 +526,7 @@ class OrderFulfillmentResult {
   final bool success;
   final String message;
   final String? orderId;
-  final BankTransferInvoice? paymentInvoice;
+  final QPayInvoice? paymentInvoice;
   final String? deliveryTrackingId;
   final String? error;
 
@@ -528,7 +541,7 @@ class OrderFulfillmentResult {
 
   factory OrderFulfillmentResult.success({
     required String orderId,
-    required BankTransferInvoice paymentInvoice,
+    required QPayInvoice paymentInvoice,
     required String deliveryTrackingId,
   }) {
     return OrderFulfillmentResult(

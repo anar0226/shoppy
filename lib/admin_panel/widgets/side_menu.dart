@@ -10,6 +10,7 @@ import '../pages/discounts_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/storefront_page.dart';
 import '../pages/categorization_page.dart';
+import '../pages/order_cleanup_page.dart';
 import '../../features/settings/themes/app_themes.dart';
 import '../auth/auth_service.dart';
 
@@ -137,6 +138,14 @@ class _SideMenuState extends State<SideMenu> {
             if (widget.selected != 'Дэлгүүр') {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const StorefrontPage()),
+              );
+            }
+          }),
+          _navItem(context, Icons.cleaning_services, 'Захиалгын цэвэрлэлт',
+              selected: widget.selected == 'Захиалгын цэвэрлэлт', onTap: () {
+            if (widget.selected != 'Захиалгын цэвэрлэлт') {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const OrderCleanupPage()),
               );
             }
           }),

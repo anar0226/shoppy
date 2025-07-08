@@ -5,6 +5,7 @@ import 'package:avii/features/addresses/presentation/manage_addresses_page.dart'
 import 'package:avii/features/auth/providers/auth_provider.dart';
 import 'package:avii/features/auth/presentation/login_page.dart';
 import 'package:avii/features/settings/notifications_page.dart';
+import 'package:avii/legal/terms_and_conditions_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -27,7 +28,7 @@ class SettingsPage extends StatelessWidget {
                 const SizedBox(height: 8),
                 const Center(
                   child: Text(
-                    "Settings",
+                    "Тохиргоо",
                     style: TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.w600,
@@ -140,7 +141,13 @@ class SettingsPage extends StatelessWidget {
                     spacing: 24,
                     children: [
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const TermsAndConditionsPage(),
+                            ),
+                          );
+                        },
                         child: const Text(
                           "Ерөнхий нөхцлүүд",
                           style: TextStyle(

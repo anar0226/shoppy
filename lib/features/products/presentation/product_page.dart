@@ -15,7 +15,6 @@ import 'dart:async';
 import 'package:avii/features/stores/models/store_model.dart';
 import 'package:avii/features/stores/presentation/store_screen.dart';
 import 'package:avii/features/home/presentation/main_scaffold.dart';
-import 'package:avii/core/widgets/stock_indicator.dart';
 import 'package:avii/core/services/inventory_service.dart';
 import 'package:avii/core/services/rate_limiter_service.dart';
 import 'package:avii/core/constants/shipping.dart';
@@ -177,25 +176,34 @@ class _ProductPageState extends State<ProductPage> {
     _availableVariants.clear();
     _variantType = '';
 
-    if (widget.product.variants.isEmpty) {
-      return; // No variants configured for this product
-    }
-
-    // Get variant type and options from product variants
-    // The admin panel stores variants differently, so we need to handle both structures
     for (final variant in widget.product.variants) {
-      if (variant.name.isNotEmpty && variant.options.isNotEmpty) {
-        // This is the complex ProductVariant structure from the model
-        _variantType = variant.name; // "Size", "Color", etc.
-        for (final option in variant.options) {
+      if (variant.options.isNotEmpty) {
+        // Variant with option list and possible stockByOption
+        _variantType = variant.name.isNotEmpty ? variant.name : 'Хэмжээ';
+        for (final opt in variant.options) {
+          int inv = 0;
+          if (variant.trackInventory) {
+            inv = variant.getStockForOption(opt);
+          } else if (widget.product.stock > 0) {
+            // Fallback to product stock when inventory not tracked per option
+            inv = widget.product.stock;
+          }
           _availableVariants.add({
-            'size': option,
-            'inventory':
-                10, // Default inventory since complex variants don't track individual inventory
-            'available': true,
+            'size': opt,
+            'inventory': inv,
+            'available': inv > 0,
           });
         }
-        break; // Take the first variant type for now
+        if (_availableVariants.isNotEmpty) return; // done
+      } else if (variant.name.isNotEmpty) {
+        // Simple admin-style variant with inventory field
+        final inv = variant.totalStock;
+        _variantType = _variantType.isNotEmpty ? _variantType : 'Хэмжээ';
+        _availableVariants.add({
+          'size': variant.name,
+          'inventory': inv,
+          'available': inv > 0,
+        });
       }
     }
 
@@ -764,7 +772,43 @@ class _ProductPageState extends State<ProductPage> {
               );
             }).toList(),
           ),
+          // Stock text display
+          if (_selectedSize.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _buildStockText(),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildStockText() {
+    if (_selectedSize.isEmpty) return const SizedBox.shrink();
+
+    final variant = _availableVariants.firstWhere(
+      (v) => v['size'] == _selectedSize,
+      orElse: () => {'inventory': 0},
+    );
+
+    final inventory = variant['inventory'] as int? ?? 0;
+
+    if (inventory <= 0) {
+      return const Text(
+        'Дууссан',
+        style: TextStyle(
+          color: Colors.red,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      );
+    }
+
+    return Text(
+      '$inventory ширхэг бэлэн байна',
+      style: const TextStyle(
+        color: Colors.green,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
       ),
     );
   }
@@ -834,29 +878,6 @@ class _ProductPageState extends State<ProductPage> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         children: [
-          // Stock indicator
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Row(
-              children: [
-                StockIndicator(
-                  product: widget.product,
-                  selectedVariants: _selectedSize.isNotEmpty
-                      ? {_variantType.toLowerCase(): _selectedSize}
-                      : null,
-                ),
-                const Spacer(),
-                if (_availableVariants.isNotEmpty && _selectedSize.isNotEmpty)
-                  Text(
-                    'Боломжит тоо: ${_getSelectedVariantStock()}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-              ],
-            ),
-          ),
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -1727,6 +1748,90 @@ class _ProductPageState extends State<ProductPage> {
         overlayEntry.remove();
       }
     });
+  }
+
+  String _getVariantNameForStockIndicator() {
+    if (_availableVariants.isEmpty || _selectedSize.isEmpty) {
+      return '';
+    }
+
+    // Find the variant that contains the selected size
+    for (final variant in widget.product.variants) {
+      if (variant.options.contains(_selectedSize)) {
+        // Return the exact variant name as it appears in the product model
+        return variant.name;
+      }
+    }
+
+    // If no match found in product variants, try to find it in the available variants
+    // This handles the case where variants are loaded from Firestore
+    for (final variant in _availableVariants) {
+      if (variant['size'] == _selectedSize) {
+        // For Firestore-loaded variants, use the variant type
+        return _variantType;
+      }
+    }
+
+    // Fallback to the variant type
+    return _variantType;
+  }
+}
+
+/// Widget for variant option that shows if it's out of stock
+class VariantOptionChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final bool isInStock;
+  final VoidCallback? onTap;
+
+  const VariantOptionChip({
+    super.key,
+    required this.label,
+    required this.isSelected,
+    required this.isInStock,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: isInStock ? onTap : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: _getBackgroundColor(),
+          border: Border.all(color: _getBorderColor()),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: _getTextColor(),
+            fontSize: 14,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            decoration: !isInStock ? TextDecoration.lineThrough : null,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getBackgroundColor() {
+    if (!isInStock) return Colors.grey.shade100;
+    if (isSelected) return Colors.blue.shade50;
+    return Colors.white;
+  }
+
+  Color _getBorderColor() {
+    if (!isInStock) return Colors.grey.shade300;
+    if (isSelected) return Colors.blue.shade400;
+    return Colors.grey.shade300;
+  }
+
+  Color _getTextColor() {
+    if (!isInStock) return Colors.grey.shade400;
+    if (isSelected) return Colors.blue.shade700;
+    return Colors.black87;
   }
 }
 

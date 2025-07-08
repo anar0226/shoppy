@@ -206,8 +206,19 @@ class _ProductsPageState extends State<ProductsPage> {
           final data = doc.data();
           final name = data['name'] ?? '';
           final price = _toDouble(data['price']);
-          final stock = (_toNum(data['stock'] ?? data['inventory'])).toString();
+          final stock = _toNum(data['stock'] ?? data['inventory']).toString();
           final isActive = data['isActive'] ?? true;
+          final isVariant = data['hasVariants'] == true;
+          String stockDisplay;
+          if (isVariant && data['variants'] != null) {
+            final List variants = data['variants'];
+            stockDisplay = variants
+                .map((v) =>
+                    '${(v['name'] ?? '').toString()}(${_toNum(v['inventory']).toString()})')
+                .join(', ');
+          } else {
+            stockDisplay = stock;
+          }
           return DataRow(cells: [
             DataCell(Row(children: [
               Container(
@@ -237,7 +248,13 @@ class _ProductsPageState extends State<ProductsPage> {
             ])),
             DataCell(Text(doc.id.substring(0, 6).toUpperCase())),
             DataCell(Text(_formatCurrency(price))),
-            DataCell(Text(stock)),
+            DataCell(SizedBox(
+              width: 160,
+              child: Text(stockDisplay,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13)),
+            )),
             DataCell(Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
