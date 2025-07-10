@@ -90,18 +90,22 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
         products = await _categoryService.loadAllActiveProducts(limit: 20);
       }
 
-      setState(() {
-        _categoryProducts = products;
-        _isLoadingCategory = false;
-      });
+      if (mounted) {
+        setState(() {
+          _categoryProducts = products;
+          _isLoadingCategory = false;
+        });
+      }
 
       print('✅ Loaded ${products.length} category products');
     } catch (e) {
       print('❌ Error loading category products: $e');
-      setState(() {
-        _categoryProducts = [];
-        _isLoadingCategory = false;
-      });
+      if (mounted) {
+        setState(() {
+          _categoryProducts = [];
+          _isLoadingCategory = false;
+        });
+      }
     }
   }
 
@@ -112,10 +116,13 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
           .where('isActive', isEqualTo: true)
           .get();
 
-      setState(() {
-        _allStores =
-            snapshot.docs.map((doc) => StoreModel.fromFirestore(doc)).toList();
-      });
+      if (mounted) {
+        setState(() {
+          _allStores = snapshot.docs
+              .map((doc) => StoreModel.fromFirestore(doc))
+              .toList();
+        });
+      }
     } catch (e) {
       print('Error loading stores: $e');
     }
@@ -170,23 +177,29 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
           }
         }
 
-        setState(() {
-          _featuredProducts = allFeaturedProducts;
-          _isLoadingFeatured = false;
-        });
+        if (mounted) {
+          setState(() {
+            _featuredProducts = allFeaturedProducts;
+            _isLoadingFeatured = false;
+          });
+        }
       } else {
-        setState(() {
-          _featuredProducts = [];
-          _isLoadingFeatured = false;
-        });
+        if (mounted) {
+          setState(() {
+            _featuredProducts = [];
+            _isLoadingFeatured = false;
+          });
+        }
         print('No featured products configuration found for: $featuredPath');
       }
     } catch (e) {
       print('Error loading featured products: $e');
-      setState(() {
-        _featuredProducts = [];
-        _isLoadingFeatured = false;
-      });
+      if (mounted) {
+        setState(() {
+          _featuredProducts = [];
+          _isLoadingFeatured = false;
+        });
+      }
     }
   }
 
@@ -200,7 +213,9 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
       if (data != null) {
         final images = List<String>.from(data['images'] ?? []);
         if (images.isNotEmpty) {
-          setState(() => _placeholderImage = images.first);
+          if (mounted) {
+            setState(() => _placeholderImage = images.first);
+          }
         }
       }
     } catch (_) {}
@@ -213,7 +228,9 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
           .doc(_lalarStoreId)
           .get();
       if (doc.exists) {
-        setState(() => _lalarStore = StoreModel.fromFirestore(doc));
+        if (mounted) {
+          setState(() => _lalarStore = StoreModel.fromFirestore(doc));
+        }
       }
     } catch (_) {}
   }

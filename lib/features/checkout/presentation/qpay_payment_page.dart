@@ -158,7 +158,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
           (status.status == 'EXPIRED' || status.status == 'CANCELED')) {
         _statusTimer?.cancel();
         setState(() {
-          _error = 'Payment expired or canceled';
+          _error = 'Төлбөр дууссан эсвэл цуцалсан';
         });
       }
     } catch (e) {
@@ -180,7 +180,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
       } catch (e) {
         PopupUtils.showError(
           context: context,
-          message: 'Could not open QPay app',
+          message: 'QPay App-ээр төлөх үед алдаа гарлаа',
         );
       }
     } else {
@@ -196,7 +196,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
       } catch (e) {
         PopupUtils.showError(
           context: context,
-          message: 'Could not open payment link',
+          message: 'Төлбөр холбоосыг нээх үед алдаа гарлаа',
         );
       }
     }
@@ -207,7 +207,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
       await Clipboard.setData(ClipboardData(text: _invoice!.qrCode));
       PopupUtils.showSuccess(
         context: context,
-        message: 'QR code copied to clipboard',
+        message: 'QR-кодыг хуулбарт амжилттай хуулгалаа',
       );
     }
   }
@@ -226,13 +226,13 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
         // For now, just show success message
         PopupUtils.showSuccess(
           context: context,
-          message: 'QR code saved successfully',
+          message: 'QR-кодыг амжилттай хадгалалаа',
         );
       }
     } catch (e) {
       PopupUtils.showError(
         context: context,
-        message: 'Failed to save QR code',
+        message: 'QR-кодыг хадгалах үед алдаа гарлаа',
       );
     }
   }
@@ -249,7 +249,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          title: const Text('QPay Payment'),
+          title: const Text('QPay төлбөр'),
           backgroundColor: Colors.white,
           elevation: 0,
           foregroundColor: Colors.black,
@@ -274,7 +274,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text('Creating payment invoice...'),
+            Text('Төлбөрийн нэхэмжлэх үүсгэж байна...'),
           ],
         ),
       );
@@ -343,7 +343,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
                   Icon(Icons.check_circle, color: Colors.green),
                   SizedBox(width: 8),
                   Text(
-                    'Payment Successful!',
+                    'Төлбөр амжилттай хийгдлээ!',
                     style: TextStyle(
                       color: Colors.green,
                       fontWeight: FontWeight.bold,
@@ -370,7 +370,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
                   ),
                   SizedBox(width: 8),
                   Text(
-                    'Waiting for payment...',
+                    'төлбөр хүлээж байна...',
                     style: TextStyle(
                       color: Colors.blue,
                       fontWeight: FontWeight.bold,
@@ -435,7 +435,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
 
           // Instructions
           const Text(
-            'Scan the QR code with your QPay app to complete the payment',
+            'QPay App-ээр QR-кодыг скандах',
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey,
@@ -452,7 +452,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
                 child: ElevatedButton.icon(
                   onPressed: _launchQPayApp,
                   icon: const Icon(Icons.payment),
-                  label: const Text('Open QPay App'),
+                  label: const Text('QPay App-ээр төлөх'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1976D2),
                     foregroundColor: Colors.white,
@@ -467,7 +467,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
               ElevatedButton.icon(
                 onPressed: _shareQRCode,
                 icon: const Icon(Icons.copy),
-                label: const Text('Copy'),
+                label: const Text('Хуулах'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey.shade200,
                   foregroundColor: Colors.black,
@@ -490,7 +490,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
               TextButton.icon(
                 onPressed: _launchWebLink,
                 icon: const Icon(Icons.open_in_browser),
-                label: const Text('Open in Browser'),
+                label: const Text('Браузерээр нээх'),
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.blue,
                 ),
@@ -498,7 +498,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
               TextButton.icon(
                 onPressed: _saveQRImage,
                 icon: const Icon(Icons.download),
-                label: const Text('Save QR'),
+                label: const Text('QR-кодыг хадгалах'),
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.blue,
                 ),
@@ -523,7 +523,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage>
                 ),
                 side: const BorderSide(color: Colors.grey),
               ),
-              child: const Text('Cancel Payment'),
+              child: const Text('Төлөвлөгөөг цуцалгах'),
             ),
           ),
         ],

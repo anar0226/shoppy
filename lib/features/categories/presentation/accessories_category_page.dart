@@ -1,0 +1,149 @@
+import 'package:flutter/material.dart';
+import 'package:avii/features/categories/presentation/category_page.dart';
+import 'package:avii/features/categories/presentation/final_category_page.dart';
+
+class AccessoriesCategoryPage extends StatelessWidget {
+  const AccessoriesCategoryPage({super.key});
+
+  static const String _featuredStoreId = 'TLLb3tqzvU2TZSsNPol9'; // placeholder
+
+  @override
+  Widget build(BuildContext context) {
+    return CategoryPage(
+      title: 'Аксессуары',
+      featuredStoreIds: const [_featuredStoreId],
+      sections: const [
+        'Backpacks',
+        'Belts',
+        'Handbags',
+        'Hats',
+        'Jewelry',
+        'Sunglasses',
+        'Wallets',
+        'Others',
+      ],
+      subCategories: [
+        SubCategory(
+          name: 'Үүргэвч',
+          imageUrl: 'assets/images/categories/Accessories/backpacks.jpg',
+          color: const Color(0xFF8B4513),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const FinalCategoryPage(
+                title: 'Үүргэвч',
+                mainCategory: 'Accessories',
+                subCategory: 'Backpacks',
+              ),
+            ),
+          ),
+        ),
+        SubCategory(
+          name: 'Бүс',
+          imageUrl: 'assets/images/categories/Accessories/belts.jpg',
+          color: const Color(0xFF654321),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const FinalCategoryPage(
+                title: 'Бүс',
+                mainCategory: 'Accessories',
+                subCategory: 'Belts',
+              ),
+            ),
+          ),
+        ),
+        SubCategory(
+          name: 'Гар цүнх',
+          imageUrl: 'assets/images/categories/Accessories/handbags.jpg',
+          color: const Color(0xFFB8860B),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const FinalCategoryPage(
+                title: 'Гар цүнх',
+                mainCategory: 'Accessories',
+                subCategory: 'Handbags',
+              ),
+            ),
+          ),
+        ),
+        SubCategory(
+          name: 'Малгай',
+          imageUrl: 'assets/images/categories/Accessories/hats.jpg',
+          color: const Color(0xFF2E8B57),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const FinalCategoryPage(
+                title: 'Малгай',
+                mainCategory: 'Accessories',
+                subCategory: 'Hats',
+              ),
+            ),
+          ),
+        ),
+        SubCategory(
+          name: 'Гоёл чимэглэл',
+          imageUrl: 'assets/images/categories/Accessories/jewelry.jpg',
+          color: const Color(0xFFFFD700),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const FinalCategoryPage(
+                title: 'Гоёл чимэглэл',
+                mainCategory: 'Accessories',
+                subCategory: 'Jewelry',
+              ),
+            ),
+          ),
+        ),
+        SubCategory(
+          name: 'Нарны шил',
+          imageUrl: 'assets/images/categories/Accessories/sunglasses.jpg',
+          color: const Color(0xFF1F1F1F),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const FinalCategoryPage(
+                title: 'Нарны шил',
+                mainCategory: 'Accessories',
+                subCategory: 'Sunglasses',
+              ),
+            ),
+          ),
+        ),
+        SubCategory(
+          name: 'Түрийвч',
+          imageUrl: 'assets/images/categories/Accessories/wallets.jpg',
+          color: const Color(0xFF8B4513),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const FinalCategoryPage(
+                title: 'Түрийвч',
+                mainCategory: 'Accessories',
+                subCategory: 'Wallets',
+              ),
+            ),
+          ),
+        ),
+        SubCategory(
+          name: 'Бусад',
+          imageUrl: 'assets/images/categories/Accessories/others.jpg',
+          color: const Color(0xFF708090),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const FinalCategoryPage(
+                title: 'Бусад',
+                mainCategory: 'Accessories',
+                subCategory: 'Others',
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

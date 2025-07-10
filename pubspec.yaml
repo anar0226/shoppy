@@ -149,6 +149,23 @@ flutter:
     # Accessories
     - assets/images/categories/Accessories/
     - assets/images/categories/Accessories/accessories.jpg
+    - assets/images/categories/Accessories/backpacks.jpg
+    - assets/images/categories/Accessories/belts.jpg
+    - assets/images/categories/Accessories/handbags.jpg
+    - assets/images/categories/Accessories/hats.jpg
+    - assets/images/categories/Accessories/jewelry.jpg
+    - assets/images/categories/Accessories/others.jpg
+    - assets/images/categories/Accessories/sunglasses.jpg
+    - assets/images/categories/Accessories/wallets.jpg
+    
+    # Beauty
+    - assets/images/categories/Beauty/
+    - assets/images/categories/Beauty/haircare.jpg
+    - assets/images/categories/Beauty/makeup.jpg
+    - assets/images/categories/Beauty/nailcare.jpg
+    - assets/images/categories/Beauty/perfume.jpg
+    - assets/images/categories/Beauty/skincare.jpg
+    - assets/images/categories/Beauty/others.jpg
     
     # Electronics
     - assets/images/categories/electronics/

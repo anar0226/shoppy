@@ -19,6 +19,8 @@ import 'features/saved/saved_screen.dart';
 import 'features/orders/presentation/order_tracking_page.dart';
 import 'search/women/women_category_page.dart';
 import 'search/men/men_category_page.dart';
+import 'features/categories/presentation/accessories_category_page.dart';
+import 'features/categories/presentation/beauty_category_page.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'features/notifications/fcm_service.dart';
 import 'features/products/presentation/product_page.dart';
@@ -312,9 +314,8 @@ class _SearchScreenState extends State<SearchScreen> {
     ),
     CategoryItem(
       name: 'Гоо сайхан',
-      imageUrl:
-          'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400',
-      color: const Color(0xFF8B4513),
+      imageUrl: 'assets/images/categories/Beauty/makeup.jpg',
+      color: const Color(0xFFFF69B4),
     ),
     CategoryItem(
       name: 'Хоол хүнс, ундаа',
@@ -336,8 +337,8 @@ class _SearchScreenState extends State<SearchScreen> {
     ),
     CategoryItem(
       name: 'Аксессуары',
-      imageUrl: 'assets/images/categories/Accessories/accessories.jpg',
-      color: const Color(0xFF9ACD32),
+      imageUrl: 'assets/images/categories/Accessories/jewelry.jpg',
+      color: const Color(0xFFFFD700),
     ),
     CategoryItem(
       name: 'Амьтдын бүтээгдэхүүн',
@@ -775,6 +776,18 @@ class _SearchScreenState extends State<SearchScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const MenCategoryPage()),
+          );
+        } else if (category.name == 'Аксессуары') {
+          // Accessories in Mongolian
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AccessoriesCategoryPage()),
+          );
+        } else if (category.name == 'Гоо сайхан') {
+          // Beauty in Mongolian
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BeautyCategoryPage()),
           );
         } else {
           PopupUtils.showInfo(

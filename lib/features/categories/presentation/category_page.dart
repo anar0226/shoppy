@@ -89,7 +89,9 @@ class _CategoryPageState extends State<CategoryPage> {
       if (data == null) return;
       final images = List<String>.from(data['images'] ?? []);
       if (images.isNotEmpty) {
-        setState(() => _placeholderImage = images.first);
+        if (mounted) {
+          setState(() => _placeholderImage = images.first);
+        }
       }
     } catch (_) {
       // Silently ignore – placeholder will just render grey box.
@@ -163,7 +165,9 @@ class _CategoryPageState extends State<CategoryPage> {
       loaded.add(loaded.first);
     }
 
-    setState(() => _featuredStores = loaded);
+    if (mounted) {
+      setState(() => _featuredStores = loaded);
+    }
   }
 
   Future<void> _loadSectionProducts() async {
@@ -271,9 +275,11 @@ class _CategoryPageState extends State<CategoryPage> {
       }
     }
 
-    setState(() {
-      _sectionProducts = sectionProducts;
-    });
+    if (mounted) {
+      setState(() {
+        _sectionProducts = sectionProducts;
+      });
+    }
   }
 
   @override
