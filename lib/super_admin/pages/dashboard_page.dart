@@ -272,7 +272,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Real-time statistics across the entire Shoppy platform',
+            'Real-time statistics across the entire Avii.mn platform',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Colors.grey.shade600,
                 ),

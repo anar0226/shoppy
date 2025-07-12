@@ -337,8 +337,8 @@ class _SearchScreenState extends State<SearchScreen> {
     ),
     CategoryItem(
       name: 'Аксессуары',
-      imageUrl: 'assets/images/categories/Accessories/jewelry.jpg',
-      color: const Color(0xFFFFD700),
+      imageUrl: 'assets/images/categories/Accessories/accessories.jpg',
+      color: const Color.fromARGB(255, 0, 255, 81),
     ),
     CategoryItem(
       name: 'Амьтдын бүтээгдэхүүн',

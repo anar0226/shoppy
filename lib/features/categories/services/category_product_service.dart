@@ -1,47 +1,64 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../products/models/product_model.dart';
+import '../../../core/services/database_service.dart';
+import '../../../core/services/paginated_query_service.dart';
 
 class CategoryProductService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final DatabaseService _db = DatabaseService();
+  final PaginatedQueryService _paginatedQuery = PaginatedQueryService();
 
-  /// Load products based on category hierarchy
+  /// Load products based on category hierarchy with pagination
   /// [category] - Main category (e.g., "Men", "Women", "Electronics")
   /// [subCategory] - Subcategory (e.g., "Clothing", "Shoes")
   /// [leafCategory] - Leaf category (e.g., "T-Shirts", "Sneakers")
   /// [limit] - Maximum number of products to return
+  /// [lastDocument] - Document to start after for pagination
   Future<List<ProductModel>> loadProductsByCategory({
     String? category,
     String? subCategory,
     String? leafCategory,
     int limit = 20,
+    DocumentSnapshot? lastDocument,
   }) async {
     try {
       print(
           '🔍 Loading products for category: $category, subcategory: $subCategory, leaf: $leafCategory');
 
-      Query query = _firestore.collectionGroup('products');
+      final result = await _paginatedQuery.getPaginatedProducts(
+        category: category,
+        subCategory: subCategory,
+        leafCategory: leafCategory,
+        pageSize: limit,
+        lastDocument: lastDocument,
+        activeOnly: true,
+      );
 
-      // Add filters based on available parameters
-      if (leafCategory != null && leafCategory.isNotEmpty) {
-        query = query.where('leafCategory', isEqualTo: leafCategory);
-      } else if (subCategory != null && subCategory.isNotEmpty) {
-        query = query.where('subCategory', isEqualTo: subCategory);
-      } else if (category != null && category.isNotEmpty) {
-        query = query.where('category', isEqualTo: category);
-      }
+      print('📋 Found ${result.items.length} products');
 
-      // Only include active products
-      query = query.where('isActive', isEqualTo: true);
-
-      // Order by creation date (newest first) and limit results
-      query = query.orderBy('createdAt', descending: true).limit(limit);
-
-      final querySnapshot = await query.get();
-      print('📋 Found ${querySnapshot.docs.length} products');
-
-      final products = querySnapshot.docs
-          .map((doc) => ProductModel.fromFirestore(doc))
-          .toList();
+      final products = result.items.map((item) {
+        // Convert Map to ProductModel
+        return ProductModel(
+          id: item['id'] as String,
+          name: item['name'] as String? ?? '',
+          price: (item['price'] as num?)?.toDouble() ?? 0.0,
+          images: List<String>.from(item['images'] as List? ?? []),
+          description: item['description'] as String? ?? '',
+          category: item['category'] as String? ?? '',
+          storeId: item['storeId'] as String? ?? '',
+          stock: item['stock'] as int? ?? 0,
+          variants: (item['variants'] as List<dynamic>? ?? [])
+              .map((v) => ProductVariant.fromMap(v as Map<String, dynamic>))
+              .toList(),
+          isActive: item['isActive'] as bool? ?? true,
+          createdAt: _parseTimestamp(item['createdAt']),
+          updatedAt: _parseTimestamp(item['updatedAt']),
+          isDiscounted: (item['discount']?['isDiscounted']) ?? false,
+          discountPercent:
+              (item['discount']?['percent'] as num?)?.toDouble() ?? 0.0,
+          reviewCount: (item['review']?['numberOfReviews'] as int?) ?? 0,
+          reviewStars: (item['review']?['stars'] as num?)?.toDouble() ?? 0.0,
+        );
+      }).toList();
 
       return products;
     } catch (e) {
@@ -53,8 +70,16 @@ class CategoryProductService {
         subCategory: subCategory,
         leafCategory: leafCategory,
         limit: limit,
+        lastDocument: lastDocument,
       );
     }
+  }
+
+  /// Parse timestamp from dynamic value
+  DateTime _parseTimestamp(dynamic ts) {
+    if (ts is Timestamp) return ts.toDate();
+    if (ts is DateTime) return ts;
+    return DateTime.now();
   }
 
   /// Fallback method that uses the older 'category' field
@@ -63,11 +88,12 @@ class CategoryProductService {
     String? subCategory,
     String? leafCategory,
     int limit = 20,
+    DocumentSnapshot? lastDocument,
   }) async {
     try {
       print('🔄 Using fallback category loading method');
 
-      Query query = _firestore.collectionGroup('products');
+      Query query = _db.firestore.collectionGroup('products');
 
       // Use the basic category field for filtering
       if (leafCategory != null && leafCategory.isNotEmpty) {
@@ -114,7 +140,7 @@ class CategoryProductService {
 
         try {
           // Search in category field
-          final categoryQuery = await _firestore
+          final categoryQuery = await _db.firestore
               .collectionGroup('products')
               .where('category', isEqualTo: term)
               .where('isActive', isEqualTo: true)
@@ -132,7 +158,7 @@ class CategoryProductService {
 
           // Search in subCategory field (if available)
           try {
-            final subCategoryQuery = await _firestore
+            final subCategoryQuery = await _db.firestore
                 .collectionGroup('products')
                 .where('subCategory', isEqualTo: term)
                 .where('isActive', isEqualTo: true)
@@ -152,7 +178,7 @@ class CategoryProductService {
 
           // Search in leafCategory field (if available)
           try {
-            final leafCategoryQuery = await _firestore
+            final leafCategoryQuery = await _db.firestore
                 .collectionGroup('products')
                 .where('leafCategory', isEqualTo: term)
                 .where('isActive', isEqualTo: true)
@@ -192,7 +218,7 @@ class CategoryProductService {
     try {
       print('🔍 Loading all active products as fallback');
 
-      final query = await _firestore
+      final query = await _db.firestore
           .collectionGroup('products')
           .where('isActive', isEqualTo: true)
           .orderBy('createdAt', descending: true)

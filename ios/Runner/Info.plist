@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Shoppy</string>
+	<string>Avii.mn</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -45,5 +45,33 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- QPay Deep Link Support -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>qpay.payment</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>qpay</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>avii.payment</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>avii</string>
+			</array>
+		</dict>
+	</array>
+	
+	<!-- Allow QPay app queries -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>qpay</string>
+		<string>qpaymn</string>
+	</array>
 </dict>
 </plist>

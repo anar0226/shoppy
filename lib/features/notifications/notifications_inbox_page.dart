@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'notification_service.dart';
 import '../../core/utils/type_utils.dart';
+import '../../core/services/database_service.dart';
+import '../../core/services/listener_manager.dart';
 
 class NotificationsInboxPage extends StatefulWidget {
   const NotificationsInboxPage({super.key});
@@ -11,12 +13,15 @@ class NotificationsInboxPage extends StatefulWidget {
   State<NotificationsInboxPage> createState() => _NotificationsInboxPageState();
 }
 
-class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+class _NotificationsInboxPageState extends State<NotificationsInboxPage>
+    with ListenerManagerMixin {
+  final DatabaseService _db = DatabaseService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  Stream<QuerySnapshot>? _notificationsStream;
   int _unreadCount = 0;
+  List<QueryDocumentSnapshot> _notifications = [];
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -27,9 +32,110 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
   void _initializeNotifications() {
     final user = _auth.currentUser;
     if (user != null) {
-      _notificationsStream = NotificationService.getUserNotifications(user.uid);
+      _setupNotificationListener(user.uid);
       _getUnreadCount();
+    } else {
+      setState(() {
+        _isLoading = false;
+      });
     }
+  }
+
+  void _setupNotificationListener(String userId) {
+    final query = _db
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .limit(50);
+
+    addManagedCollectionListener(
+      query: query,
+      onData: (QuerySnapshot snapshot) {
+        setState(() {
+          _notifications = snapshot.docs;
+          _isLoading = false;
+          _error = null;
+        });
+      },
+      onError: (error) {
+        setState(() {
+          _error = error.toString();
+          _isLoading = false;
+        });
+      },
+      description: 'Notifications listener for user: $userId',
+    );
+  }
+
+  Widget _buildNotificationsList() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+            const SizedBox(height: 16),
+            const Text(
+              'Мэдэгдэл олдсонгүй',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: const TextStyle(color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_notifications.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.notifications_none,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Шинэ мэдэгдэл алга',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Та захиалга, xямдрал болон бусад зүйлийн талаар мэдэгдэл хүлээн авах боломжтой',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _notifications.length,
+      itemBuilder: (context, index) {
+        final doc = _notifications[index];
+        final data = doc.data() as Map<String, dynamic>;
+        return _buildNotificationCard(doc.id, data);
+      },
+    );
   }
 
   Future<void> _getUnreadCount() async {
@@ -37,11 +143,12 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
     if (user == null) return;
 
     try {
-      final snapshot = await _firestore
-          .collection('notifications')
-          .where('userId', isEqualTo: user.uid)
-          .where('read', isEqualTo: false)
-          .get();
+      final snapshot = await _db.executeQuery(
+        query: _db
+            .collection('notifications')
+            .where('userId', isEqualTo: user.uid)
+            .where('read', isEqualTo: false),
+      );
 
       setState(() {
         _unreadCount = snapshot.docs.length;
@@ -65,13 +172,14 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
     if (user == null) return;
 
     try {
-      final unreadNotifications = await _firestore
-          .collection('notifications')
-          .where('userId', isEqualTo: user.uid)
-          .where('read', isEqualTo: false)
-          .get();
+      final unreadNotifications = await _db.executeQuery(
+        query: _db
+            .collection('notifications')
+            .where('userId', isEqualTo: user.uid)
+            .where('read', isEqualTo: false),
+      );
 
-      final batch = _firestore.batch();
+      final batch = _db.firestore.batch();
       for (final doc in unreadNotifications.docs) {
         batch.update(doc.reference, {'read': true});
       }
@@ -163,83 +271,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
             )
-          : StreamBuilder<QuerySnapshot>(
-              stream: _notificationsStream,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline,
-                            size: 64, color: Colors.red[300]),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Мэдэгдэл олдсонгүй',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          snapshot.error.toString(),
-                          style: const TextStyle(color: Colors.grey),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final notifications = snapshot.data?.docs ?? [];
-
-                if (notifications.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.notifications_none,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Шинэ мэдэгдэл алга',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Та захиалга, xямдрал болон бусад зүйлийн талаар мэдэгдэл хүлээн авах боломжтой',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: notifications.length,
-                  itemBuilder: (context, index) {
-                    final doc = notifications[index];
-                    final data = doc.data() as Map<String, dynamic>;
-                    return _buildNotificationCard(doc.id, data);
-                  },
-                );
-              },
-            ),
+          : _buildNotificationsList(),
     );
   }
 

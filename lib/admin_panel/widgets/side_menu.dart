@@ -11,6 +11,7 @@ import '../pages/settings_page.dart';
 import '../pages/storefront_page.dart';
 import '../pages/categorization_page.dart';
 import '../pages/order_cleanup_page.dart';
+import '../pages/subscription_page.dart';
 import '../../features/settings/themes/app_themes.dart';
 import '../auth/auth_service.dart';
 
@@ -106,6 +107,14 @@ class _SideMenuState extends State<SideMenu> {
             if (widget.selected != 'Аналитик') {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const AnalyticsPage()),
+              );
+            }
+          }),
+          _navItem(context, Icons.payment, 'Төлбөр',
+              selected: widget.selected == 'Төлбөр', onTap: () {
+            if (widget.selected != 'Төлбөр') {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const SubscriptionPage()),
               );
             }
           }),

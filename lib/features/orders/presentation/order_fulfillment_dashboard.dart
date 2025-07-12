@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/services/order_fulfillment_automation_service.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../core/services/listener_manager.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
@@ -19,7 +20,7 @@ class OrderFulfillmentDashboard extends StatefulWidget {
 }
 
 class _OrderFulfillmentDashboardState extends State<OrderFulfillmentDashboard>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, ListenerManagerMixin {
   late TabController _tabController;
   final OrderFulfillmentAutomationService _fulfillmentService =
       OrderFulfillmentAutomationService();
@@ -134,16 +135,21 @@ class _OrderFulfillmentDashboardState extends State<OrderFulfillmentDashboard>
   }
 
   void _startRealTimeUpdates() {
-    // Listen to real-time order updates
-    FirebaseFirestore.instance
-        .collection('orders')
-        .where('storeId', isEqualTo: widget.storeId)
-        .snapshots()
-        .listen((snapshot) {
-      if (mounted) {
-        _loadDashboardData();
-      }
-    });
+    // Use managed listener to prevent memory leaks
+    addManagedCollectionListener(
+      query: FirebaseFirestore.instance
+          .collection('orders')
+          .where('storeId', isEqualTo: widget.storeId),
+      onData: (QuerySnapshot snapshot) {
+        if (mounted) {
+          _loadDashboardData();
+        }
+      },
+      onError: (error) {
+        debugPrint('Real-time updates error: $error');
+      },
+      description: 'Order fulfillment dashboard real-time updates',
+    );
   }
 
   void _showError(String message) {

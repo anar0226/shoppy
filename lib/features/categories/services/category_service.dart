@@ -4,68 +4,40 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/category_model.dart';
+import '../../../core/services/database_service.dart';
+import '../../../core/services/paginated_query_service.dart';
 
 class CategoryService {
   static final CategoryService _instance = CategoryService._internal();
   factory CategoryService() => _instance;
   CategoryService._internal();
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final DatabaseService _db = DatabaseService();
+  final PaginatedQueryService _paginatedQuery = PaginatedQueryService();
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final ImagePicker _imagePicker = ImagePicker();
 
-  /// Get all categories for a specific store
-  Future<List<CategoryModel>> getStoreCategories(String storeId) async {
+  /// Get all categories for a specific store with pagination
+  Future<List<CategoryModel>> getStoreCategories(
+    String storeId, {
+    int pageSize = 50,
+    DocumentSnapshot? lastDocument,
+  }) async {
     try {
-      // Simplified query to avoid requiring composite index
-      final querySnapshot = await _firestore
-          .collection('categories')
-          .where('storeId', isEqualTo: storeId)
-          .where('isActive', isEqualTo: true)
-          .get();
+      final result = await _paginatedQuery.getPaginatedCategories(
+        storeId: storeId,
+        pageSize: pageSize,
+        lastDocument: lastDocument,
+        activeOnly: true,
+      );
 
-      // Sort on client side to avoid complex index requirement
-      final categories = querySnapshot.docs
-          .map((doc) => CategoryModel.fromFirestore(doc))
-          .toList();
-
-      // Sort by sortOrder first, then by name
-      categories.sort((a, b) {
-        final sortOrderComparison = a.sortOrder.compareTo(b.sortOrder);
-        if (sortOrderComparison != 0) {
-          return sortOrderComparison;
-        }
-        return a.name.compareTo(b.name);
-      });
+      final categories =
+          result.items.map((item) => CategoryModel.fromMap(item)).toList();
 
       return categories;
     } catch (e) {
       debugPrint('Error getting store categories: $e');
-      // Fallback: try with just storeId filter
-      try {
-        final fallbackQuery = await _firestore
-            .collection('categories')
-            .where('storeId', isEqualTo: storeId)
-            .get();
-
-        final categories = fallbackQuery.docs
-            .map((doc) => CategoryModel.fromFirestore(doc))
-            .where((category) => category.isActive) // Client-side filter
-            .toList();
-
-        categories.sort((a, b) {
-          final sortOrderComparison = a.sortOrder.compareTo(b.sortOrder);
-          if (sortOrderComparison != 0) {
-            return sortOrderComparison;
-          }
-          return a.name.compareTo(b.name);
-        });
-
-        return categories;
-      } catch (fallbackError) {
-        debugPrint('Fallback query also failed: $fallbackError');
-        return [];
-      }
+      return [];
     }
   }
 
@@ -73,7 +45,7 @@ class CategoryService {
   Future<List<CategoryModel>> getGlobalCategories() async {
     try {
       // Simplified query to avoid requiring composite index
-      final querySnapshot = await _firestore
+      final querySnapshot = await _db.firestore
           .collection('categories')
           .where('storeId', isNull: true)
           .where('isActive', isEqualTo: true)
@@ -98,7 +70,8 @@ class CategoryService {
       debugPrint('Error getting global categories: $e');
       // Fallback: get all categories and filter client-side
       try {
-        final fallbackQuery = await _firestore.collection('categories').get();
+        final fallbackQuery =
+            await _db.firestore.collection('categories').get();
 
         final categories = fallbackQuery.docs
             .map((doc) => CategoryModel.fromFirestore(doc))
@@ -163,8 +136,9 @@ class CategoryService {
         storeId: storeId,
       );
 
-      final docRef =
-          await _firestore.collection('categories').add(category.toFirestore());
+      final docRef = await _db.firestore
+          .collection('categories')
+          .add(category.toFirestore());
 
       debugPrint('Category created successfully: ${docRef.id}');
       return docRef.id;
@@ -189,7 +163,7 @@ class CategoryService {
     try {
       // Get current category data
       final doc =
-          await _firestore.collection('categories').doc(categoryId).get();
+          await _db.firestore.collection('categories').doc(categoryId).get();
       if (!doc.exists) {
         debugPrint('Category not found: $categoryId');
         return false;
@@ -249,7 +223,10 @@ class CategoryService {
       }
 
       // Update the document
-      await _firestore.collection('categories').doc(categoryId).update(updates);
+      await _db.firestore
+          .collection('categories')
+          .doc(categoryId)
+          .update(updates);
 
       debugPrint('Category updated successfully: $categoryId');
       return true;
@@ -264,7 +241,7 @@ class CategoryService {
     try {
       // Get category data first to delete associated images
       final doc =
-          await _firestore.collection('categories').doc(categoryId).get();
+          await _db.firestore.collection('categories').doc(categoryId).get();
       if (!doc.exists) {
         debugPrint('Category not found: $categoryId');
         return false;
@@ -281,7 +258,7 @@ class CategoryService {
       }
 
       // Delete the document
-      await _firestore.collection('categories').doc(categoryId).delete();
+      await _db.firestore.collection('categories').doc(categoryId).delete();
 
       debugPrint('Category deleted successfully: $categoryId');
       return true;
@@ -352,7 +329,7 @@ class CategoryService {
   Future<CategoryModel?> getCategoryById(String categoryId) async {
     try {
       final doc =
-          await _firestore.collection('categories').doc(categoryId).get();
+          await _db.firestore.collection('categories').doc(categoryId).get();
       if (doc.exists) {
         return CategoryModel.fromFirestore(doc);
       }
@@ -369,7 +346,7 @@ class CategoryService {
     String? storeId,
   }) async {
     try {
-      Query baseQuery = _firestore.collection('categories');
+      Query baseQuery = _db.firestore.collection('categories');
 
       // Simplified query to avoid index issues - filter on client side
       if (storeId != null) {
@@ -394,7 +371,8 @@ class CategoryService {
       debugPrint('Error searching categories: $e');
       // Fallback: get all categories and filter completely client-side
       try {
-        final fallbackQuery = await _firestore.collection('categories').get();
+        final fallbackQuery =
+            await _db.firestore.collection('categories').get();
 
         final categories = fallbackQuery.docs
             .map((doc) => CategoryModel.fromFirestore(doc))
@@ -417,10 +395,11 @@ class CategoryService {
   /// Reorder categories
   Future<bool> reorderCategories(List<String> categoryIds) async {
     try {
-      final batch = _firestore.batch();
+      final batch = _db.firestore.batch();
 
       for (int i = 0; i < categoryIds.length; i++) {
-        final docRef = _firestore.collection('categories').doc(categoryIds[i]);
+        final docRef =
+            _db.firestore.collection('categories').doc(categoryIds[i]);
         batch.update(docRef, {
           'sortOrder': i,
           'updatedAt': FieldValue.serverTimestamp(),

@@ -33,7 +33,10 @@ __exportStar(require("./inventory-management"), exports);
 __exportStar(require("./rate-limiting"), exports);
 // Export Data Consistency functions
 __exportStar(require("./data-consistency"), exports);
-// QPay Configuration can be added here when implementing actual QPay API integration
+// Export Order Cleanup functions
+__exportStar(require("./order-cleanup"), exports);
+// Export QPay Webhook functions
+__exportStar(require("./qpay-webhook"), exports);
 // QPay Webhook Handler
 exports.handleQPayWebhook = functions.https.onRequest(async (req, res) => {
     try {

@@ -18,6 +18,8 @@ import 'package:avii/features/home/presentation/main_scaffold.dart';
 import 'package:avii/core/services/inventory_service.dart';
 import 'package:avii/core/services/rate_limiter_service.dart';
 import 'package:avii/core/constants/shipping.dart';
+import 'package:avii/core/services/listener_manager.dart';
+import 'package:avii/core/services/database_service.dart';
 
 class ProductPage extends StatefulWidget {
   final ProductModel product;
@@ -39,7 +41,7 @@ class ProductPage extends StatefulWidget {
   State<ProductPage> createState() => _ProductPageState();
 }
 
-class _ProductPageState extends State<ProductPage> {
+class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
   // State variables
   String _selectedSize = '';
   int _quantity = 1;
@@ -51,13 +53,13 @@ class _ProductPageState extends State<ProductPage> {
   List<Map<String, dynamic>> _reviews = [];
   int _reviewCount = 0;
   double _avgRating = 0;
-  StreamSubscription<QuerySnapshot>? _reviewSub;
   final GlobalKey _imageKey = GlobalKey();
 
   // Dynamic variant data
   final List<Map<String, dynamic>> _availableVariants = [];
   String _variantType = '';
   final InventoryService _inventoryService = InventoryService();
+  final DatabaseService _db = DatabaseService();
   bool _addingToCart = false;
 
   @override
@@ -95,33 +97,37 @@ class _ProductPageState extends State<ProductPage> {
       });
     }
 
-    // Listen to reviews
-    _reviewSub = FirebaseFirestore.instance
-        .collection('products')
-        .doc(widget.product.id)
-        .collection('reviews')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen((snap) {
-      _reviews = snap.docs.map((d) => d.data()).toList();
-      _reviewCount = _reviews.length;
-      if (_reviewCount > 0) {
-        final total =
-            _reviews.fold<int>(0, (sum, r) => sum + (r['rating'] ?? 0) as int);
-        _avgRating = total / _reviewCount;
-      } else {
-        _avgRating = 0;
-      }
-      if (mounted) setState(() {});
-    }, onError: (e) {
-      if (mounted) {
-        setState(() {
-          _reviews = [];
-          _reviewCount = 0;
+    // Listen to reviews with managed listener
+    addManagedCollectionListener(
+      query: _db.firestore
+          .collection('products')
+          .doc(widget.product.id)
+          .collection('reviews')
+          .orderBy('createdAt', descending: true),
+      onData: (snap) {
+        _reviews =
+            snap.docs.map((d) => d.data() as Map<String, dynamic>).toList();
+        _reviewCount = _reviews.length;
+        if (_reviewCount > 0) {
+          final total = _reviews.fold<int>(
+              0, (sum, r) => sum + (r['rating'] ?? 0) as int);
+          _avgRating = total / _reviewCount;
+        } else {
           _avgRating = 0;
-        });
-      }
-    });
+        }
+        if (mounted) setState(() {});
+      },
+      onError: (e) {
+        if (mounted) {
+          setState(() {
+            _reviews = [];
+            _reviewCount = 0;
+            _avgRating = 0;
+          });
+        }
+      },
+      description: 'Product reviews listener for product: ${widget.product.id}',
+    );
   }
 
   Future<void> _fetchStoreInfo() async {
@@ -256,11 +262,7 @@ class _ProductPageState extends State<ProductPage> {
     }
   }
 
-  @override
-  void dispose() {
-    _reviewSub?.cancel();
-    super.dispose();
-  }
+  // dispose() is handled by ListenerManagerMixin automatically
 
   @override
   Widget build(BuildContext context) {
@@ -1271,7 +1273,7 @@ class _ProductPageState extends State<ProductPage> {
           fullAddress: fullAddress,
           subtotal: widget.product.price * _quantity,
           shippingCost: kStandardShippingFee,
-          tax: (widget.product.price * _quantity) * 0.0825,
+          tax: 0.0, // Tax disabled for Mongolia
           items: [
             CheckoutItem(
               // Wrap in list for consistency

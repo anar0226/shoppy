@@ -27,7 +27,7 @@ class _AdminAppState extends State<AdminApp> {
       child: Consumer<AppSettingsProvider>(
         builder: (context, settings, child) {
           return MaterialApp(
-            title: 'Shoppy Admin',
+            title: 'Avii.mn Admin',
             theme: AppThemes.lightTheme,
             darkTheme: AppThemes.darkTheme,
             themeMode: settings.themeMode,

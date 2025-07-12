@@ -29,7 +29,7 @@ class SuperAdminApp extends StatelessWidget {
       ],
       child: Consumer<ThemeProvider>(
         builder: (_, themeProvider, __) => MaterialApp(
-          title: 'Shoppy Super Admin',
+          title: 'Avii.mn Super Admin',
           theme: ThemeData(
             primarySwatch: Colors.blue,
             fontFamily: 'Inter',

@@ -4,6 +4,8 @@ import '../providers/auth_provider.dart';
 import 'signup_page.dart';
 import 'package:avii/core/utils/validation_utils.dart';
 import 'forgot_password_page.dart';
+import 'enhanced_phone_auth_page.dart';
+import 'debug_login_widget.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -194,6 +196,11 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 40),
                         _SocialButtons(auth: auth),
+                        const SizedBox(height: 20),
+
+                        // Debug login widget (only shown in debug mode)
+                        const DebugLoginWidget(),
+
                         const SizedBox(height: 40),
                       ],
                     ),
@@ -316,7 +323,7 @@ class _SocialButtons extends StatelessWidget {
                   : () async {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => const PhoneAuthPage(),
+                          builder: (_) => const EnhancedPhoneAuthPage(),
                         ),
                       );
                     },
@@ -337,251 +344,6 @@ class _SocialButtons extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-// Phone Authentication Page
-class PhoneAuthPage extends StatefulWidget {
-  const PhoneAuthPage({super.key});
-
-  @override
-  State<PhoneAuthPage> createState() => _PhoneAuthPageState();
-}
-
-class _PhoneAuthPageState extends State<PhoneAuthPage> {
-  final _phoneController = TextEditingController();
-  final _codeController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
-  bool _codeSent = false;
-
-  @override
-  void dispose() {
-    _phoneController.dispose();
-    _codeController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final auth = Provider.of<AuthProvider>(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Утасны дугаараар нэвтрэх'),
-        backgroundColor: const Color(0xFF1F226C),
-        foregroundColor: Colors.white,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF1F226C), Color(0xFF3C42D2)],
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 40),
-                  Icon(
-                    Icons.phone_android,
-                    size: 80,
-                    color: Colors.white.withOpacity(0.8),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    _codeSent
-                        ? 'Баталгаажуулах код оруулна уу'
-                        : 'Утасны дугаараа оруулна уу',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _codeSent
-                        ? '${_phoneController.text} дугаарт илгээсэн кодыг оруулна уу'
-                        : 'Танд SMS-ээр код илгээх болно',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white.withOpacity(0.8),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 40),
-                  if (!_codeSent) ...[
-                    TextFormField(
-                      controller: _phoneController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: 'Утасны дугаар (+976)',
-                        labelStyle: const TextStyle(color: Colors.white70),
-                        prefixText: '+976 ',
-                        prefixStyle: const TextStyle(color: Colors.white),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.white70),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: Colors.white, width: 2),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.red),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: Colors.red, width: 2),
-                        ),
-                      ),
-                      keyboardType: TextInputType.phone,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Утасны дугаараа оруулна уу';
-                        }
-                        if (value.length != 8) {
-                          return '8 оронтой утасны дугаар оруулна уу';
-                        }
-                        return null;
-                      },
-                    ),
-                  ] else ...[
-                    TextFormField(
-                      controller: _codeController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: 'Баталгаажуулах код',
-                        labelStyle: const TextStyle(color: Colors.white70),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.white70),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: Colors.white, width: 2),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.red),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: Colors.red, width: 2),
-                        ),
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Баталгаажуулах кодыг оруулна уу';
-                        }
-                        if (value.length != 6) {
-                          return '6 оронтой код оруулна уу';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF8A32),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: auth.loading
-                        ? null
-                        : () async {
-                            if (_formKey.currentState?.validate() ?? false) {
-                              if (!_codeSent) {
-                                // Send verification code
-                                try {
-                                  final phoneNumber =
-                                      '+976${_phoneController.text}';
-                                  await auth
-                                      .sendPhoneVerificationCode(phoneNumber);
-                                  setState(() {
-                                    _codeSent = true;
-                                  });
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content:
-                                          Text('Баталгаажуулах код илгээгдлээ'),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-                                } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(e.toString())),
-                                  );
-                                }
-                              } else {
-                                // Verify code
-                                try {
-                                  await auth
-                                      .verifyPhoneCode(_codeController.text);
-                                  if (context.mounted) {
-                                    // Check if user needs profile completion
-                                    if (auth.needsProfileCompletion) {
-                                      Navigator.of(context)
-                                          .pushReplacementNamed(
-                                              '/profile-completion');
-                                    } else {
-                                      Navigator.of(context)
-                                          .pushNamedAndRemoveUntil(
-                                              '/home', (route) => false);
-                                    }
-                                  }
-                                } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(e.toString())),
-                                  );
-                                }
-                              }
-                            }
-                          },
-                    child: auth.loading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : Text(_codeSent ? 'Баталгаажуулах' : 'Код илгээх'),
-                  ),
-                  if (_codeSent) ...[
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _codeSent = false;
-                          _codeController.clear();
-                        });
-                        auth.clearPhoneVerification();
-                      },
-                      child: const Text(
-                        'Өөр дугаар ашиглах',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

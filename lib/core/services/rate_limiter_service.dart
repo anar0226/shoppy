@@ -103,6 +103,26 @@ class RateLimiterService {
         _requestHistory.putIfAbsent(operation, () => Queue<DateTime>());
     history.addLast(now);
   }
+
+  /// Record successful operation (for analytics and security tracking)
+  void recordSuccess(String operation) {
+    // Clear any accumulated requests for this operation on success
+    final now = DateTime.now();
+    final history = _requestHistory[operation];
+
+    if (history != null && history.isNotEmpty) {
+      // Keep only recent successful operations for rate limiting purposes
+      final limit = _rateLimits[operation];
+      if (limit != null) {
+        while (history.isNotEmpty &&
+            now.difference(history.first).inSeconds > limit.windowSeconds) {
+          history.removeFirst();
+        }
+      }
+    }
+
+    debugPrint('Recorded successful operation: $operation');
+  }
 }
 
 class RateLimit {

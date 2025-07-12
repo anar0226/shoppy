@@ -1,7 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../services/database_service.dart';
+import '../services/listener_manager.dart';
+import 'enhanced_paginated_list.dart';
 
 /// Generic infinite-scroll list that paginates a Firestore [Query].
+/// This is a wrapper around EnhancedPaginatedList for backward compatibility.
 ///
 /// Usage:
 /// ```dart
@@ -38,76 +42,18 @@ class PaginatedFirestoreList<T> extends StatefulWidget {
 }
 
 class _PaginatedFirestoreListState<T> extends State<PaginatedFirestoreList<T>> {
-  final List<T> _items = [];
-  DocumentSnapshot? _lastDoc;
-  bool _isLoading = false;
-  bool _hasMore = true;
-  final ScrollController _controller = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchNextPage();
-    _controller.addListener(_onScroll);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (!_controller.hasClients || _isLoading || !_hasMore) return;
-
-    if (_controller.position.pixels >=
-        _controller.position.maxScrollExtent - 200) {
-      _fetchNextPage();
-    }
-  }
-
-  Future<void> _fetchNextPage() async {
-    if (_isLoading || !_hasMore) return;
-    setState(() => _isLoading = true);
-
-    try {
-      Query cur = widget.query.limit(widget.pageSize);
-      if (_lastDoc != null) cur = cur.startAfterDocument(_lastDoc!);
-
-      final snapshot = await cur.get();
-      if (snapshot.docs.isNotEmpty) {
-        _lastDoc = snapshot.docs.last;
-        final mapped = snapshot.docs.map(widget.fromDoc).toList();
-        setState(() => _items.addAll(mapped));
-        if (snapshot.docs.length < widget.pageSize) _hasMore = false;
-      } else {
-        setState(() => _hasMore = false);
-      }
-    } catch (e) {
-      debugPrint('Pagination fetch error: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_items.isEmpty && !_isLoading) {
-      return widget.emptyBuilder?.call(context) ?? const SizedBox.shrink();
-    }
-
-    return ListView.builder(
-      controller: _controller,
-      itemCount: _items.length + (_hasMore ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == _items.length) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-        return widget.itemBuilder(context, _items[index]);
-      },
+    // Use the new EnhancedPaginatedList for better performance and memory management
+    return EnhancedPaginatedList<T>(
+      baseQuery: widget.query,
+      fromDoc: widget.fromDoc,
+      itemBuilder: widget.itemBuilder,
+      pageSize: widget.pageSize,
+      emptyBuilder: widget.emptyBuilder,
+      enableRealTimeUpdates: false, // Maintain backward compatibility
+      enablePullToRefresh: true,
+      listId: 'paginated_firestore_list',
     );
   }
 }

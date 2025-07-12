@@ -356,7 +356,7 @@ class NotificationService {
           await FirebaseFirestore.instance.collection('sms_queue').add({
             'phoneNumber': phoneNumber,
             'message':
-                'Shoppy: Шинэ захиалга #${orderId.substring(0, 6)}. $itemCount бүтээгдэхүүн, ₮${total.toStringAsFixed(0)}. Админ панелээс харна уу.',
+                'Avii.mn: Шинэ захиалга #${orderId.substring(0, 6)}. $itemCount бүтээгдэхүүн, ₮${total.toStringAsFixed(0)}. Админ панелээс харна уу.',
             'type': 'new_order',
             'ownerId': ownerId,
             'orderId': orderId,

@@ -27,13 +27,13 @@ export * from './data-consistency';
 // Export Order Cleanup functions
 export * from './order-cleanup';
 
-// QPay Configuration
-const QPAY_CONFIG = {
-  username: process.env.QPAY_USERNAME || 'AVII_MN',
-  password: process.env.QPAY_PASSWORD || 'zAX35zpc',
-  invoiceCode: process.env.QPAY_INVOICE_CODE || 'AVII_MN_INVOICE',
-  baseUrl: process.env.QPAY_BASE_URL || 'https://merchant.qpay.mn/v2',
-};
+// Export QPay Webhook functions
+export * from './qpay-webhook';
+
+// Export Subscription management functions
+export * from './subscription-webhook';
+
+
 
 // QPay Webhook Handler
 export const handleQPayWebhook = functions.https.onRequest(async (req, res) => {

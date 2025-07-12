@@ -12,10 +12,13 @@ import 'package:avii/features/orders/services/order_service.dart';
 import 'package:avii/features/cart/models/cart_item.dart';
 import 'package:avii/features/stores/models/store_model.dart';
 import 'package:avii/features/products/models/product_model.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'qpay_payment_page.dart';
 import '../../../core/utils/popup_utils.dart';
 import '../../../admin_panel/services/notification_service.dart';
 import '../../../core/services/qpay_service.dart';
+import 'dart:ui' as ui;
+import 'payment_waiting_screen.dart';
 
 class CheckoutPage extends StatefulWidget {
   final String email;
@@ -240,7 +243,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
             // Create a default store with current user as owner
             final defaultStoreData = {
-              'name': 'Shoppy Store',
+              'name': 'Avii.mn Store',
               'description': 'Default store for testing',
               'banner': '',
               'logo': '',
@@ -257,7 +260,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
             store = StoreModel(
               id: storeId,
-              name: 'Shoppy Store',
+              name: 'Avii.mn Store',
               description: 'Default store for testing',
               banner: '',
               logo: '',
@@ -395,36 +398,67 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
       // Create order description
       final itemNames = widget.items.map((item) => item.name).join(', ');
-      final description = 'Shoppy захиалга: $itemNames';
+      final description = 'Avii.mn захиалга: $itemNames';
 
-      // Navigate to QPay payment page
-      final bool? paymentSuccess = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (context) => QPayPaymentPage(
-            orderId: orderId,
-            amount: _finalTotal,
-            description: description,
-            customerEmail: customerEmail,
-            onPaymentSuccess: () {
-              Navigator.pop(context, true);
-            },
-            onPaymentCancel: () {
-              Navigator.pop(context, false);
-            },
-          ),
-        ),
+      // Create QPay invoice
+      final result = await _qpayService.createInvoice(
+        orderId: orderId,
+        amount: _finalTotal,
+        description: description,
+        customerEmail: customerEmail,
       );
 
-      if (paymentSuccess == true) {
-        // Payment successful - create the order
-        await _createOrder(orderData, customerEmail, deliveryAddress);
+      if (result.success && result.invoice != null) {
+        final invoice = result.invoice!;
+
+        // Get the QPay web payment URL
+        String paymentUrl = invoice.bestPaymentUrl;
+
+        // If no URL is available, generate one from QR code
+        if (paymentUrl.isEmpty && invoice.qrCode.isNotEmpty) {
+          final encodedQR = Uri.encodeComponent(invoice.qrCode);
+          paymentUrl = 'https://qpay.mn/q/?q=$encodedQR';
+        }
+
+        debugPrint('QPay payment URL: $paymentUrl');
+        debugPrint('QPay QR code: ${invoice.qrCode}');
+        debugPrint('QPay short link: ${invoice.shortLink}');
+        debugPrint('QPay deep link: ${invoice.deepLink}');
+
+        if (paymentUrl.isNotEmpty) {
+          // Open QPay payment gateway in browser
+          final launched = await launchUrl(
+            Uri.parse(paymentUrl),
+            mode: LaunchMode.externalApplication,
+          );
+
+          if (launched) {
+            // Store order data temporarily for when payment is completed
+            // We'll create the order when we receive the webhook notification
+            await _storeTemporaryOrder(
+                orderId, orderData, customerEmail, deliveryAddress);
+
+            // Navigate to payment waiting screen
+            if (mounted) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => PaymentWaitingScreen(
+                    orderId: orderId,
+                    amount: _finalTotal,
+                    qpayInvoiceId: invoice.qpayInvoiceId,
+                  ),
+                ),
+              );
+            }
+          } else {
+            throw Exception('QPay төлбөрийн хуудас нээх боломжгүй байна');
+          }
+        } else {
+          throw Exception(
+              'QPay төлбөрийн холбоос үүсгэх боломжгүй байна. QR код: ${invoice.qrCode.isEmpty ? "олдсонгүй" : "байна"}');
+        }
       } else {
-        // Payment was cancelled or failed
-        PopupUtils.showWarning(
-          context: context,
-          message: 'Төлбөр цуцлагдсан',
-        );
+        throw Exception(result.error ?? 'QPay нэхэмжлэх үүсгэх боломжгүй');
       }
     } catch (e) {
       PopupUtils.showError(
@@ -435,6 +469,44 @@ class _CheckoutPageState extends State<CheckoutPage> {
       setState(() {
         _isProcessingOrder = false;
       });
+    }
+  }
+
+  /// Store order data temporarily until payment is confirmed via webhook
+  Future<void> _storeTemporaryOrder(
+    String orderId,
+    Map<String, dynamic> orderData,
+    String customerEmail,
+    Map<String, dynamic> deliveryAddress,
+  ) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Store temporary order data in Firestore
+      await FirebaseFirestore.instance
+          .collection('temporary_orders')
+          .doc(orderId)
+          .set({
+        'orderId': orderId,
+        'userId': user.uid,
+        'customerEmail': customerEmail,
+        'orderData': orderData,
+        'deliveryAddress': deliveryAddress,
+        'createdAt': FieldValue.serverTimestamp(),
+        'status': 'pending_payment',
+        'items': widget.items
+            .map((item) => {
+                  'name': item.name,
+                  'variant': item.variant,
+                  'price': item.price,
+                  'imageUrl': item.imageUrl,
+                  'storeId': item.storeId,
+                })
+            .toList(),
+      });
+    } catch (e) {
+      debugPrint('Error storing temporary order: $e');
     }
   }
 
@@ -517,7 +589,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     _appliedDiscount?.type == DiscountType.freeShipping
                         ? 0
                         : widget.shippingCost),
-                if (widget.tax != 0) _priceRow('Татвар', widget.tax),
                 const Divider(height: 32),
                 _priceRow('Нийт дүн', _finalTotal, isTotal: true),
                 const SizedBox(height: 32),

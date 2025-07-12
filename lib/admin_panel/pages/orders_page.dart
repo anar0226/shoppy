@@ -8,6 +8,7 @@ import '../../core/utils/type_utils.dart';
 import '../../features/orders/services/order_service.dart';
 import '../../features/notifications/notification_service.dart';
 import '../../features/products/models/product_model.dart';
+import '../../core/services/database_service.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -1338,10 +1339,11 @@ class _OrdersPageState extends State<OrdersPage> {
 
   Widget _ordersStreamTable() {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
+      stream: DatabaseService()
           .collection('orders')
           .where('vendorId', isEqualTo: AuthService.instance.currentUser?.uid)
           .orderBy('createdAt', descending: true)
+          .limit(50) // Add pagination limit
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {

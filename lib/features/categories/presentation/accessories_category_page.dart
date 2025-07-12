@@ -13,9 +13,7 @@ class AccessoriesCategoryPage extends StatelessWidget {
       title: 'Аксессуары',
       featuredStoreIds: const [_featuredStoreId],
       sections: const [
-        'Backpacks',
         'Belts',
-        'Handbags',
         'Hats',
         'Jewelry',
         'Sunglasses',
@@ -23,21 +21,6 @@ class AccessoriesCategoryPage extends StatelessWidget {
         'Others',
       ],
       subCategories: [
-        SubCategory(
-          name: 'Үүргэвч',
-          imageUrl: 'assets/images/categories/Accessories/backpacks.jpg',
-          color: const Color(0xFF8B4513),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const FinalCategoryPage(
-                title: 'Үүргэвч',
-                mainCategory: 'Accessories',
-                subCategory: 'Backpacks',
-              ),
-            ),
-          ),
-        ),
         SubCategory(
           name: 'Бүс',
           imageUrl: 'assets/images/categories/Accessories/belts.jpg',
@@ -54,24 +37,9 @@ class AccessoriesCategoryPage extends StatelessWidget {
           ),
         ),
         SubCategory(
-          name: 'Гар цүнх',
-          imageUrl: 'assets/images/categories/Accessories/handbags.jpg',
-          color: const Color(0xFFB8860B),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const FinalCategoryPage(
-                title: 'Гар цүнх',
-                mainCategory: 'Accessories',
-                subCategory: 'Handbags',
-              ),
-            ),
-          ),
-        ),
-        SubCategory(
           name: 'Малгай',
           imageUrl: 'assets/images/categories/Accessories/hats.jpg',
-          color: const Color(0xFF2E8B57),
+          color: const Color.fromARGB(255, 182, 214, 196),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -86,7 +54,7 @@ class AccessoriesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Гоёл чимэглэл',
           imageUrl: 'assets/images/categories/Accessories/jewelry.jpg',
-          color: const Color(0xFFFFD700),
+          color: const Color.fromARGB(255, 215, 213, 202),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -116,7 +84,7 @@ class AccessoriesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Түрийвч',
           imageUrl: 'assets/images/categories/Accessories/wallets.jpg',
-          color: const Color(0xFF8B4513),
+          color: const Color.fromARGB(255, 196, 194, 193),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(

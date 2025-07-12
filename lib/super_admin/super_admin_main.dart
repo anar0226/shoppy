@@ -5,7 +5,7 @@ import 'super_admin_app.dart';
 
 /// Main entry point for the Super Admin panel
 ///
-/// This runs as a separate app from the main Shoppy app
+/// This runs as a separate app from the main Avii.mn app
 /// Usage: flutter run -t lib/super_admin/super_admin_main.dart
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
