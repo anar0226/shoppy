@@ -5,7 +5,6 @@ import 'signup_page.dart';
 import 'package:avii/core/utils/validation_utils.dart';
 import 'forgot_password_page.dart';
 import 'enhanced_phone_auth_page.dart';
-import 'debug_login_widget.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -196,11 +195,6 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 40),
                         _SocialButtons(auth: auth),
-                        const SizedBox(height: 20),
-
-                        // Debug login widget (only shown in debug mode)
-                        const DebugLoginWidget(),
-
                         const SizedBox(height: 40),
                       ],
                     ),

@@ -1,11 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:avii/features/cart/models/cart_item.dart';
-import 'package:avii/features/stores/models/store_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+import '../../products/models/product_model.dart';
+import '../../stores/models/store_model.dart';
+import '../../cart/models/cart_item.dart';
+import '../../../core/services/inventory_service.dart';
 import '../../../admin_panel/services/notification_service.dart';
 
 class OrderService {
-  final _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Date range helpers
   DateTime get _today => DateTime.now();
@@ -19,6 +23,7 @@ class OrderService {
 
   // **CORE ORDER FUNCTIONALITY**
 
+  /// Create order with automatic inventory adjustment
   Future<String> createOrder({
     required User user,
     required double subtotal,
@@ -26,98 +31,517 @@ class OrderService {
     required double tax,
     required List<CartItem> cart,
     required StoreModel store,
+    String? discountCode,
+    double discountAmount = 0,
+    Map<String, dynamic>? deliveryAddress,
+    String paymentMethod = 'card',
+    String? paymentIntentId,
+    String? reservationId,
   }) async {
-    final now = DateTime.now();
-    final items = cart
-        .map((c) => {
-              'productId': c.product.id,
-              'name': c.product.name,
-              'imageUrl':
-                  c.product.images.isNotEmpty ? c.product.images.first : '',
-              'price': c.product.price,
-              'variant': c.variantDisplayText,
-              'quantity': c.quantity,
-            })
-        .toList();
-
-    // Get customer name from user profile or fallback to display name or email
-    String customerName = 'Үйлчлүүлэгч';
     try {
-      final userDoc = await _db.collection('users').doc(user.uid).get();
-      if (userDoc.exists) {
-        final userData = userDoc.data();
-        customerName = userData?['displayName'] ??
-            userData?['firstName'] ??
-            userData?['name'] ??
-            user.displayName ??
-            user.email?.split('@').first ??
-            'Үйлчлүүлэгч';
+      // Generate order ID
+      final orderId = DateTime.now().millisecondsSinceEpoch.toString();
+
+      // Calculate total
+      final total = subtotal + shipping + tax - discountAmount;
+
+      // Create order document
+      final orderData = {
+        'orderId': orderId,
+        'userId': user.uid,
+        'userEmail': user.email,
+        'storeId': store.id,
+        'storeName': store.name,
+        'items': cart
+            .map((item) => {
+                  'productId': item.product.id,
+                  'name': item.product.name,
+                  'price': item.product.price,
+                  'quantity': item.quantity,
+                  'selectedVariants': item.selectedVariants,
+                  'imageUrl': item.product.images.isNotEmpty
+                      ? item.product.images.first
+                      : '',
+                })
+            .toList(),
+        'subtotal': subtotal,
+        'shipping': shipping,
+        'tax': tax,
+        'discountAmount': discountAmount,
+        'discountCode': discountCode,
+        'total': total,
+        'status': 'placed',
+        'paymentMethod': paymentMethod,
+        'paymentIntentId': paymentIntentId,
+        'deliveryAddress': deliveryAddress,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      // Execute order creation with inventory adjustment in transaction
+      await _firestore.runTransaction((transaction) async {
+        // Create order in global orders collection
+        final orderRef = _firestore.collection('orders').doc(orderId);
+        transaction.set(orderRef, orderData);
+
+        // Create order in user's orders collection
+        final userOrderRef = _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('orders')
+            .doc(orderId);
+        transaction.set(userOrderRef, orderData);
+
+        // Create order in store's orders collection
+        final storeOrderRef = _firestore
+            .collection('stores')
+            .doc(store.id)
+            .collection('orders')
+            .doc(orderId);
+        transaction.set(storeOrderRef, orderData);
+
+        // Adjust inventory for each item (confirm reservation or deduct stock)
+        for (final item in cart) {
+          await _adjustInventoryForOrderItem(
+            transaction,
+            item,
+            orderId,
+            user.uid,
+            reservationId,
+          );
+        }
+
+        // If there was a reservation, confirm it
+        if (reservationId != null) {
+          final reservationRef = _firestore
+              .collection('inventory_reservations')
+              .doc(reservationId);
+          transaction.update(reservationRef, {
+            'status': 'confirmed',
+            'orderId': orderId,
+            'confirmedAt': FieldValue.serverTimestamp(),
+          });
+        }
+      });
+
+      // Send notifications asynchronously
+      _sendOrderNotifications(store, orderId, user.email ?? '', total);
+
+      // Create inventory adjustment audit trail
+      await _createInventoryAuditTrail(orderId, cart, user.uid, store.id);
+
+      return orderId;
+    } catch (e) {
+      debugPrint('Error creating order: $e');
+      throw Exception('Failed to create order: $e');
+    }
+  }
+
+  /// Adjust inventory for a single order item
+  Future<void> _adjustInventoryForOrderItem(
+    Transaction transaction,
+    CartItem item,
+    String orderId,
+    String userId,
+    String? reservationId,
+  ) async {
+    try {
+      final productRef = _firestore.collection('products').doc(item.product.id);
+      final productSnap = await transaction.get(productRef);
+
+      if (!productSnap.exists) {
+        throw Exception('Product ${item.product.id} not found');
+      }
+
+      final product = ProductModel.fromFirestore(productSnap);
+
+      // If reservation exists, inventory was already adjusted during reservation
+      // We just need to confirm the reservation
+      if (reservationId != null) {
+        return;
+      }
+
+      // Otherwise, adjust inventory now
+      if (item.selectedVariants != null && item.selectedVariants!.isNotEmpty) {
+        // Adjust variant inventory
+        await _adjustVariantInventory(
+          transaction,
+          productRef,
+          product,
+          item.selectedVariants!,
+          item.quantity,
+          orderId,
+          userId,
+        );
       } else {
-        customerName =
-            user.displayName ?? user.email?.split('@').first ?? 'Үйлчлүүлэгч';
+        // Adjust simple product inventory
+        await _adjustSimpleProductInventory(
+          transaction,
+          productRef,
+          product,
+          item.quantity,
+          orderId,
+          userId,
+        );
       }
     } catch (e) {
-      // Fallback if user data fetch fails
-      customerName =
-          user.displayName ?? user.email?.split('@').first ?? 'Үйлчлүүлэгч';
+      debugPrint('Error adjusting inventory for order item: $e');
+      throw Exception('Failed to adjust inventory: $e');
     }
+  }
 
-    final orderData = {
-      'status': 'placed',
-      'createdAt': FieldValue.serverTimestamp(),
+  /// Adjust simple product inventory
+  Future<void> _adjustSimpleProductInventory(
+    Transaction transaction,
+    DocumentReference productRef,
+    ProductModel product,
+    int quantity,
+    String orderId,
+    String userId,
+  ) async {
+    final newStock = (product.stock - quantity).clamp(0, 999999);
+
+    transaction.update(productRef, {
+      'stock': newStock,
       'updatedAt': FieldValue.serverTimestamp(),
-      'subtotal': subtotal,
-      'shippingCost': shipping,
-      'tax': tax,
-      'total': subtotal + shipping + tax,
-      'items': items,
-      'storeId': store.id,
-      'storeName': store.name,
-      'vendorId': store.ownerId, // Add vendor ID for admin panel queries
-      'userId': user.uid,
-      'userEmail': user.email ?? '',
-      'customerName': customerName, // Add customer name
-      // Enhanced fields for analytics
-      'analytics': {
-        'month': '${now.year}-${now.month.toString().padLeft(2, '0')}',
-        'week':
-            '${now.year}-W${_getWeekOfYear(now).toString().padLeft(2, '0')}',
-        'day':
-            '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
-      },
-      'itemCount': items.fold<int>(
-          0, (sum, item) => sum + ((item['quantity'] ?? 0) as int)),
-    };
+      'lastOrderId': orderId,
+    });
 
-    // Create the order in main collection first to get the order ID
-    final orderDoc = await _db.collection('orders').add(orderData);
+    // Publish inventory adjustment event
+    await _publishInventoryAdjustmentEvent(
+      product.id,
+      product.name,
+      product.storeId,
+      product.stock,
+      newStock,
+      quantity,
+      'order_fulfillment',
+      orderId,
+      userId,
+    );
+  }
 
-    // Add the main order ID reference and save to user's collection
-    final userOrderData = Map<String, dynamic>.from(orderData);
-    userOrderData['mainOrderId'] = orderDoc.id;
+  /// Adjust variant inventory
+  Future<void> _adjustVariantInventory(
+    Transaction transaction,
+    DocumentReference productRef,
+    ProductModel product,
+    Map<String, String> selectedVariants,
+    int quantity,
+    String orderId,
+    String userId,
+  ) async {
+    final updatedVariants = <Map<String, dynamic>>[];
 
-    await _db
-        .collection('users')
-        .doc(user.uid)
-        .collection('orders')
-        .add(userOrderData);
+    for (final variant in product.variants) {
+      final selectedOption = selectedVariants[variant.name];
+      final variantMap = variant.toMap();
 
-    // Send notification to store owner about new order
-    try {
-      await NotificationService.notifyStoreOwnerNewOrder(
-        storeId: store.id,
-        ownerId: store.ownerId,
-        orderId: orderDoc.id,
-        customerEmail: user.email ?? '',
-        total: subtotal + shipping + tax,
-        items: items,
-      );
-    } catch (e) {
-      // Don't fail order creation if notification fails
-      // Failed to send order notification
+      if (selectedOption != null && variant.trackInventory) {
+        final currentStock = variant.getStockForOption(selectedOption);
+        final newStock = (currentStock - quantity).clamp(0, 999999);
+
+        final updatedStockByOption =
+            Map<String, int>.from(variant.stockByOption);
+        updatedStockByOption[selectedOption] = newStock;
+        variantMap['stockByOption'] = updatedStockByOption;
+
+        // Publish inventory adjustment event for variant
+        await _publishInventoryAdjustmentEvent(
+          product.id,
+          '${product.name} - ${variant.name}: $selectedOption',
+          product.storeId,
+          currentStock,
+          newStock,
+          quantity,
+          'order_fulfillment',
+          orderId,
+          userId,
+        );
+      }
+
+      updatedVariants.add(variantMap);
     }
 
-    return orderDoc.id;
+    transaction.update(productRef, {
+      'variants': updatedVariants,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'lastOrderId': orderId,
+    });
+  }
+
+  /// Publish inventory adjustment event
+  Future<void> _publishInventoryAdjustmentEvent(
+    String productId,
+    String productName,
+    String storeId,
+    int previousStock,
+    int newStock,
+    int adjustment,
+    String reason,
+    String orderId,
+    String userId,
+  ) async {
+    try {
+      await _firestore.collection('inventory_events').add({
+        'type': 'adjustment',
+        'productId': productId,
+        'productName': productName,
+        'storeId': storeId,
+        'previousStock': previousStock,
+        'newStock': newStock,
+        'adjustment': -adjustment, // Negative for order fulfillment
+        'reason': reason,
+        'orderId': orderId,
+        'userId': userId,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error publishing inventory adjustment event: $e');
+    }
+  }
+
+  /// Create inventory audit trail
+  Future<void> _createInventoryAuditTrail(
+    String orderId,
+    List<CartItem> cart,
+    String userId,
+    String storeId,
+  ) async {
+    try {
+      final batch = _firestore.batch();
+
+      for (final item in cart) {
+        final auditRef = _firestore.collection('inventory_audit_log').doc();
+        final auditData = {
+          'productId': item.product.id,
+          'productName': item.product.name,
+          'storeId': storeId,
+          'adjustment': -item.quantity,
+          'reason': 'order_fulfillment',
+          'orderId': orderId,
+          'userId': userId,
+          'selectedVariants': item.selectedVariants,
+          'timestamp': FieldValue.serverTimestamp(),
+          'type': 'order_fulfillment',
+        };
+
+        batch.set(auditRef, auditData);
+      }
+
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error creating inventory audit trail: $e');
+    }
+  }
+
+  /// Send order notifications
+  void _sendOrderNotifications(
+    StoreModel store,
+    String orderId,
+    String customerEmail,
+    double total,
+  ) {
+    // Send notification to store owner
+    NotificationService().notifyNewOrder(
+      storeId: store.id,
+      ownerId: store.ownerId,
+      orderId: orderId,
+      customerEmail: customerEmail,
+      total: total,
+    );
+  }
+
+  /// Update order status with inventory restock if cancelled
+  Future<void> updateOrderStatus(
+    String orderId,
+    String newStatus, {
+    String? reason,
+    bool restockInventory = false,
+  }) async {
+    try {
+      await _firestore.runTransaction((transaction) async {
+        // Update order status in all locations
+        final orderRef = _firestore.collection('orders').doc(orderId);
+        final orderSnap = await transaction.get(orderRef);
+
+        if (!orderSnap.exists) {
+          throw Exception('Order not found');
+        }
+
+        final orderData = orderSnap.data() as Map<String, dynamic>;
+        final userId = orderData['userId'] as String;
+        final storeId = orderData['storeId'] as String;
+        final items = List<Map<String, dynamic>>.from(orderData['items'] ?? []);
+
+        // Update order status
+        final updateData = {
+          'status': newStatus,
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+
+        if (reason != null) {
+          updateData['statusReason'] = reason;
+        }
+
+        // Update in global orders collection
+        transaction.update(orderRef, updateData);
+
+        // Update in user's orders collection
+        final userOrderRef = _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('orders')
+            .doc(orderId);
+        transaction.update(userOrderRef, updateData);
+
+        // Update in store's orders collection
+        final storeOrderRef = _firestore
+            .collection('stores')
+            .doc(storeId)
+            .collection('orders')
+            .doc(orderId);
+        transaction.update(storeOrderRef, updateData);
+
+        // Restock inventory if order is cancelled
+        if (restockInventory &&
+            (newStatus == 'cancelled' || newStatus == 'refunded')) {
+          await _restockInventoryForOrder(transaction, items, orderId, userId);
+        }
+      });
+    } catch (e) {
+      debugPrint('Error updating order status: $e');
+      throw Exception('Failed to update order status: $e');
+    }
+  }
+
+  /// Restock inventory for cancelled/refunded order
+  Future<void> _restockInventoryForOrder(
+    Transaction transaction,
+    List<Map<String, dynamic>> items,
+    String orderId,
+    String userId,
+  ) async {
+    try {
+      for (final itemData in items) {
+        final productId = itemData['productId'] as String;
+        final quantity = itemData['quantity'] as int;
+        final selectedVariants =
+            itemData['selectedVariants'] as Map<String, String>?;
+
+        final productRef = _firestore.collection('products').doc(productId);
+        final productSnap = await transaction.get(productRef);
+
+        if (!productSnap.exists) continue;
+
+        final product = ProductModel.fromFirestore(productSnap);
+
+        if (selectedVariants != null && selectedVariants.isNotEmpty) {
+          // Restock variant inventory
+          await _restockVariantInventory(
+            transaction,
+            productRef,
+            product,
+            selectedVariants,
+            quantity,
+            orderId,
+            userId,
+          );
+        } else {
+          // Restock simple product inventory
+          await _restockSimpleProductInventory(
+            transaction,
+            productRef,
+            product,
+            quantity,
+            orderId,
+            userId,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error restocking inventory: $e');
+    }
+  }
+
+  /// Restock simple product inventory
+  Future<void> _restockSimpleProductInventory(
+    Transaction transaction,
+    DocumentReference productRef,
+    ProductModel product,
+    int quantity,
+    String orderId,
+    String userId,
+  ) async {
+    final newStock = product.stock + quantity;
+
+    transaction.update(productRef, {
+      'stock': newStock,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'lastRestockOrderId': orderId,
+    });
+
+    // Publish inventory adjustment event
+    await _publishInventoryAdjustmentEvent(
+      product.id,
+      product.name,
+      product.storeId,
+      product.stock,
+      newStock,
+      quantity,
+      'order_cancellation',
+      orderId,
+      userId,
+    );
+  }
+
+  /// Restock variant inventory
+  Future<void> _restockVariantInventory(
+    Transaction transaction,
+    DocumentReference productRef,
+    ProductModel product,
+    Map<String, String> selectedVariants,
+    int quantity,
+    String orderId,
+    String userId,
+  ) async {
+    final updatedVariants = <Map<String, dynamic>>[];
+
+    for (final variant in product.variants) {
+      final selectedOption = selectedVariants[variant.name];
+      final variantMap = variant.toMap();
+
+      if (selectedOption != null && variant.trackInventory) {
+        final currentStock = variant.getStockForOption(selectedOption);
+        final newStock = currentStock + quantity;
+
+        final updatedStockByOption =
+            Map<String, int>.from(variant.stockByOption);
+        updatedStockByOption[selectedOption] = newStock;
+        variantMap['stockByOption'] = updatedStockByOption;
+
+        // Publish inventory adjustment event for variant
+        await _publishInventoryAdjustmentEvent(
+          product.id,
+          '${product.name} - ${variant.name}: $selectedOption',
+          product.storeId,
+          currentStock,
+          newStock,
+          quantity,
+          'order_cancellation',
+          orderId,
+          userId,
+        );
+      }
+
+      updatedVariants.add(variantMap);
+    }
+
+    transaction.update(productRef, {
+      'variants': updatedVariants,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'lastRestockOrderId': orderId,
+    });
   }
 
   // **ORDER ANALYTICS METHODS**
@@ -131,7 +555,7 @@ class OrderService {
       final start = startDate ?? _last30Days;
       final end = endDate ?? _today;
 
-      final ordersSnapshot = await _db
+      final ordersSnapshot = await _firestore
           .collection('orders')
           .where('storeId', isEqualTo: storeId)
           .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
@@ -194,7 +618,7 @@ class OrderService {
           final startOfDay = DateTime(date.year, date.month, date.day);
           final endOfDay = startOfDay.add(const Duration(days: 1));
 
-          final snapshot = await _db
+          final snapshot = await _firestore
               .collection('orders')
               .where('storeId', isEqualTo: storeId)
               .where('createdAt',
@@ -227,7 +651,7 @@ class OrderService {
           final endDate = now.subtract(Duration(days: i * 7));
           final startDate = endDate.subtract(const Duration(days: 7));
 
-          final snapshot = await _db
+          final snapshot = await _firestore
               .collection('orders')
               .where('storeId', isEqualTo: storeId)
               .where('createdAt',
@@ -267,7 +691,7 @@ class OrderService {
   Future<List<Map<String, dynamic>>> getRecentOrders(String storeId,
       {int limit = 10}) async {
     try {
-      final snapshot = await _db
+      final snapshot = await _firestore
           .collection('orders')
           .where('storeId', isEqualTo: storeId)
           .orderBy('createdAt', descending: true)
@@ -300,7 +724,7 @@ class OrderService {
       final start = startDate ?? _last30Days;
       final end = endDate ?? _today;
 
-      final snapshot = await _db
+      final snapshot = await _firestore
           .collection('orders')
           .where('storeId', isEqualTo: storeId)
           .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
@@ -341,7 +765,7 @@ class OrderService {
           final monthStart = DateTime(now.year, now.month - i, 1);
           final monthEnd = DateTime(now.year, now.month - i + 1, 1);
 
-          final snapshot = await _db
+          final snapshot = await _firestore
               .collection('orders')
               .where('storeId', isEqualTo: storeId)
               .where('createdAt',
@@ -368,7 +792,7 @@ class OrderService {
           final dayStart = DateTime(date.year, date.month, date.day);
           final dayEnd = dayStart.add(const Duration(days: 1));
 
-          final snapshot = await _db
+          final snapshot = await _firestore
               .collection('orders')
               .where('storeId', isEqualTo: storeId)
               .where('createdAt',
@@ -398,168 +822,98 @@ class OrderService {
 
   // **ORDER MANAGEMENT METHODS**
 
-  Future<void> updateOrderStatus(String orderId, String newStatus) async {
-    try {
-      final updateData = {
-        'status': newStatus,
-        'updatedAt': FieldValue.serverTimestamp(),
-      };
+  // **ORDER ANALYTICS METHODS**
 
-      // Add specific timestamp for status changes
-      if (newStatus == 'shipped') {
-        updateData['shippedAt'] = FieldValue.serverTimestamp();
-      } else if (newStatus == 'delivered') {
-        updateData['deliveredAt'] = FieldValue.serverTimestamp();
-      } else if (newStatus == 'canceled') {
-        updateData['canceledAt'] = FieldValue.serverTimestamp();
-      }
-
-      // Update main orders collection
-      await _db.collection('orders').doc(orderId).update(updateData);
-
-      // Also update user's personal orders collection for mobile app sync
-      await _updateUserOrderStatus(orderId, updateData);
-    } catch (e) {
-      throw Exception('Failed to update order status: $e');
-    }
-  }
-
-  /// Update the user's personal orders collection to sync with mobile app
-  Future<void> _updateUserOrderStatus(
-      String orderId, Map<String, dynamic> updateData) async {
-    try {
-      // First get the order to find the user ID
-      final orderDoc = await _db.collection('orders').doc(orderId).get();
-      if (!orderDoc.exists) return;
-
-      final orderData = orderDoc.data()!;
-      final userId = orderData['userId'] as String?;
-
-      if (userId != null && userId.isNotEmpty) {
-        // Add the main order ID to the update data for future reference
-        final enhancedUpdateData = Map<String, dynamic>.from(updateData);
-        enhancedUpdateData['mainOrderId'] = orderId;
-
-        // Find matching order in user's collection using multiple criteria
-        final userOrdersQuery = await _db
-            .collection('users')
-            .doc(userId)
-            .collection('orders')
-            .get();
-
-        DocumentSnapshot? matchingUserOrder;
-
-        // Try to find by stored main order ID first (for future orders)
-        for (final userOrderDoc in userOrdersQuery.docs) {
-          final userOrderData = userOrderDoc.data();
-
-          if (userOrderData['mainOrderId'] == orderId) {
-            matchingUserOrder = userOrderDoc;
-            break;
-          }
-        }
-
-        // If not found by order ID, try to match by order details
-        if (matchingUserOrder == null) {
-          final orderCreatedAt = orderData['createdAt'] as Timestamp?;
-          final orderTotal = orderData['total'];
-          final orderStoreId = orderData['storeId'];
-
-          for (final userOrderDoc in userOrdersQuery.docs) {
-            final userOrderData = userOrderDoc.data();
-
-            final userOrderCreatedAt = userOrderData['createdAt'] as Timestamp?;
-            final userOrderTotal = userOrderData['total'];
-            final userOrderStoreId = userOrderData['storeId'];
-
-            // Match by creation time, total amount, and store ID
-            if (orderCreatedAt != null &&
-                userOrderCreatedAt != null &&
-                orderStoreId == userOrderStoreId &&
-                orderTotal == userOrderTotal &&
-                (orderCreatedAt.seconds - userOrderCreatedAt.seconds).abs() <=
-                    2) {
-              matchingUserOrder = userOrderDoc;
-              break;
-            }
-          }
-        }
-
-        // Update the matching user order
-        if (matchingUserOrder != null) {
-          await _db
-              .collection('users')
-              .doc(userId)
-              .collection('orders')
-              .doc(matchingUserOrder.id)
-              .update(enhancedUpdateData);
-          print(
-              '✅ Successfully synced order status to mobile app: ${matchingUserOrder.id} -> ${updateData['status']}');
-        } else {
-          print('⚠️ Could not find matching user order for $orderId');
-        }
-      }
-    } catch (e) {
-      // Don't fail the main update if user order sync fails
-      print('❌ Failed to sync user order status: $e');
-    }
-  }
-
-  Future<Map<String, dynamic>?> getOrderById(String orderId) async {
-    try {
-      // First try main orders collection
-      final mainOrder = await _db.collection('orders').doc(orderId).get();
-      if (mainOrder.exists) {
-        return mainOrder.data();
-      }
-
-      // Try archived orders
-      final archivedOrder =
-          await _db.collection('archived_orders').doc(orderId).get();
-      if (archivedOrder.exists) {
-        return archivedOrder.data();
-      }
-
-      // Try historical orders
-      final historicalOrder =
-          await _db.collection('historical_orders').doc(orderId).get();
-      if (historicalOrder.exists) {
-        return historicalOrder.data();
-      }
-
-      return null;
-    } catch (e) {
-      print('Error fetching order $orderId: $e');
-      return null;
-    }
-  }
-
-  Stream<List<Map<String, dynamic>>> getOrdersStream(
+  Future<Map<String, dynamic>> getOrderAnalyticsDetailed(
     String storeId, {
-    String? status,
-    int limit = 50,
-  }) {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     try {
-      Query query = _db
+      final start = startDate ?? _last30Days;
+      final end = endDate ?? _today;
+
+      final ordersSnapshot = await _firestore
           .collection('orders')
           .where('storeId', isEqualTo: storeId)
-          .orderBy('createdAt', descending: true);
+          .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+          .where('createdAt', isLessThanOrEqualTo: Timestamp.fromDate(end))
+          .get();
 
-      if (status != null && status != 'all') {
-        query = query.where('status', isEqualTo: status);
+      final orders = ordersSnapshot.docs;
+      final statusCounts = <String, int>{};
+      double totalRevenue = 0.0;
+      double totalSubtotal = 0.0;
+      double totalShipping = 0.0;
+      double totalTax = 0.0;
+      int totalItems = 0;
+
+      for (final order in orders) {
+        final data = order.data();
+        final status = _getStatusAsString(data['status']);
+        statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+
+        final safeStatus = _getStatusAsString(status);
+        if (safeStatus != 'canceled') {
+          totalRevenue += (data['total'] ?? 0).toDouble();
+          totalSubtotal += (data['subtotal'] ?? 0).toDouble();
+          totalShipping += (data['shippingCost'] ?? 0).toDouble();
+          totalTax += (data['tax'] ?? 0).toDouble();
+          totalItems += (data['itemCount'] ?? 0) as int;
+        }
       }
 
-      query = query.limit(limit);
-
-      return query.snapshots().map((snapshot) {
-        return snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          data['id'] = doc.id;
-          return data;
-        }).toList();
-      });
+      return {
+        'totalOrders': orders.length,
+        'totalRevenue': totalRevenue,
+        'totalSubtotal': totalSubtotal,
+        'totalShipping': totalShipping,
+        'totalTax': totalTax,
+        'totalItems': totalItems,
+        'statusDistribution': statusCounts,
+        'averageOrderValue':
+            orders.isNotEmpty ? totalRevenue / orders.length : 0.0,
+        'averageItemsPerOrder':
+            orders.isNotEmpty ? totalItems / orders.length : 0.0,
+      };
     } catch (e) {
-      throw Exception('Failed to get orders stream: $e');
+      throw Exception('Failed to get order analytics: $e');
+    }
+  }
+
+  /// Get inventory impact from orders
+  Future<Map<String, dynamic>> getInventoryImpact(String storeId) async {
+    try {
+      final auditLogs = await _firestore
+          .collection('inventory_audit_log')
+          .where('storeId', isEqualTo: storeId)
+          .where('type', isEqualTo: 'order_fulfillment')
+          .orderBy('timestamp', descending: true)
+          .limit(100)
+          .get();
+
+      final Map<String, int> inventoryChanges = {};
+      int totalAdjustments = 0;
+
+      for (final logDoc in auditLogs.docs) {
+        final data = logDoc.data();
+        final productId = data['productId'] as String;
+        final adjustment = data['adjustment'] as int;
+
+        inventoryChanges[productId] =
+            (inventoryChanges[productId] ?? 0) + adjustment.abs();
+        totalAdjustments += adjustment.abs();
+      }
+
+      return {
+        'totalAdjustments': totalAdjustments,
+        'inventoryChanges': inventoryChanges,
+        'mostAffectedProducts': inventoryChanges.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value)),
+      };
+    } catch (e) {
+      debugPrint('Error getting inventory impact: $e');
+      return {};
     }
   }
 
@@ -578,7 +932,7 @@ class OrderService {
       final startOfDay = DateTime(today.year, today.month, today.day);
       final endOfDay = startOfDay.add(const Duration(days: 1));
 
-      final todaySnapshot = await _db
+      final todaySnapshot = await _firestore
           .collection('orders')
           .where('storeId', isEqualTo: storeId)
           .where('createdAt',
@@ -587,14 +941,14 @@ class OrderService {
           .get();
 
       // Get pending orders (placed + processing)
-      final pendingSnapshot = await _db
+      final pendingSnapshot = await _firestore
           .collection('orders')
           .where('storeId', isEqualTo: storeId)
           .where('status', whereIn: ['placed', 'processing']).get();
 
       // Get this month's orders
       final monthStart = DateTime(today.year, today.month, 1);
-      final monthSnapshot = await _db
+      final monthSnapshot = await _firestore
           .collection('orders')
           .where('storeId', isEqualTo: storeId)
           .where('createdAt',
@@ -651,14 +1005,14 @@ class OrderService {
       final cutoffDate = _today.subtract(Duration(days: _archiveAfterDays));
 
       // Get orders to archive
-      final ordersToArchive = await _db
+      final ordersToArchive = await _firestore
           .collection('orders')
           .where('status', isEqualTo: 'delivered')
           .where('updatedAt', isLessThan: Timestamp.fromDate(cutoffDate))
           .limit(100) // Process in batches
           .get();
 
-      final batch = _db.batch();
+      final batch = _firestore.batch();
 
       for (final doc in ordersToArchive.docs) {
         final orderData = doc.data();
@@ -667,7 +1021,8 @@ class OrderService {
         final archivedData = _createArchivedOrderData(orderData);
 
         // Add to archived collection
-        final archivedRef = _db.collection('archived_orders').doc(doc.id);
+        final archivedRef =
+            _firestore.collection('archived_orders').doc(doc.id);
         batch.set(archivedRef, archivedData);
 
         // Mark as archived in original collection
@@ -691,13 +1046,13 @@ class OrderService {
       final cutoffDate = _today.subtract(Duration(days: _compressAfterDays));
 
       // Get archived orders to compress
-      final ordersToCompress = await _db
+      final ordersToCompress = await _firestore
           .collection('archived_orders')
           .where('deliveredAt', isLessThan: Timestamp.fromDate(cutoffDate))
           .limit(100) // Process in batches
           .get();
 
-      final batch = _db.batch();
+      final batch = _firestore.batch();
 
       for (final doc in ordersToCompress.docs) {
         final orderData = doc.data();
@@ -706,7 +1061,8 @@ class OrderService {
         final compressedData = _createCompressedOrderData(orderData);
 
         // Add to historical collection
-        final historicalRef = _db.collection('historical_orders').doc(doc.id);
+        final historicalRef =
+            _firestore.collection('historical_orders').doc(doc.id);
         batch.set(historicalRef, compressedData);
 
         // Delete from archived collection
@@ -727,13 +1083,13 @@ class OrderService {
       final cutoffDate = _today.subtract(Duration(days: _deleteAfterDays));
 
       // Get historical orders to delete
-      final ordersToDelete = await _db
+      final ordersToDelete = await _firestore
           .collection('historical_orders')
           .where('deliveredAt', isLessThan: Timestamp.fromDate(cutoffDate))
           .limit(100) // Process in batches
           .get();
 
-      final batch = _db.batch();
+      final batch = _firestore.batch();
 
       for (final doc in ordersToDelete.docs) {
         batch.delete(doc.reference);
@@ -820,7 +1176,7 @@ class OrderService {
     try {
       // Get from main orders collection
       Query mainQuery =
-          _db.collection('orders').where('storeId', isEqualTo: storeId);
+          _firestore.collection('orders').where('storeId', isEqualTo: storeId);
       if (status != null)
         mainQuery = mainQuery.where('status', isEqualTo: status);
       if (startDate != null)
@@ -839,7 +1195,7 @@ class OrderService {
       if (startDate == null ||
           startDate
               .isAfter(_today.subtract(Duration(days: _archiveAfterDays)))) {
-        Query archivedQuery = _db
+        Query archivedQuery = _firestore
             .collection('archived_orders')
             .where('storeId', isEqualTo: storeId);
         if (status != null)

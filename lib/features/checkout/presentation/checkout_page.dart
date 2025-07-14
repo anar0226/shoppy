@@ -613,7 +613,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 PopupUtils.showError(
                                   context: context,
                                   message:
-                                      'Please log in to continue with payment',
+                                      'Та төлбөр хийхээс өмнө бүртгүүлэх хэрэгтэй.',
                                 );
                                 return;
                               }

@@ -31,8 +31,8 @@ class _SplashRouterState extends State<SplashRouter> {
       if (auth.needsProfileCompletion) {
         Navigator.of(context).pushReplacementNamed('/profile-completion');
       } else {
-        Navigator.of(context)
-            .pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const HomeScreen()));
       }
     } else if (seenOnboarding == true) {
       Navigator.of(context).pushReplacement(
