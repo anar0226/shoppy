@@ -31,12 +31,15 @@ import 'features/reviews/widgets/review_submission_dialog.dart';
 import 'core/services/order_fulfillment_service.dart';
 import 'core/utils/popup_utils.dart';
 import 'features/auth/presentation/profile_completion_page.dart';
+import 'features/support/support_contact_page.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 import 'core/config/environment_config.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'bootstrap.dart' as boot;
 import 'core/widgets/paginated_firestore_list.dart';
 import 'core/providers/connectivity_provider.dart';
+import 'core/services/production_logger.dart';
+import 'core/services/error_recovery_service.dart';
 
 /// Initialize payment services (Bank Transfer and Order Fulfillment)
 Future<void> _initializePaymentServices() async {
@@ -47,18 +50,26 @@ Future<void> _initializePaymentServices() async {
       // Production payment configuration - using environment variables
       qpayUsername: EnvironmentConfig.qpayUsername,
       qpayPassword: EnvironmentConfig.qpayPassword,
-
-      // UBCab Configuration
-      ubcabApiKey: EnvironmentConfig.ubcabApiKey,
-      ubcabMerchantId: EnvironmentConfig.ubcabMerchantId,
-      ubcabProduction: EnvironmentConfig.ubcabProduction,
     );
 
     // Payment services initialized successfully
-  } catch (e) {
-    // Failed to initialize payment services
-    // Don't throw error to allow app to continue running
-    // Payment functionality will show error messages when used
+  } catch (error, stackTrace) {
+    // Log payment service initialization failure with full context
+    await ProductionLogger.instance.error(
+      'Payment services initialization failed in main.dart',
+      error: error,
+      stackTrace: stackTrace,
+      context: {
+        'service': 'OrderFulfillmentService',
+        'stage': 'main_initialization',
+        'impact': 'payment_features_degraded',
+        'recovery': 'payment_ui_will_show_error_states',
+        'errorType': ErrorRecoveryService.instance.getErrorMessage(error),
+      },
+    );
+
+    // Don't rethrow - allow app to continue with degraded payment functionality
+    // Payment UI will handle errors gracefully when services are unavailable
   }
 }
 
@@ -167,6 +178,7 @@ class _ShopUBAppState extends State<ShopUBApp> {
             '/account': (_) => const ProfilePage(),
             '/saved': (_) => const SavedScreen(),
             '/profile-completion': (_) => const ProfileCompletionPage(),
+            '/support': (_) => const SupportContactPage(),
           },
           onGenerateRoute: (settings) {
             // Handle store routes

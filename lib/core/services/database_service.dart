@@ -57,10 +57,9 @@ class DatabaseService {
 
       // Configure settings for optimal performance
       _firestore!.settings = const Settings(
-        persistenceEnabled: true,
-        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+        persistenceEnabled: false,
+        cacheSizeBytes: 1048576, // 1MB cache only
         ignoreUndefinedProperties: false,
-        // Enable offline persistence and multi-tab support
         sslEnabled: true,
       );
 

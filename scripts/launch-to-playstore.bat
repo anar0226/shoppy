@@ -1,8 +1,8 @@
 @echo off
-REM Shoppy Google Play Store Launch Script for Windows
+REM Avii.mn Google Play Store Launch Script for Windows
 REM Run this script to prepare your app for Google Play Store
 
-echo 🚀 Shoppy Google Play Store Launch Script
+echo 🚀 Avii.mn Google Play Store Launch Script
 echo ==========================================
 
 REM Check if Flutter is installed
@@ -34,16 +34,16 @@ echo 🔨 Building debug version for testing...
 flutter build apk --debug
 
 REM Check if keystore exists
-if not exist "android\shoppy.keystore" (
+if not exist "android\avii.keystore" (
     echo 🔑 Keystore not found. Creating new keystore...
     echo Please run the following command manually:
-    echo keytool -genkey -v -keystore android\shoppy.keystore -alias shoppy -keyalg RSA -keysize 2048 -validity 10000
+    echo keytool -genkey -v -keystore android\avii.keystore -alias avii -keyalg RSA -keysize 2048 -validity 10000
     echo.
     echo Then create android\key.properties with:
     echo storePassword=your_keystore_password
     echo keyPassword=your_key_password
-    echo keyAlias=shoppy
-    echo storeFile=shoppy.keystore
+    echo keyAlias=avii
+    echo storeFile=avii.keystore
     pause
     exit /b 1
 )

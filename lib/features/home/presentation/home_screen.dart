@@ -15,9 +15,9 @@ import 'widgets/seller_card.dart';
 import '../../../core/services/rating_service.dart';
 import '../../recommendations/services/simple_recommendation_service.dart';
 import '../../recommendations/presentation/preferences_dialog.dart';
-import '../../../core/widgets/paginated_firestore_list.dart';
 import 'package:avii/core/constants/assets.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../core/services/production_logger.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -140,7 +140,14 @@ class _HomeScreenState extends State<HomeScreen> {
         try {
           final recommendedStores =
               await _recommendationService.getRecommendedStores(limit: 10);
-          print('📋 Found ${recommendedStores.length} recommended stores');
+          // Log to production logger instead of print
+          await ProductionLogger.instance.info(
+            '${recommendedStores.length} Санал болгох дэлгүүр оллоо',
+            context: {
+              'storeCount': recommendedStores.length,
+              'currentPage': _currentPage,
+            },
+          );
 
           for (final storeModel in recommendedStores) {
             if (result.length >= _storesPerPage) break;

@@ -78,31 +78,44 @@ class AuthProvider extends ChangeNotifier with RateLimitedService {
     notifyListeners();
   }
 
-  /// Sign in with Google
+  /// Sign in with Google - fixed implementation
   Future<User?> signInWithGoogle() async {
     try {
       await _setLoading(true);
-      final googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return null; // user canceled
 
-      final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
+      // Trigger the Google Sign-In flow
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return null; // User canceled
+
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      // Create a new credential
+      final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      final userCred = await _auth.signInWithCredential(credential);
+      // Sign in to Firebase with the Google credential
+      final UserCredential userCred =
+          await _auth.signInWithCredential(credential);
 
-      // Create user document (fixed: only call once, moved before return)
+      // Create user document if needed
       if (userCred.user != null) {
         await _createUserDocIfNeeded(userCred.user!);
       }
 
       return userCred.user;
     } on FirebaseAuthException catch (e) {
-      throw e.message ?? 'Google бүртгэлд алдаа гарлаа';
+      if (e.code == 'account-exists-with-different-credential') {
+        throw 'Энэ имэйл хаягтай хэрэглэгч байна';
+      } else if (e.code == 'invalid-credential') {
+        throw 'Google бүртгэл алдаа';
+      }
+      throw 'Google бүртгэлд алдаа гарлаа: ${e.message}';
     } catch (e) {
-      throw 'Google бүртгэлд алдаа гарлаа: ${e.toString()}';
+      throw 'Google бүртгэлд алдаа гарлаа: $e';
     } finally {
       await _setLoading(false);
     }
@@ -156,9 +169,8 @@ class AuthProvider extends ChangeNotifier with RateLimitedService {
     }
   }
 
-  /// Send verification code to phone number
+  /// Enhanced phone verification with proper error handling
   Future<void> sendPhoneVerificationCode(String phoneNumber) async {
-    checkRateLimit('auth_attempt');
     try {
       await _setLoading(true);
 
@@ -167,18 +179,13 @@ class AuthProvider extends ChangeNotifier with RateLimitedService {
         verificationCompleted: (PhoneAuthCredential credential) async {
           // Auto-verification completed (Android only)
           try {
-            final userCred = await _auth.signInWithCredential(credential);
-            if (userCred.user != null) {
-              await _createUserDocIfNeeded(userCred.user!);
-            }
+            await _auth.signInWithCredential(credential);
           } catch (e) {
-            // Log error but don't throw to avoid breaking auto-verification flow
-            // Auto-verification failed
-            // The user will still be authenticated in Firebase Auth even if Firestore fails
+            debugPrint('Auto-verification failed: $e');
           }
         },
         verificationFailed: (FirebaseAuthException e) {
-          throw e.message ?? 'Утасны дугаар баталгаажуулахэд алдаа гарлаа';
+          throw _getPhoneAuthErrorMessage(e.code);
         },
         codeSent: (String verificationId, int? resendToken) {
           _verificationId = verificationId;
@@ -190,8 +197,6 @@ class AuthProvider extends ChangeNotifier with RateLimitedService {
         },
         timeout: const Duration(seconds: 60),
       );
-    } on FirebaseAuthException catch (e) {
-      throw e.message ?? 'Баталгаажуулах код илгээхэд алдаа гарлаа';
     } finally {
       await _setLoading(false);
     }
@@ -356,6 +361,21 @@ class AuthProvider extends ChangeNotifier with RateLimitedService {
         return 'Хэт олон оролдлого. Түр хүлээгээд дахин оролдоно уу';
       default:
         return 'Нэвтрэхэд алдаа гарлаа';
+    }
+  }
+
+  String _getPhoneAuthErrorMessage(String code) {
+    switch (code) {
+      case 'invalid-phone-number':
+        return 'Утасны дугаар буруу байна';
+      case 'too-many-requests':
+        return 'Хэт олон оролдлого. Түр хүлээгээд дахин оролдоно уу';
+      case 'quota-exceeded':
+        return 'жооxон хүлээж байгаад дахин оролдоно уу';
+      case 'operation-not-allowed':
+        return 'Утасны баталгаажуулалтын тохиргоог өөрчлөх боломжгүй байна';
+      default:
+        return 'Утасны баталгаажуулаx явцад алдаа гарлаа';
     }
   }
 

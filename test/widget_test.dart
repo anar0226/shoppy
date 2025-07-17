@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:avii/main.dart';
 
 void main() {
-  group('Shoppy App Tests', () {
+  group('Avii.mn App Tests', () {
     testWidgets('App loads without crashing', (WidgetTester tester) async {
       // Build our app and trigger a frame.
       await tester.pumpWidget(const ShopUBApp());

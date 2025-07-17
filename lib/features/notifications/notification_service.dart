@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'fcm_service.dart';
+import '../../core/services/error_handler_service.dart';
 
 class NotificationService {
   static const String _notificationsCollection = 'notifications';
@@ -23,8 +24,17 @@ class NotificationService {
             data['notificationSettings'] as Map<String, dynamic>? ?? {};
         return notifications[notificationType] ?? true;
       }
-    } catch (e) {
-      print('Error checking notification setting: $e');
+    } catch (error, stackTrace) {
+      await ErrorHandlerService.instance.handleFirebaseError(
+        operation: 'check_notification_setting',
+        error: error,
+        stackTrace: stackTrace,
+        showUserMessage: false, // Silent failure for setting check
+        additionalContext: {
+          'notificationType': notificationType,
+          'userId': FirebaseAuth.instance.currentUser?.uid,
+        },
+      );
     }
     return true; // Default to enabled
   }
@@ -153,8 +163,18 @@ class NotificationService {
           ...?data,
         },
       );
-    } catch (e) {
-      print('Error creating notification: $e');
+    } catch (error, stackTrace) {
+      await ErrorHandlerService.instance.handleFirebaseError(
+        operation: 'create_notification',
+        error: error,
+        stackTrace: stackTrace,
+        showUserMessage: false, // Silent failure for notification creation
+        additionalContext: {
+          'userId': userId,
+          'title': title,
+          'type': type,
+        },
+      );
     }
   }
 
@@ -174,8 +194,17 @@ class NotificationService {
           .collection(_notificationsCollection)
           .doc(notificationId)
           .update({'read': true});
-    } catch (e) {
-      print('Error marking notification as read: $e');
+    } catch (error, stackTrace) {
+      await ErrorHandlerService.instance.handleFirebaseError(
+        operation: 'mark_notification_read',
+        error: error,
+        stackTrace: stackTrace,
+        showUserMessage: false, // Silent failure for marking as read
+        additionalContext: {
+          'notificationId': notificationId,
+          'userId': FirebaseAuth.instance.currentUser?.uid,
+        },
+      );
     }
   }
 
@@ -280,5 +309,22 @@ class NotificationService {
     // Check for price drops and new products periodically
     await checkPriceDropsForUser(userId);
     await checkNewProductsForUser(userId);
+  }
+
+  // General sendNotification method for payment services compatibility
+  Future<void> sendNotification({
+    required String userId,
+    required String title,
+    required String message,
+    required String type,
+    Map<String, dynamic>? data,
+  }) async {
+    await _createNotification(
+      userId: userId,
+      type: type,
+      title: title,
+      message: message,
+      data: data,
+    );
   }
 }

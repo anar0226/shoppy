@@ -13,6 +13,7 @@ import 'package:avii/features/addresses/presentation/manage_addresses_page.dart'
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'dart:async';
 import 'package:avii/features/stores/models/store_model.dart';
+import '../../../core/services/error_handler_service.dart';
 import 'package:avii/features/stores/presentation/store_screen.dart';
 import 'package:avii/features/home/presentation/main_scaffold.dart';
 import 'package:avii/core/services/inventory_service.dart';
@@ -175,7 +176,19 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
           });
         }
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      await ErrorHandlerService.instance.handleError(
+        operation: 'load_store_data',
+        error: error,
+        stackTrace: stackTrace,
+        context: context,
+        showUserMessage: false, // Silent failure for store data
+        additionalContext: {
+          'productId': widget.product.id,
+          'storeId': widget.product.storeId,
+        },
+      );
+    }
   }
 
   void _extractVariantInfo() {

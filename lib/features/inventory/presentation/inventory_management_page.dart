@@ -5,6 +5,9 @@ import '../../../features/auth/providers/auth_provider.dart';
 import '../../products/models/product_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart' as auth;
+import '../../../core/services/production_logger.dart';
+import '../../../core/services/error_recovery_service.dart';
 
 class InventoryManagementPage extends StatefulWidget {
   final String storeId;
@@ -1314,15 +1317,40 @@ class _ReorderDialogState extends State<ReorderDialog> {
       } else {
         throw Exception('Failed to process reorder');
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
+    } catch (error, stackTrace) {
+      // Log the error with full context
+      await ProductionLogger.instance.error(
+        'Inventory reorder failed',
+        error: error,
+        stackTrace: stackTrace,
+        context: {
+          'operation': 'inventory_reorder',
+          'productId': widget.reorderData['productId'],
+          'userId': auth.FirebaseAuth.instance.currentUser?.uid,
+          'errorType': ErrorRecoveryService.instance.getErrorMessage(error),
+        },
       );
+
+      // Show user-friendly error message
+      if (mounted) {
+        final userMessage =
+            ErrorRecoveryService.instance.getErrorMessage(error);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(userMessage),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'Дахин оролдох',
+              textColor: Colors.white,
+              onPressed: () => _submitReorder(),
+            ),
+          ),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 }

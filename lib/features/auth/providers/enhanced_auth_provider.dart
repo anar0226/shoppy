@@ -189,7 +189,12 @@ class EnhancedAuthProvider extends ChangeNotifier {
         throw Exception(securityResult.message);
       }
 
-      final googleUser = await GoogleSignIn().signIn();
+      final googleUser = await GoogleSignIn(
+        scopes: [
+          'email',
+          'profile',
+        ],
+      ).signIn();
       if (googleUser == null) return null;
 
       final googleAuth = await googleUser.authentication;
@@ -210,6 +215,14 @@ class EnhancedAuthProvider extends ChangeNotifier {
     } on FirebaseAuthException catch (e) {
       throw e.message ?? 'Google бүртгэлд алдаа гарлаа';
     } catch (e) {
+      // Handle specific Google Sign-In errors
+      if (e.toString().contains('APIException 10')) {
+        throw 'Google бүртгэл тохиргооны алдаа.';
+      } else if (e.toString().contains('sign_in_failed')) {
+        throw 'Google бүртгэлд нэвтрэх боломжгүй байна. Дахин оролдоно уу.';
+      } else if (e.toString().contains('network_error')) {
+        throw 'Сүлжээний алдаа. Интернэт холболтоо шалгана уу.';
+      }
       throw 'Google бүртгэлд алдаа гарлаа: ${e.toString()}';
     } finally {
       await _setLoading(false);

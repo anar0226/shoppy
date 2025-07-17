@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_performance/firebase_performance.dart';
@@ -16,11 +14,6 @@ class ProductionLogger {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  // In-memory buffer for offline logging
-  final List<LogEntry> _logBuffer = [];
-  static const int _maxBufferSize = 1000;
-  static const int _batchSize = 50;
 
   // Device and app info
   Map<String, dynamic>? _deviceInfo;
@@ -323,76 +316,41 @@ class ProductionLogger {
     }
     _lastLogTime[logKey] = DateTime.now();
 
-    // Add to buffer
-    _logBuffer.add(entry);
-
-    // Maintain buffer size
-    if (_logBuffer.length > _maxBufferSize) {
-      _logBuffer.removeRange(0, _logBuffer.length - _maxBufferSize);
-    }
-
-    // Auto-flush for high priority logs
-    if (entry.level == LogLevel.error ||
-        entry.level == LogLevel.security ||
-        entry.context?['isFatal'] == true) {
-      _flushBatch();
-    }
+    // Log directly to Firestore (no offline buffering)
+    _logDirectlyToFirestore(entry);
   }
 
-  /// Flush logs to Firestore in batches
-  Future<void> flushLogs() async {
-    if (_logBuffer.isEmpty) return;
-
-    final batch = _firestore.batch();
-    final logsToFlush = List<LogEntry>.from(_logBuffer);
-    _logBuffer.clear();
-
-    for (final log in logsToFlush) {
-      final docRef = _firestore.collection('app_logs').doc();
-      batch.set(docRef, log.toMap());
-    }
-
-    try {
-      await batch.commit();
-      if (kDebugMode) {
-        debugPrint('📤 Flushed ${logsToFlush.length} logs to Firestore');
-      }
-    } catch (e) {
-      // Put logs back in buffer if flush failed
-      _logBuffer.insertAll(0, logsToFlush);
-      debugPrint('❌ Failed to flush logs: $e');
-    }
-  }
-
-  /// Flush logs in smaller batches
-  void _flushBatch() {
-    if (_logBuffer.length < _batchSize) return;
-
+  /// Log directly to Firestore (no offline buffering)
+  void _logDirectlyToFirestore(LogEntry entry) {
     Timer.run(() async {
-      final batch = _firestore.batch();
-      final logsToFlush = _logBuffer.take(_batchSize).toList();
-      _logBuffer.removeRange(0, _batchSize);
-
-      for (final log in logsToFlush) {
-        final docRef = _firestore.collection('app_logs').doc();
-        batch.set(docRef, log.toMap());
-      }
-
       try {
-        await batch.commit();
+        final docRef = _firestore.collection('app_logs').doc();
+        await docRef.set(entry.toMap());
+        if (kDebugMode) {
+          debugPrint('📤 Logged to Firestore: ${entry.message}');
+        }
       } catch (e) {
-        _logBuffer.insertAll(0, logsToFlush);
+        if (kDebugMode) {
+          debugPrint('❌ Failed to log to Firestore: $e');
+        }
+
+        // Fallback: Store failed log entries for retry
+        _storeFailedLogForRetry(entry, e);
       }
     });
   }
 
-  /// Start periodic log flushing
+  /// Flush logs (deprecated - logs are now sent directly)
+  Future<void> flushLogs() async {
+    // No-op since we log directly now
+    if (kDebugMode) {
+      debugPrint('📤 Direct logging enabled - no buffering');
+    }
+  }
+
+  /// Start periodic operations (simplified - no buffering needed)
   void _startPeriodicFlush() {
-    Timer.periodic(const Duration(minutes: 5), (timer) {
-      if (_logBuffer.isNotEmpty) {
-        _flushBatch();
-      }
-    });
+    // No periodic flushing needed since we log directly
   }
 
   /// Get device information (simplified version without external dependencies)
@@ -429,23 +387,29 @@ class ProductionLogger {
 
   /// Get current log statistics
   Map<String, dynamic> getLogStats() {
-    final levelCounts = <String, int>{};
-    for (final log in _logBuffer) {
-      levelCounts[log.level.name] = (levelCounts[log.level.name] ?? 0) + 1;
-    }
-
     return {
-      'bufferSize': _logBuffer.length,
-      'maxBufferSize': _maxBufferSize,
-      'levelCounts': levelCounts,
+      'loggingMode': 'direct',
       'isInitialized': _isInitialized,
       'activeTraces': _activeTraces.length,
     };
   }
 
-  /// Clear log buffer (for testing)
+  /// Clear operations (simplified - no buffer to clear)
   void clearBuffer() {
-    _logBuffer.clear();
+    // No buffer to clear since we log directly
+  }
+
+  /// Store failed log entries for retry (fallback mechanism)
+  void _storeFailedLogForRetry(LogEntry entry, dynamic error) {
+    // In production, you might want to store these in local storage
+    // For now, we'll just log to debug console
+    if (kDebugMode) {
+      debugPrint('🔄 Storing failed log for retry: ${entry.message}');
+      debugPrint('   Error: $error');
+    }
+
+    // Could implement local storage retry mechanism here
+    // For example: SharedPreferences, SQLite, etc.
   }
 }
 

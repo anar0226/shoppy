@@ -67,7 +67,6 @@ dependencies:
   dio: ^5.4.0
   flutter_rating_bar: ^4.0.1
   flutter_dotenv: ^5.1.0
-  # google_sign_in: ^6.1.4
 
 dev_dependencies:
   flutter_test:
@@ -79,6 +78,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^2.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -197,3 +197,21 @@ flutter:
           weight: 800
         - asset: assets/fonts/Inter_18pt-Black.ttf
           weight: 900
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/logos/AviiMN.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/images/logos/AviiMN.png"
+    background_color: "#hexcode"
+    theme_color: "#hexcode"
+  windows:
+    generate: true
+    image_path: "assets/images/logos/AviiMN.png"
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: "assets/images/logos/AviiMN.png"

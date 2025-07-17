@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../../features/products/models/product_model.dart';
+import 'error_handler_service.dart';
 
 class InventoryService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -47,8 +48,18 @@ class InventoryService {
           );
         }
       });
-    } catch (e) {
-      debugPrint('Error reserving inventory: $e');
+    } catch (error, stackTrace) {
+      await ErrorHandlerService.instance.handleError(
+        operation: 'reserve_inventory',
+        error: error,
+        stackTrace: stackTrace,
+        showUserMessage: false, // Return false to indicate failure
+        additionalContext: {
+          'productId': productId,
+          'quantity': quantity,
+          'selectedVariants': selectedVariants,
+        },
+      );
       return false;
     }
   }
@@ -157,8 +168,18 @@ class InventoryService {
           );
         }
       });
-    } catch (e) {
-      debugPrint('Error releasing inventory: $e');
+    } catch (error, stackTrace) {
+      await ErrorHandlerService.instance.handleError(
+        operation: 'release_inventory',
+        error: error,
+        stackTrace: stackTrace,
+        showUserMessage: false, // Return false to indicate failure
+        additionalContext: {
+          'productId': productId,
+          'quantity': quantity,
+          'selectedVariants': selectedVariants,
+        },
+      );
       return false;
     }
   }

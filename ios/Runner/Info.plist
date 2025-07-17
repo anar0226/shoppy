@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>shoppy</string>
+	<string>Avii</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -73,5 +73,32 @@
 		<string>qpay</string>
 		<string>qpaymn</string>
 	</array>
+	
+	<!-- Add these entries inside the <dict> tag -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- REVERSE_CLIENT_ID from GoogleService-Info.plist -->
+				<string>com.googleusercontent.apps.110394685689-2234b6517imn37qlu9sq601s5383ft5b</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- Google Sign-In configuration -->
+	<key>GIDClientID</key>
+	<string>110394685689-2234b6517imn37qlu9sq601s5383ft5b.apps.googleusercontent.com</string>
+
+	<!-- Phone Auth capabilities -->
+	<key>FirebasePhoneAuthUI</key>
+	<dict>
+		<key>CFBundleURLSchemes</key>
+		<array>
+			<string>auth</string>
+		</array>
+	</dict>
 </dict>
 </plist>

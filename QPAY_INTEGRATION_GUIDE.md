@@ -2,7 +2,7 @@
 
 ## 📋 Overview
 
-QPay has been successfully integrated into the Shoppy marketplace system using your provided credentials. The integration includes a complete payment flow with QR code display, real-time payment status monitoring, and webhook handling.
+QPay has been successfully integrated into the Avii.mn marketplace system using your provided credentials. The integration includes a complete payment flow with QR code display, real-time payment status monitoring, and webhook handling.
 
 ## 🔐 Credentials Configured
 
@@ -143,7 +143,7 @@ final qpayService = QPayService();
 final result = await qpayService.createInvoice(
   orderId: 'ORDER_123',
   amount: 50000.0,
-  description: 'Shoppy Order Payment',
+          description: 'Avii.mn Order Payment',
   customerEmail: 'customer@example.com',
 );
 

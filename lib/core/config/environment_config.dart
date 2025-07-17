@@ -23,14 +23,6 @@ class EnvironmentConfig {
       const String.fromEnvironment('QPAY_BASE_URL',
           defaultValue: 'https://merchant.qpay.mn/v2');
 
-  // UBCab delivery configurations
-  static const String ubcabApiKey =
-      String.fromEnvironment('UBCAB_API_KEY', defaultValue: '');
-  static const String ubcabMerchantId =
-      String.fromEnvironment('UBCAB_MERCHANT_ID', defaultValue: '');
-  static const bool ubcabProduction =
-      bool.fromEnvironment('UBCAB_PRODUCTION', defaultValue: false);
-
   // App configurations
   static const String appVersion =
       String.fromEnvironment('APP_VERSION', defaultValue: '1.0.0');
@@ -47,17 +39,15 @@ class EnvironmentConfig {
 
   // API endpoints
   static const String apiBaseUrl = String.fromEnvironment('API_BASE_URL',
-      defaultValue: 'https://api.shoppy.mn');
+      defaultValue: 'https://api.avii.mn');
   static const String cdnBaseUrl = String.fromEnvironment('CDN_BASE_URL',
-      defaultValue: 'https://cdn.shoppy.mn');
+      defaultValue: 'https://cdn.avii.mn');
 
   // Validation helpers
   static bool get hasPaymentConfig =>
       qpayUsername.isNotEmpty &&
       qpayPassword.isNotEmpty &&
       qpayInvoiceCode.isNotEmpty;
-  static bool get hasDeliveryConfig =>
-      ubcabApiKey.isNotEmpty && ubcabMerchantId.isNotEmpty;
 
   // Get configuration summary for debugging (without sensitive data)
   static Map<String, dynamic> getConfigSummary() {
@@ -67,7 +57,6 @@ class EnvironmentConfig {
       'appVersion': appVersion,
       'buildNumber': buildNumber,
       'hasPaymentConfig': hasPaymentConfig,
-      'hasDeliveryConfig': hasDeliveryConfig,
       'enableAnalytics': enableAnalytics,
       'enableCrashReporting': enableCrashReporting,
       'enablePerformanceMonitoring': enablePerformanceMonitoring,

@@ -416,7 +416,7 @@ Alert Type: ${alert.alertType.name.toUpperCase()}
 Please restock this product as soon as possible to avoid stockouts.
 
 Best regards,
-Shoppy Team
+Avii.mn Team
 ''';
   }
 
@@ -426,7 +426,7 @@ Shoppy Team
         ? ' (${alert.variantInfo!.variantName}: ${alert.variantInfo!.optionName})'
         : '';
 
-    return 'Shoppy: ${alert.productName}$variantText is ${alert.alertType.name} stock '
+    return 'Avii.mn: ${alert.productName}$variantText is ${alert.alertType.name} stock '
         'in $storeName. Current: ${alert.currentStock} units. Please restock.';
   }
 

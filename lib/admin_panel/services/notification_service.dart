@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
+import '../../core/services/error_handler_service.dart';
 
 enum NotificationType {
   order,
@@ -143,8 +144,16 @@ class NotificationService {
           .collection('notifications')
           .doc(notificationId)
           .update({'isRead': true});
-    } catch (e) {
-      debugPrint('Error marking notification as read: $e');
+    } catch (error, stackTrace) {
+      await ErrorHandlerService.instance.handleFirebaseError(
+        operation: 'mark_notification_read',
+        error: error,
+        stackTrace: stackTrace,
+        showUserMessage: false, // Silent failure for marking as read
+        additionalContext: {
+          'notificationId': notificationId,
+        },
+      );
     }
   }
 

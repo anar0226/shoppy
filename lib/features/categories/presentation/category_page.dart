@@ -9,6 +9,8 @@ import 'package:avii/features/products/presentation/product_page.dart';
 import 'package:avii/features/home/presentation/main_scaffold.dart';
 import '../../../core/services/rating_service.dart';
 import '../services/category_product_service.dart';
+import '../../../core/services/error_handler_service.dart';
+import '../../../core/services/production_logger.dart';
 
 /// Model representing a tappable sub-category card.
 class SubCategory {
@@ -133,8 +135,17 @@ class _CategoryPageState extends State<CategoryPage> {
                 ? '${(reviews.length / 1000).toStringAsFixed(1)}K'
                 : reviews.length.toString();
           }
-        } catch (reviewError) {
-          print('⚠️ Error loading reviews for store ${store.id}: $reviewError');
+        } catch (reviewError, stackTrace) {
+          await ErrorHandlerService.instance.handleError(
+            operation: 'load_store_reviews',
+            error: reviewError,
+            stackTrace: stackTrace,
+            showUserMessage: false, // Silent failure for reviews
+            additionalContext: {
+              'storeId': store.id,
+              'category': widget.title,
+            },
+          );
           // Keep default values
         }
 
@@ -175,7 +186,10 @@ class _CategoryPageState extends State<CategoryPage> {
 
     for (final section in widget.sections) {
       try {
-        print('🔍 Loading products for section: $section');
+        await ProductionLogger.instance.info(
+          'Loading products for section: $section',
+          context: {'section': section, 'category': widget.title},
+        );
         List<ProductModel> products = [];
 
         // Step 1: Try to load featured products from super admin

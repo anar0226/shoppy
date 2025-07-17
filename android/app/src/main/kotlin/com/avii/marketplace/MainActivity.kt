@@ -1,4 +1,4 @@
-package com.example.shoppy
+package com.avii.marketplace
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 

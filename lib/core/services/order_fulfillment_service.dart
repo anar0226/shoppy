@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'qpay_service.dart';
-import 'ubcab_service.dart';
 
 /// QPay Payment Result (for order fulfillment)
 class QPayPaymentResult {
@@ -30,17 +29,48 @@ enum FulfillmentStatus {
   pending,
   paymentProcessing,
   paymentConfirmed,
-  deliveryRequested,
-  driverAssigned,
-  pickedUp,
-  inTransit,
+  orderConfirmed,
+  preparing,
+  readyForPickup,
+  shipped,
   delivered,
   completed,
   failed,
   cancelled,
 }
 
-/// Order Fulfillment Service - Orchestrates QPay + UBCab automation
+/// Order Fulfillment Result
+class OrderFulfillmentResult {
+  final bool success;
+  final String? error;
+  final String? orderId;
+  final QPayInvoice? paymentInvoice;
+
+  const OrderFulfillmentResult({
+    required this.success,
+    this.error,
+    this.orderId,
+    this.paymentInvoice,
+  });
+
+  factory OrderFulfillmentResult.success({
+    required String orderId,
+    QPayInvoice? paymentInvoice,
+  }) {
+    return OrderFulfillmentResult(
+      success: true,
+      orderId: orderId,
+      paymentInvoice: paymentInvoice,
+    );
+  }
+
+  factory OrderFulfillmentResult.error(String error) {
+    return OrderFulfillmentResult(success: false, error: error);
+  }
+}
+
+/// Simplified Order Fulfillment Service - Payment processing only
+/// Store owners handle shipping/delivery themselves
 class OrderFulfillmentService {
   static final OrderFulfillmentService _instance =
       OrderFulfillmentService._internal();
@@ -48,32 +78,18 @@ class OrderFulfillmentService {
   OrderFulfillmentService._internal();
 
   final QPayService _qpayService = QPayService();
-  final UBCabService _ubcabService = UBCabService();
 
   /// Initialize the fulfillment service
   Future<void> initialize({
-    // Bank Transfer Configuration (placeholder for TDB integration)
-    required String
-        qpayUsername, // Placeholder - will be removed when TDB is integrated
-    required String
-        qpayPassword, // Placeholder - will be removed when TDB is integrated
-
-    // UBCab Configuration
-    required String ubcabApiKey,
-    required String ubcabMerchantId,
-    bool ubcabProduction = false,
+    required String qpayUsername,
+    required String qpayPassword,
   }) async {
-    // Bank transfer setup - no initialization needed for now
-    debugPrint('Using bank transfer payment method');
-
-    await _ubcabService.initialize(
-      apiKey: ubcabApiKey,
-      merchantId: ubcabMerchantId,
-      isProduction: ubcabProduction,
-    );
+    debugPrint(
+        'OrderFulfillmentService: Initialized for payment processing only');
   }
 
-  /// Complete end-to-end order processing: Payment → Delivery
+  /// Process order payment and create order record
+  /// Store owners handle shipping/delivery themselves
   Future<OrderFulfillmentResult> processOrder({
     required Map<String, dynamic> orderData,
     required String customerEmail,
@@ -98,27 +114,12 @@ class OrderFulfillmentService {
             'Payment failed: ${paymentResult.error}');
       }
 
-      // Step 3: Wait for payment confirmation (this would be handled by webhook in production)
-      // For now, we'll simulate immediate confirmation
+      // Step 3: Update order status to payment confirmed
       await _updateOrderStatus(orderId, FulfillmentStatus.paymentConfirmed);
-
-      // Step 4: Request delivery from UBCab
-      final deliveryResult =
-          await _requestDelivery(orderId, orderData, deliveryAddress);
-
-      if (!deliveryResult.success) {
-        await _updateOrderStatus(orderId, FulfillmentStatus.failed,
-            error: deliveryResult.error);
-        return OrderFulfillmentResult.error(
-            'Delivery request failed: ${deliveryResult.error}');
-      }
-
-      await _updateOrderStatus(orderId, FulfillmentStatus.deliveryRequested);
 
       return OrderFulfillmentResult.success(
         orderId: orderId,
         paymentInvoice: paymentResult.invoice!,
-        deliveryTrackingId: deliveryResult.trackingId!,
       );
     } catch (e) {
       debugPrint('Order processing error: $e');
@@ -152,7 +153,6 @@ class OrderFulfillmentService {
       'deliveryAddress': deliveryAddress,
       'fulfillmentStatus': FulfillmentStatus.pending.name,
       'paymentStatus': 'pending',
-      'deliveryStatus': 'pending',
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
       // Analytics fields
@@ -193,147 +193,30 @@ class OrderFulfillmentService {
       orderId: orderId,
       amount: (orderData['total'] as num).toDouble(),
       description: description,
-      // Use a unique string for customerEmail (invoice_receiver_code)
       customerEmail: customerEmail.replaceAll('@', '_').replaceAll('.', '_'),
-      // Do not pass metadata
     );
 
     if (qpayResult.success && qpayResult.invoice != null) {
-      // Create pending payment record
-      final pendingPayment = {
-        'orderId': orderId,
-        'userId': user.uid,
-        'amount': orderData['total'],
-        'subtotal': orderData['subtotal'],
-        'tax': orderData['tax'],
-        'shippingCost': orderData['shipping'],
-        'email': customerEmail,
-        'item': orderData['items'][0], // First item for demo
-        'shippingAddress': orderData['deliveryAddress'],
-        'status': 'pending',
-        'qpayInvoiceId': qpayResult.invoice!.qpayInvoiceId,
-        'invoiceId': qpayResult.invoice!.id,
-        'createdAt': FieldValue.serverTimestamp(),
-      };
-
-      await FirebaseFirestore.instance
-          .collection('pending_payments')
-          .doc(orderId)
-          .set(pendingPayment);
-
       return QPayPaymentResult.success(qpayResult.invoice!);
     } else {
       return QPayPaymentResult.error(
-          qpayResult.error ?? 'Failed to create QPay invoice');
+          qpayResult.error ?? 'Payment creation failed');
     }
   }
 
-  /// Request delivery from UBCab
-  Future<UBCabDeliveryResult> _requestDelivery(
-    String orderId,
-    Map<String, dynamic> orderData,
-    Map<String, dynamic> deliveryAddress,
-  ) async {
-    // Get store location information
-    final storeDoc = await FirebaseFirestore.instance
-        .collection('stores')
-        .doc(orderData['storeId'])
-        .get();
-
-    if (!storeDoc.exists) {
-      throw Exception('Store not found');
-    }
-
-    final storeData = storeDoc.data()!;
-
-    final pickupAddress = UBCabAddress(
-      address: storeData['address'] ?? 'Store Location',
-      latitude: (storeData['latitude'] ?? 47.9184).toDouble(),
-      longitude: (storeData['longitude'] ?? 106.9177).toDouble(),
-      landmark: storeData['landmark'],
-      contactName: storeData['ownerName'] ?? storeData['name'] ?? 'Store Owner',
-      contactPhone: storeData['phone'] ?? '77807780',
-    );
-
-    final customerAddress = UBCabAddress(
-      address:
-          deliveryAddress['fullAddress'] ?? deliveryAddress['address'] ?? '',
-      latitude: (deliveryAddress['latitude'] ?? 47.9184).toDouble(),
-      longitude: (deliveryAddress['longitude'] ?? 106.9177).toDouble(),
-      landmark: deliveryAddress['landmark'],
-      contactName: deliveryAddress['recipientName'] ?? 'Customer',
-      contactPhone: deliveryAddress['phone'],
-    );
-
-    // Convert order items to delivery items
-    final items = (orderData['items'] as List)
-        .map((item) => OrderItem(
-              productId: item['productId'] ?? '',
-              name: item['name'] ?? 'Product',
-              quantity: item['quantity'] ?? 1,
-              price: (item['price'] ?? 0).toDouble(),
-              imageUrl: item['imageUrl'],
-              variant: item['variant'],
-            ))
-        .toList();
-
-    return await _ubcabService.requestDelivery(
-      orderId: orderId,
-      customerId: orderData['userId'] ?? '',
-      storeId: orderData['storeId'] ?? '',
-      pickupAddress: pickupAddress,
-      deliveryAddress: customerAddress,
-      items: items,
-      totalAmount: (orderData['total'] as num).toDouble(),
-      specialInstructions: deliveryAddress['instructions'],
-    );
-  }
-
-  /// Update order fulfillment status
+  /// Update order status in Firestore
   Future<void> _updateOrderStatus(
     String orderId,
     FulfillmentStatus status, {
     String? error,
-    Map<String, dynamic>? additionalData,
   }) async {
-    final updateData = <String, dynamic>{
+    final updateData = {
       'fulfillmentStatus': status.name,
       'updatedAt': FieldValue.serverTimestamp(),
     };
 
     if (error != null) {
       updateData['error'] = error;
-      updateData['failedAt'] = FieldValue.serverTimestamp();
-    }
-
-    if (additionalData != null) {
-      updateData.addAll(additionalData);
-    }
-
-    // Update specific status fields based on fulfillment status
-    switch (status) {
-      case FulfillmentStatus.paymentProcessing:
-        updateData['paymentStatus'] = 'processing';
-        break;
-      case FulfillmentStatus.paymentConfirmed:
-        updateData['paymentStatus'] = 'paid';
-        updateData['paidAt'] = FieldValue.serverTimestamp();
-        break;
-      case FulfillmentStatus.deliveryRequested:
-        updateData['deliveryStatus'] = 'requested';
-        break;
-      case FulfillmentStatus.driverAssigned:
-        updateData['deliveryStatus'] = 'driver_assigned';
-        break;
-      case FulfillmentStatus.delivered:
-        updateData['deliveryStatus'] = 'delivered';
-        updateData['deliveredAt'] = FieldValue.serverTimestamp();
-        break;
-      case FulfillmentStatus.completed:
-        updateData['completedAt'] = FieldValue.serverTimestamp();
-        break;
-      default:
-        break;
     }
 
     await FirebaseFirestore.instance
@@ -342,275 +225,67 @@ class OrderFulfillmentService {
         .update(updateData);
   }
 
-  /// Handle bank transfer payment confirmation (placeholder for TDB integration)
-  Future<void> handlePaymentWebhook(Map<String, dynamic> webhookData) async {
+  /// Get order by ID
+  Future<Map<String, dynamic>?> getOrder(String orderId) async {
     try {
-      // For bank transfers, we'll manually confirm payments
-      // This will be replaced with TDB webhook integration
-      final invoiceId = webhookData['invoice_id']?.toString();
-      final orderId = webhookData['order_id']?.toString();
-
-      if (orderId != null) {
-        await _updateOrderStatus(orderId, FulfillmentStatus.paymentConfirmed);
-
-        // Automatically proceed with delivery if payment is confirmed
-        await _continueOrderFulfillment(orderId);
-      }
-
-      debugPrint('Bank transfer payment confirmed for order: $orderId');
-    } catch (e) {
-      debugPrint('Payment webhook error: $e');
-    }
-  }
-
-  /// Handle UBCab delivery webhook
-  Future<void> handleDeliveryWebhook(Map<String, dynamic> webhookData) async {
-    try {
-      final success = await _ubcabService.processDeliveryCallback(webhookData);
-
-      if (success) {
-        final orderId = webhookData['order_reference']?.toString();
-        final status = webhookData['status']?.toString();
-
-        if (orderId != null && status != null) {
-          FulfillmentStatus fulfillmentStatus;
-
-          switch (status.toLowerCase()) {
-            case 'driver_assigned':
-              fulfillmentStatus = FulfillmentStatus.driverAssigned;
-              break;
-            case 'pickup_confirmed':
-              fulfillmentStatus = FulfillmentStatus.pickedUp;
-              break;
-            case 'in_transit':
-              fulfillmentStatus = FulfillmentStatus.inTransit;
-              break;
-            case 'delivered':
-              fulfillmentStatus = FulfillmentStatus.delivered;
-              break;
-            default:
-              return;
-          }
-
-          await _updateOrderStatus(orderId, fulfillmentStatus);
-
-          // Mark as completed if delivered
-          if (fulfillmentStatus == FulfillmentStatus.delivered) {
-            await _updateOrderStatus(orderId, FulfillmentStatus.completed);
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Delivery webhook error: $e');
-    }
-  }
-
-  /// Continue order fulfillment after payment confirmation
-  Future<void> _continueOrderFulfillment(String orderId) async {
-    try {
-      // Get order details
-      final orderDoc = await FirebaseFirestore.instance
+      final doc = await FirebaseFirestore.instance
           .collection('orders')
           .doc(orderId)
           .get();
 
-      if (!orderDoc.exists) return;
-
-      final orderData = orderDoc.data()!;
-
-      // Request delivery if not already requested
-      if (orderData['deliveryStatus'] == 'pending') {
-        final deliveryResult = await _requestDelivery(
-          orderId,
-          orderData,
-          orderData['deliveryAddress'],
-        );
-
-        if (deliveryResult.success) {
-          await _updateOrderStatus(orderId, FulfillmentStatus.deliveryRequested,
-              additionalData: {
-                'deliveryTrackingId': deliveryResult.trackingId,
-              });
-        } else {
-          await _updateOrderStatus(orderId, FulfillmentStatus.failed,
-              error: deliveryResult.error);
-        }
+      if (doc.exists) {
+        return doc.data();
       }
+      return null;
     } catch (e) {
-      debugPrint('Continue order fulfillment error: $e');
-      await _updateOrderStatus(orderId, FulfillmentStatus.failed,
-          error: e.toString());
+      debugPrint('Error getting order: $e');
+      return null;
     }
   }
 
-  /// Get order status with real-time tracking
-  Future<OrderStatusResult> getOrderStatus(String orderId) async {
+  /// Update order status (for store owners)
+  Future<bool> updateOrderStatus(
+    String orderId,
+    FulfillmentStatus status, {
+    String? notes,
+  }) async {
     try {
-      final orderDoc = await FirebaseFirestore.instance
+      final updateData = {
+        'fulfillmentStatus': status.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (notes != null) {
+        updateData['statusNotes'] = notes;
+      }
+
+      await FirebaseFirestore.instance
           .collection('orders')
           .doc(orderId)
-          .get();
-
-      if (!orderDoc.exists) {
-        return OrderStatusResult.error('Order not found');
-      }
-
-      final orderData = orderDoc.data()!;
-      final trackingId = orderData['deliveryTrackingId']?.toString();
-
-      UBCabDeliveryOrder? deliveryInfo;
-      if (trackingId != null) {
-        deliveryInfo = await _ubcabService.trackDelivery(trackingId);
-      }
-
-      return OrderStatusResult.success(
-        orderId: orderId,
-        fulfillmentStatus: FulfillmentStatus.values.firstWhere(
-          (status) => status.name == orderData['fulfillmentStatus'],
-          orElse: () => FulfillmentStatus.pending,
-        ),
-        paymentStatus: orderData['paymentStatus'] ?? 'pending',
-        deliveryStatus: orderData['deliveryStatus'] ?? 'pending',
-        orderData: orderData,
-        deliveryInfo: deliveryInfo,
-      );
-    } catch (e) {
-      debugPrint('Get order status error: $e');
-      return OrderStatusResult.error('Failed to get order status: $e');
-    }
-  }
-
-  /// Cancel order (before delivery)
-  Future<bool> cancelOrder(String orderId, String reason) async {
-    try {
-      final orderDoc = await FirebaseFirestore.instance
-          .collection('orders')
-          .doc(orderId)
-          .get();
-
-      if (!orderDoc.exists) return false;
-
-      final orderData = orderDoc.data()!;
-      final fulfillmentStatus = orderData['fulfillmentStatus'] ?? '';
-
-      // Only allow cancellation before pickup
-      if (fulfillmentStatus == FulfillmentStatus.pickedUp.name ||
-          fulfillmentStatus == FulfillmentStatus.inTransit.name ||
-          fulfillmentStatus == FulfillmentStatus.delivered.name) {
-        return false; // Cannot cancel after pickup
-      }
-
-      // Cancel delivery if requested
-      final trackingId = orderData['deliveryTrackingId']?.toString();
-      if (trackingId != null) {
-        await _ubcabService.cancelDelivery(trackingId, reason);
-      }
-
-      // Update order status
-      await _updateOrderStatus(orderId, FulfillmentStatus.cancelled,
-          additionalData: {
-            'cancellationReason': reason,
-            'cancelledAt': FieldValue.serverTimestamp(),
-          });
+          .update(updateData);
 
       return true;
     } catch (e) {
-      debugPrint('Cancel order error: $e');
+      debugPrint('Error updating order status: $e');
       return false;
     }
   }
-}
 
-/// Order Fulfillment Result
-class OrderFulfillmentResult {
-  final bool success;
-  final String message;
-  final String? orderId;
-  final QPayInvoice? paymentInvoice;
-  final String? deliveryTrackingId;
-  final String? error;
-
-  const OrderFulfillmentResult({
-    required this.success,
-    required this.message,
-    this.orderId,
-    this.paymentInvoice,
-    this.deliveryTrackingId,
-    this.error,
-  });
-
-  factory OrderFulfillmentResult.success({
-    required String orderId,
-    required QPayInvoice paymentInvoice,
-    required String deliveryTrackingId,
-  }) {
-    return OrderFulfillmentResult(
-      success: true,
-      message: 'Order processed successfully',
-      orderId: orderId,
-      paymentInvoice: paymentInvoice,
-      deliveryTrackingId: deliveryTrackingId,
-    );
+  /// Get orders for a store
+  Stream<QuerySnapshot> getStoreOrders(String storeId) {
+    return FirebaseFirestore.instance
+        .collection('orders')
+        .where('storeId', isEqualTo: storeId)
+        .orderBy('createdAt', descending: true)
+        .snapshots();
   }
 
-  factory OrderFulfillmentResult.error(String error) {
-    return OrderFulfillmentResult(
-      success: false,
-      message: 'Order processing failed',
-      error: error,
-    );
-  }
-}
-
-/// Order Status Result
-class OrderStatusResult {
-  final bool success;
-  final String message;
-  final String? orderId;
-  final FulfillmentStatus? fulfillmentStatus;
-  final String? paymentStatus;
-  final String? deliveryStatus;
-  final Map<String, dynamic>? orderData;
-  final UBCabDeliveryOrder? deliveryInfo;
-  final String? error;
-
-  const OrderStatusResult({
-    required this.success,
-    required this.message,
-    this.orderId,
-    this.fulfillmentStatus,
-    this.paymentStatus,
-    this.deliveryStatus,
-    this.orderData,
-    this.deliveryInfo,
-    this.error,
-  });
-
-  factory OrderStatusResult.success({
-    required String orderId,
-    required FulfillmentStatus fulfillmentStatus,
-    required String paymentStatus,
-    required String deliveryStatus,
-    required Map<String, dynamic> orderData,
-    UBCabDeliveryOrder? deliveryInfo,
-  }) {
-    return OrderStatusResult(
-      success: true,
-      message: 'Order status retrieved successfully',
-      orderId: orderId,
-      fulfillmentStatus: fulfillmentStatus,
-      paymentStatus: paymentStatus,
-      deliveryStatus: deliveryStatus,
-      orderData: orderData,
-      deliveryInfo: deliveryInfo,
-    );
-  }
-
-  factory OrderStatusResult.error(String error) {
-    return OrderStatusResult(
-      success: false,
-      message: 'Failed to get order status',
-      error: error,
-    );
+  /// Get orders for a user
+  Stream<QuerySnapshot> getUserOrders(String userId) {
+    return FirebaseFirestore.instance
+        .collection('orders')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots();
   }
 }

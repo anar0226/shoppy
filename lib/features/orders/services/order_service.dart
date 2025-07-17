@@ -6,6 +6,8 @@ import '../../stores/models/store_model.dart';
 import '../../cart/models/cart_item.dart';
 import '../../../core/services/inventory_service.dart';
 import '../../../admin_panel/services/notification_service.dart';
+import '../../../core/services/error_handler_service.dart';
+import '../../../core/services/production_logger.dart';
 
 class OrderService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -1034,9 +1036,20 @@ class OrderService {
 
       await batch.commit();
 
-      print('Archived ${ordersToArchive.docs.length} orders');
-    } catch (e) {
-      print('Error archiving orders: $e');
+      await ProductionLogger.instance.info(
+        'Archived ${ordersToArchive.docs.length} orders',
+        context: {'count': ordersToArchive.docs.length},
+      );
+    } catch (error, stackTrace) {
+      await ErrorHandlerService.instance.handleFirebaseError(
+        operation: 'archive_orders',
+        error: error,
+        stackTrace: stackTrace,
+        showUserMessage: false, // Background operation
+        additionalContext: {
+          'orderCount': null, // Variable not available in catch block
+        },
+      );
     }
   }
 

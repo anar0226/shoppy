@@ -148,11 +148,30 @@ Future<void> _initializePaymentServices() async {
     await fulfillmentService.initialize(
       qpayUsername: EnvironmentConfig.qpayUsername,
       qpayPassword: EnvironmentConfig.qpayPassword,
-      ubcabApiKey: EnvironmentConfig.ubcabApiKey,
-      ubcabMerchantId: EnvironmentConfig.ubcabMerchantId,
-      ubcabProduction: EnvironmentConfig.ubcabProduction,
     );
-  } catch (_) {
-    // Ignore failures – payment UI will show its own error states.
+
+    await ProductionLogger.instance.info(
+      'Payment services initialized successfully',
+      context: {
+        'service': 'OrderFulfillmentService',
+        'stage': 'bootstrap',
+      },
+    );
+  } catch (error, stackTrace) {
+    // Log payment service initialization failure
+    await ProductionLogger.instance.error(
+      'Payment services initialization failed',
+      error: error,
+      stackTrace: stackTrace,
+      context: {
+        'service': 'OrderFulfillmentService',
+        'stage': 'bootstrap',
+        'impact': 'payment_features_degraded',
+        'recovery': 'payment_ui_will_show_error_states',
+      },
+    );
+
+    // Don't rethrow - allow app to continue with degraded payment functionality
+    // Payment UI will handle errors gracefully when services are unavailable
   }
 }

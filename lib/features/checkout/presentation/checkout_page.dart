@@ -13,11 +13,10 @@ import 'package:avii/features/cart/models/cart_item.dart';
 import 'package:avii/features/stores/models/store_model.dart';
 import 'package:avii/features/products/models/product_model.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'qpay_payment_page.dart';
 import '../../../core/utils/popup_utils.dart';
 import '../../../admin_panel/services/notification_service.dart';
 import '../../../core/services/qpay_service.dart';
-import 'dart:ui' as ui;
+import '../../../core/services/error_handler_service.dart';
 import 'payment_waiting_screen.dart';
 
 class CheckoutPage extends StatefulWidget {
@@ -173,7 +172,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
         message:
             'Хөнгөлөлт амжилттай! хөнгөлөлсөн үнэ: ₮${_discountAmount.toStringAsFixed(2)}',
       );
-    } catch (e) {
+    } catch (error, stackTrace) {
+      await ErrorHandlerService.instance.handleError(
+        operation: 'apply_discount_code',
+        error: error,
+        stackTrace: stackTrace,
+        context: context,
+        showUserMessage: false, // We show custom error message
+        additionalContext: {
+          'discountCode': _discountCodeController.text,
+          'userId': FirebaseAuth.instance.currentUser?.uid,
+        },
+      );
+
       setState(() {
         _discountError = 'Хөнгөлөлтийн кодыг ашиглахад алдаа гарлаа';
       });
@@ -207,7 +218,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       // Group items by store ID
       final Map<String, List<CheckoutItem>> itemsByStore = {};
       for (final item in widget.items) {
-        final storeId = item.storeId ?? 'shoppy-store';
+        final storeId = item.storeId ?? 'avii-store';
         itemsByStore.putIfAbsent(storeId, () => []).add(item);
       }
 
@@ -271,14 +282,26 @@ class _CheckoutPageState extends State<CheckoutPage> {
               settings: {},
             );
           }
-        } catch (e) {
+        } catch (error, stackTrace) {
+          await ErrorHandlerService.instance.handleFirebaseError(
+            operation: 'load_store_data',
+            error: error,
+            stackTrace: stackTrace,
+            context: context,
+            showUserMessage: false, // Using fallback store
+            additionalContext: {
+              'storeId': storeId,
+              'userId': FirebaseAuth.instance.currentUser?.uid,
+            },
+          );
+
           // Fallback store with current user as owner
           final currentUser = FirebaseAuth.instance.currentUser;
           final ownerId = currentUser?.uid ?? 'default-owner';
 
           store = StoreModel(
             id: storeId,
-            name: 'Shoppy Store',
+            name: 'Avii.mn Store',
             description: 'Default store for testing',
             banner: '',
             logo: '',

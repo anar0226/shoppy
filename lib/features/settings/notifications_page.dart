@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../notifications/widgets/notification_permission_widget.dart';
 import '../notifications/fcm_service.dart';
+import '../../core/services/error_handler_service.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({Key? key}) : super(key: key);
@@ -68,9 +69,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
             .update({
           'notificationSettings.$key': value,
         });
-      } catch (e) {
-        // Handle error
-        print('Error updating notification setting: $e');
+      } catch (error, stackTrace) {
+        await ErrorHandlerService.instance.handleFirebaseError(
+          operation: 'update_notification_setting',
+          error: error,
+          stackTrace: stackTrace,
+          context: context,
+          showUserMessage: true,
+          additionalContext: {
+            'settingKey': key,
+            'settingValue': value,
+            'userId': user.uid,
+          },
+        );
       }
     }
   }

@@ -8,6 +8,7 @@ import 'package:avii/features/products/models/product_model.dart'
     show ProductModel, ProductVariant;
 import '../../features/home/presentation/main_scaffold.dart';
 import 'package:avii/features/categories/presentation/final_category_page.dart';
+import '../../core/services/error_handler_service.dart';
 import '../../core/services/rating_service.dart';
 
 class ShirtsTopsCategoryPage extends StatefulWidget {
@@ -42,7 +43,16 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
           setState(() => _placeholderImage = images.first);
         }
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      await ErrorHandlerService.instance.handleError(
+        operation: 'load_placeholder_image',
+        error: error,
+        stackTrace: stackTrace,
+        context: context,
+        showUserMessage: false, // Silent failure for placeholder image
+        additionalContext: {'categoryId': 'shirts_tops'},
+      );
+    }
   }
 
   Future<void> _loadFeaturedStore() async {
@@ -100,7 +110,16 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
       setState(() {
         _featuredStores = List<StoreData>.filled(4, storeData);
       });
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      await ErrorHandlerService.instance.handleError(
+        operation: 'load_featured_store',
+        error: error,
+        stackTrace: stackTrace,
+        context: context,
+        showUserMessage: false, // Silent failure for featured stores
+        additionalContext: {'categoryId': 'shirts_tops'},
+      );
+    }
   }
 
   static const List<String> _sections = [

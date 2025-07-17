@@ -64,7 +64,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '110394685689',
     projectId: 'shoppy-6d81f',
     storageBucket: 'shoppy-6d81f.firebasestorage.app',
-    iosBundleId: 'com.example.shoppy',
+    iosBundleId: 'com.avii.marketplace',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -73,7 +73,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '110394685689',
     projectId: 'shoppy-6d81f',
     storageBucket: 'shoppy-6d81f.firebasestorage.app',
-    iosBundleId: 'com.example.shoppy',
+    iosBundleId: 'com.avii.marketplace',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
