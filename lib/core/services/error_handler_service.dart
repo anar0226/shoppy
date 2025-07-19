@@ -437,23 +437,6 @@ class _ErrorBoundaryWidgetState extends State<ErrorBoundaryWidget> {
       ),
     );
   }
-
-  void _handleError(dynamic error, StackTrace stackTrace) {
-    setState(() {
-      _hasError = true;
-      _errorMessage =
-          ErrorHandlerService.instance._getUserFriendlyMessage(error);
-    });
-
-    // Log the error
-    ErrorHandlerService.instance.handleError(
-      operation: widget.operation,
-      error: error,
-      stackTrace: stackTrace,
-      context: context,
-      showUserMessage: false, // We're showing our own UI
-    );
-  }
 }
 
 /// Extension methods for common error handling patterns

@@ -38,7 +38,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.avii.marketplace"
-    compileSdkVersion 34
+    compileSdkVersion 35
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -58,7 +58,7 @@ android {
     defaultConfig {
         applicationId "com.avii.marketplace"
         minSdkVersion 23
-        targetSdkVersion 34
+        targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }

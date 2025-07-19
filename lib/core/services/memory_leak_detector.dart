@@ -1,12 +1,9 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:isolate';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'production_logger.dart';
 import 'listener_manager.dart';
 import 'error_handler_service.dart';
@@ -45,8 +42,6 @@ class MemoryLeakDetector {
   final Map<String, Isolate> _monitoredIsolates = {};
   final Map<String, DateTime> _isolateCreationTimes = {};
 
-  // Production testing scenarios
-  final Map<String, ProductionTestScenario> _testScenarios = {};
   bool _isStressTesting = false;
 
   /// Initialize memory leak detector
@@ -406,8 +401,8 @@ class MemoryLeakDetector {
           : 0.0,
       frameDrops: frameTimes.where((time) => time > 16.67).length,
       totalFrames: frameTimes.length,
-      widgetRebuilds:
-          _widgetRebuildCounts.values.fold(0, (sum, count) => sum + count),
+      widgetRebuilds: _widgetRebuildCounts.values
+          .fold(0, (accumulator, rebuildCount) => accumulator + rebuildCount),
     );
   }
 

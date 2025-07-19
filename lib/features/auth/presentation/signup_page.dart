@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'package:avii/core/utils/validation_utils.dart';
 import 'package:avii/legal/terms_and_conditions_page.dart';
-import 'dart:math';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({Key? key}) : super(key: key);
@@ -19,6 +18,7 @@ class _SignUpPageState extends State<SignUpPage> {
   String _name = '';
   String _email = '';
   String _password = '';
+  // ignore: unused_field
   String _confirmPassword = '';
   bool _passwordVisible = false;
   bool _confirmPasswordVisible = false;

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'database_service.dart';
-import 'listener_manager.dart';
 
 /// Enterprise-grade paginated query service with advanced features
 class PaginatedQueryService {
@@ -12,7 +11,6 @@ class PaginatedQueryService {
   PaginatedQueryService._internal();
 
   final DatabaseService _db = DatabaseService();
-  final ListenerManager _listenerManager = ListenerManager();
 
   // Active paginated queries tracking
   final Map<String, PaginatedQueryState> _activeQueries = {};
@@ -368,10 +366,10 @@ class PaginatedQueryService {
       'activeQueries': _activeQueries.length,
       'queryIds': _activeQueries.keys.toList(),
       'totalItemsLoaded': _activeQueries.values
-          .fold(0, (sum, state) => sum + state.totalLoaded),
+          .fold(0, (accumulator, state) => accumulator + state.totalLoaded),
       'averagePageSize': _activeQueries.values.isNotEmpty
-          ? _activeQueries.values
-                  .fold(0, (sum, state) => sum + state.totalLoaded) /
+          ? _activeQueries.values.fold(
+                  0, (accumulator, state) => accumulator + state.totalLoaded) /
               _activeQueries.values.length
           : 0,
     };

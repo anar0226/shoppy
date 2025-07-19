@@ -22,7 +22,6 @@ class _EnhancedPhoneAuthPageState extends State<EnhancedPhoneAuthPage> {
   bool _codeSent = false;
   bool _isLoading = false;
   int _resendCountdown = 0;
-  String? _verificationId;
   String? _errorMessage;
   int _attemptCount = 0;
   static const int _maxAttempts = 3;
@@ -78,16 +77,17 @@ class _EnhancedPhoneAuthPageState extends State<EnhancedPhoneAuthPage> {
 
       setState(() {
         _codeSent = true;
-        _verificationId = auth.verificationId;
         _resendCountdown = _resendCooldown;
       });
 
       _startResendCountdown();
 
-      PopupUtils.showSuccess(
-        context: context,
-        message: 'Баталгаажуулах код илгээгдлээ',
-      );
+      if (mounted) {
+        PopupUtils.showSuccess(
+          context: context,
+          message: 'Баталгаажуулах код илгээгдлээ',
+        );
+      }
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -95,11 +95,13 @@ class _EnhancedPhoneAuthPageState extends State<EnhancedPhoneAuthPage> {
       });
 
       // Log failed attempt for security
-      final currentUser =
-          Provider.of<AuthProvider>(context, listen: false).user;
-      if (currentUser != null) {
-        await _authSecurity.recordFailedAttempt(
-            currentUser.uid, 'phone_verification');
+      if (mounted) {
+        final currentUser =
+            Provider.of<AuthProvider>(context, listen: false).user;
+        if (currentUser != null) {
+          await _authSecurity.recordFailedAttempt(
+              currentUser.uid, 'phone_verification');
+        }
       }
 
       // Block further attempts if max reached
@@ -157,7 +159,6 @@ class _EnhancedPhoneAuthPageState extends State<EnhancedPhoneAuthPage> {
           _errorMessage =
               'Хэт олон буруу код оруулсан байна. Дахин код илгээх хэрэгтэй.';
           _codeSent = false;
-          _verificationId = null;
         });
         _resetForm();
       }
@@ -184,7 +185,6 @@ class _EnhancedPhoneAuthPageState extends State<EnhancedPhoneAuthPage> {
   void _resetForm() {
     setState(() {
       _codeSent = false;
-      _verificationId = null;
       _codeController.clear();
       _errorMessage = null;
       _attemptCount = 0;
@@ -213,8 +213,6 @@ class _EnhancedPhoneAuthPageState extends State<EnhancedPhoneAuthPage> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = Provider.of<AuthProvider>(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Утасны дугаараар нэвтрэх'),
@@ -244,7 +242,7 @@ class _EnhancedPhoneAuthPageState extends State<EnhancedPhoneAuthPage> {
                   Icon(
                     Icons.phone_android,
                     size: 80,
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                   ),
                   const SizedBox(height: 24),
 
@@ -267,7 +265,7 @@ class _EnhancedPhoneAuthPageState extends State<EnhancedPhoneAuthPage> {
                         : 'Танд SMS-ээр 6 оронтой код илгээх болно',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -278,9 +276,10 @@ class _EnhancedPhoneAuthPageState extends State<EnhancedPhoneAuthPage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.2),
+                        color: Colors.red.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.withOpacity(0.5)),
+                        border: Border.all(
+                            color: Colors.red.withValues(alpha: 0.5)),
                       ),
                       child: Row(
                         children: [
@@ -365,7 +364,8 @@ class _EnhancedPhoneAuthPageState extends State<EnhancedPhoneAuthPage> {
                         labelStyle: const TextStyle(color: Colors.white70),
                         hintText: '••••••',
                         hintStyle: TextStyle(
-                            color: Colors.white.withOpacity(0.5), fontSize: 24),
+                            color: Colors.white.withValues(alpha: 0.5),
+                            fontSize: 24),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(
@@ -462,11 +462,11 @@ class _EnhancedPhoneAuthPageState extends State<EnhancedPhoneAuthPage> {
                             },
                       child: Text(
                         _resendCountdown > 0
-                            ? 'Дахин код илгээх (${_resendCountdown}с)'
+                            ? 'Дахин код илгээх ($_resendCountdown с)'
                             : 'Дахин код илгээх',
                         style: TextStyle(
                           color: _resendCountdown > 0
-                              ? Colors.white.withOpacity(0.5)
+                              ? Colors.white.withValues(alpha: 0.5)
                               : Colors.white70,
                         ),
                       ),
@@ -490,19 +490,20 @@ class _EnhancedPhoneAuthPageState extends State<EnhancedPhoneAuthPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       children: [
                         Icon(Icons.security,
-                            color: Colors.white.withOpacity(0.7), size: 16),
+                            color: Colors.white.withValues(alpha: 0.7),
+                            size: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Таны утасны дугаар аюулгүй байдлын зорилгоор хамгаалагдана.',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
+                              color: Colors.white.withValues(alpha: 0.7),
                               fontSize: 12,
                             ),
                           ),

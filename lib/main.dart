@@ -10,8 +10,6 @@ import 'package:avii/features/theme/theme_provider.dart';
 import 'package:avii/features/addresses/providers/address_provider.dart';
 import 'package:avii/features/auth/providers/auth_provider.dart';
 import 'package:avii/features/auth/presentation/splash_router.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:avii/features/products/models/product_model.dart';
 import 'package:avii/features/stores/models/store_model.dart';
@@ -21,57 +19,19 @@ import 'search/women/women_category_page.dart';
 import 'search/men/men_category_page.dart';
 import 'features/categories/presentation/accessories_category_page.dart';
 import 'features/categories/presentation/beauty_category_page.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+
 import 'features/notifications/fcm_service.dart';
 import 'features/products/presentation/product_page.dart';
 import 'core/utils/type_utils.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'features/reviews/widgets/review_submission_dialog.dart';
 
-import 'core/services/order_fulfillment_service.dart';
 import 'core/utils/popup_utils.dart';
 import 'features/auth/presentation/profile_completion_page.dart';
 import 'features/support/support_contact_page.dart';
-import 'package:firebase_performance/firebase_performance.dart';
-import 'core/config/environment_config.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'bootstrap.dart' as boot;
 import 'core/widgets/paginated_firestore_list.dart';
 import 'core/providers/connectivity_provider.dart';
-import 'core/services/production_logger.dart';
-import 'core/services/error_recovery_service.dart';
-
-/// Initialize payment services (Bank Transfer and Order Fulfillment)
-Future<void> _initializePaymentServices() async {
-  try {
-    // Initialize Order Fulfillment Service
-    final fulfillmentService = OrderFulfillmentService();
-    await fulfillmentService.initialize(
-      // Production payment configuration - using environment variables
-      qpayUsername: EnvironmentConfig.qpayUsername,
-      qpayPassword: EnvironmentConfig.qpayPassword,
-    );
-
-    // Payment services initialized successfully
-  } catch (error, stackTrace) {
-    // Log payment service initialization failure with full context
-    await ProductionLogger.instance.error(
-      'Payment services initialization failed in main.dart',
-      error: error,
-      stackTrace: stackTrace,
-      context: {
-        'service': 'OrderFulfillmentService',
-        'stage': 'main_initialization',
-        'impact': 'payment_features_degraded',
-        'recovery': 'payment_ui_will_show_error_states',
-        'errorType': ErrorRecoveryService.instance.getErrorMessage(error),
-      },
-    );
-
-    // Don't rethrow - allow app to continue with degraded payment functionality
-    // Payment UI will handle errors gracefully when services are unavailable
-  }
-}
 
 void main() => boot.bootstrap();
 
@@ -183,7 +143,6 @@ class _ShopUBAppState extends State<ShopUBApp> {
           onGenerateRoute: (settings) {
             // Handle store routes
             if (settings.name != null && settings.name!.startsWith('/store/')) {
-              final storeId = settings.name!.split('/')[2];
               // Store routes now handled by Firestore data in the app
               // This fallback should not be needed in production
               return MaterialPageRoute(
@@ -305,8 +264,6 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  bool _isSearching = false;
-  List<SearchResult> _searchResults = [];
   String _selectedFilter = 'Бүгд'; // All
 
   // Search filters
@@ -434,7 +391,7 @@ class _SearchScreenState extends State<SearchScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -526,7 +483,7 @@ class _SearchScreenState extends State<SearchScreen> {
       return const SizedBox.shrink();
     }
 
-    Widget _empty() => Center(
+    Widget empty() => Center(
           child: Text('"$_searchQuery" хайлтаар илэрц олдсонгүй'),
         );
 
@@ -538,7 +495,7 @@ class _SearchScreenState extends State<SearchScreen> {
             .orderBy('createdAt', descending: true),
         pageSize: 20,
         fromDoc: (doc) => doc,
-        emptyBuilder: (_) => _empty(),
+        emptyBuilder: (_) => empty(),
         itemBuilder: (ctx, doc) {
           final store = StoreModel.fromFirestore(doc);
           if (!_matchesStoreSearch(store)) return const SizedBox.shrink();
@@ -567,7 +524,7 @@ class _SearchScreenState extends State<SearchScreen> {
           .orderBy('createdAt', descending: true),
       pageSize: 20,
       fromDoc: (doc) => doc,
-      emptyBuilder: (_) => _empty(),
+      emptyBuilder: (_) => empty(),
       itemBuilder: (ctx, doc) {
         final product = ProductModel.fromFirestore(doc);
         if (!_matchesProductSearch(product)) return const SizedBox.shrink();
@@ -597,7 +554,7 @@ class _SearchScreenState extends State<SearchScreen> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -813,7 +770,7 @@ class _SearchScreenState extends State<SearchScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -861,8 +818,8 @@ class _SearchScreenState extends State<SearchScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    category.color.withOpacity(0.3),
-                    category.color.withOpacity(0.7),
+                    category.color.withValues(alpha: 0.3),
+                    category.color.withValues(alpha: 0.7),
                   ],
                 ),
               ),
@@ -1039,7 +996,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -1067,7 +1024,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -1095,7 +1052,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -1206,7 +1163,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1570,15 +1527,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => OrderTrackingPage(order: order),
-      ),
-    );
-  }
-
-  void _navigateToReceipt(BuildContext context, QueryDocumentSnapshot order) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ReceiptPage(order: order),
       ),
     );
   }
@@ -2142,7 +2090,7 @@ class ShopUBBottomNavBar extends StatelessWidget {
         color: isDark ? Colors.grey[850] : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -2183,7 +2131,6 @@ class ReceiptPage extends StatelessWidget {
     final totalAmount =
         TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
     final createdAt = (data['createdAt'] ?? Timestamp.now()) as Timestamp;
-    final storeId = TypeUtils.extractStoreId(data['storeId']);
 
     // Extract payment and address information
     final String paymentMethod = data['paymentMethod'] as String? ?? 'Карт';
@@ -2221,7 +2168,7 @@ class ReceiptPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 2),
               ),

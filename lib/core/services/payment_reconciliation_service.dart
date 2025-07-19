@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'qpay_service.dart';
-import 'database_service.dart';
 import '../../features/notifications/notification_service.dart';
 
 /// Reconciliation Configuration
@@ -175,7 +174,6 @@ class PaymentReconciliationService {
   PaymentReconciliationService._internal();
 
   final QPayService _qpayService = QPayService();
-  final DatabaseService _databaseService = DatabaseService();
   final NotificationService _notificationService = NotificationService();
 
   ReconciliationConfig _config = const ReconciliationConfig();
@@ -379,7 +377,7 @@ class PaymentReconciliationService {
       if (qpayPayment == null) {
         // Missing payment in QPay
         discrepancies.add(PaymentDiscrepancy(
-          id: 'missing_qpay_${paymentId}',
+          id: 'missing_qpay_$paymentId',
           paymentId: paymentId,
           orderId: localPayment['orderId'] as String? ?? '',
           type: DiscrepancyType.missingPayment,
@@ -425,7 +423,7 @@ class PaymentReconciliationService {
 
         if (hasDiscrepancy) {
           discrepancies.add(PaymentDiscrepancy(
-            id: 'mismatch_${paymentId}',
+            id: 'mismatch_$paymentId',
             paymentId: paymentId,
             orderId: localPayment['orderId'] as String? ?? '',
             type: discrepancyReasons.length > 1
@@ -514,10 +512,10 @@ class PaymentReconciliationService {
     // Create summary
     final summary = {
       'reconciliationRate': reconciledPayments.length /
-          (localPayments.length > 0 ? localPayments.length : 1) *
+          (localPayments.isNotEmpty ? localPayments.length : 1) *
           100,
       'discrepancyRate': discrepancies.length /
-          (localPayments.length > 0 ? localPayments.length : 1) *
+          (localPayments.isNotEmpty ? localPayments.length : 1) *
           100,
       'amountAccuracy':
           totalAmount > 0 ? (reconciledAmount / totalAmount) * 100 : 0,
@@ -885,7 +883,7 @@ class PaymentReconciliationService {
       });
     } catch (e) {
       log('PaymentReconciliationService: Error creating reconciliation record: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -913,7 +911,7 @@ class PaymentReconciliationService {
       });
     } catch (e) {
       log('PaymentReconciliationService: Error storing reconciliation report: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -946,7 +944,7 @@ class PaymentReconciliationService {
       });
     } catch (e) {
       log('PaymentReconciliationService: Error storing discrepancy: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -981,7 +979,7 @@ class PaymentReconciliationService {
       }
     } catch (e) {
       log('PaymentReconciliationService: Error updating discrepancy status: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -1203,18 +1201,18 @@ class PaymentReconciliationService {
           .length;
       final totalDiscrepancies = reports.fold<int>(
           0,
-          (sum, r) =>
-              sum +
+          (accumulator, r) =>
+              accumulator +
               ((r as Map<String, dynamic>?)?['discrepancies'] as int? ?? 0));
       final totalAmount = reports.fold<double>(
           0,
-          (sum, r) =>
-              sum +
+          (accumulator, r) =>
+              accumulator +
               ((r as Map<String, dynamic>?)?['totalAmount'] as double? ?? 0));
       final reconciledAmount = reports.fold<double>(
           0,
-          (sum, r) =>
-              sum +
+          (accumulator, r) =>
+              accumulator +
               ((r as Map<String, dynamic>?)?['reconciledAmount'] as double? ??
                   0));
 

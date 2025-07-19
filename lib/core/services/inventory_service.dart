@@ -307,7 +307,8 @@ class InventoryService {
     final results = <String, bool>{};
 
     try {
-      final batch = _firestore.batch();
+      // ignore: unused_local_variable
+      _firestore.batch();
       final futures = <Future<DocumentSnapshot>>[];
 
       // Fetch all products in parallel
@@ -672,7 +673,7 @@ class InventoryService {
         final product = ProductModel.fromFirestore(doc);
         final price = product.price;
         final stock = product.totalAvailableStock;
-        final category = product.category ?? 'Uncategorized';
+        final category = product.category;
 
         totalProducts++;
         totalStock += stock;

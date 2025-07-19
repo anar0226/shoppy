@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 import 'core/services/order_fulfillment_service.dart';
@@ -10,9 +9,8 @@ import 'core/services/error_recovery_service.dart';
 import 'core/services/performance_optimizer.dart';
 import 'core/config/environment_config.dart';
 import 'features/notifications/fcm_service.dart';
-import 'main.dart' show ShopUBApp; // Re-use existing root widget
+import 'main.dart' show ShopUBApp;
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 
 /// Initialise services & run the Flutter app.
 Future<void> bootstrap() async {

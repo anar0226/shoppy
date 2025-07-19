@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'production_logger.dart';
 
@@ -32,7 +30,6 @@ class PerformanceOptimizer {
   // Performance metrics
   int _cacheHits = 0;
   int _cacheMisses = 0;
-  int _totalMemoryUsage = 0;
 
   /// Optimize memory usage by cleaning up unused resources
   Future<void> optimizeMemory() async {
@@ -414,7 +411,7 @@ class PerformanceOptimizer {
   Future<void> _initializeServices() async {
     // Warm up Firestore connection
     try {
-      await FirebaseFirestore.instance.settings;
+      FirebaseFirestore.instance.settings;
     } catch (e) {
       // Ignore initialization errors
     }

@@ -2,10 +2,6 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'qpay_service.dart';
-import 'payment_timeout_handler.dart';
-import 'payment_reconciliation_service.dart';
-import 'refund_processing_service.dart';
-import 'database_service.dart';
 import '../../features/notifications/notification_service.dart';
 
 /// Payment Monitoring Configuration
@@ -253,11 +249,6 @@ class PaymentMonitoringService {
   PaymentMonitoringService._internal();
 
   final QPayService _qpayService = QPayService();
-  final PaymentTimeoutHandler _timeoutHandler = PaymentTimeoutHandler();
-  final PaymentReconciliationService _reconciliationService =
-      PaymentReconciliationService();
-  final RefundProcessingService _refundService = RefundProcessingService();
-  final DatabaseService _databaseService = DatabaseService();
   final NotificationService _notificationService = NotificationService();
 
   PaymentMonitoringConfig _config = const PaymentMonitoringConfig();
@@ -970,7 +961,7 @@ class PaymentMonitoringService {
   /// Get system uptime
   Duration _getSystemUptime() {
     // This would track when the monitoring service started
-    return Duration(hours: 1); // Placeholder
+    return const Duration(hours: 1); // Placeholder
   }
 
   /// Get last payment status

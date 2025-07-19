@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'qpay_service.dart';
-import 'database_service.dart';
 import '../../features/notifications/notification_service.dart';
 
 /// Payment Timeout Configuration
@@ -66,7 +65,6 @@ class PaymentTimeoutHandler {
   PaymentTimeoutHandler._internal();
 
   final QPayService _qpayService = QPayService();
-  final DatabaseService _databaseService = DatabaseService();
   final NotificationService _notificationService = NotificationService();
 
   PaymentTimeoutConfig _config = const PaymentTimeoutConfig();

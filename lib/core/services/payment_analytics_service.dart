@@ -1,11 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'qpay_service.dart';
 import 'payment_monitoring_service.dart';
-import 'payment_reconciliation_service.dart';
-import 'refund_processing_service.dart';
-import 'database_service.dart';
 
 /// Payment Analytics Configuration
 class PaymentAnalyticsConfig {
@@ -196,13 +192,8 @@ class PaymentAnalyticsService {
   factory PaymentAnalyticsService() => _instance;
   PaymentAnalyticsService._internal();
 
-  final QPayService _qpayService = QPayService();
   final PaymentMonitoringService _monitoringService =
       PaymentMonitoringService();
-  final PaymentReconciliationService _reconciliationService =
-      PaymentReconciliationService();
-  final RefundProcessingService _refundService = RefundProcessingService();
-  final DatabaseService _databaseService = DatabaseService();
 
   PaymentAnalyticsConfig _config = const PaymentAnalyticsConfig();
   Timer? _analysisTimer;
@@ -340,7 +331,8 @@ class PaymentAnalyticsService {
 
       final totalAmount = recentPayments.fold<double>(
         0,
-        (sum, payment) => sum + ((payment['amount'] as num?)?.toDouble() ?? 0),
+        (accumulator, payment) =>
+            accumulator + ((payment['amount'] as num?)?.toDouble() ?? 0),
       );
 
       final successRate =
@@ -413,7 +405,8 @@ class PaymentAnalyticsService {
 
       final totalAmount = rawData.fold<double>(
         0,
-        (sum, payment) => sum + ((payment['amount'] as num?)?.toDouble() ?? 0),
+        (accumulator, payment) =>
+            accumulator + ((payment['amount'] as num?)?.toDouble() ?? 0),
       );
 
       final successRate = totalTransactions > 0
@@ -472,8 +465,8 @@ class PaymentAnalyticsService {
               methodTotal > 0 ? (methodSuccess / methodTotal) * 100 : 0.0,
           'totalAmount': methodPayments.fold<double>(
             0,
-            (sum, payment) =>
-                sum + ((payment['amount'] as num?)?.toDouble() ?? 0),
+            (accumulator, payment) =>
+                accumulator + ((payment['amount'] as num?)?.toDouble() ?? 0),
           ),
         };
       }
@@ -530,8 +523,8 @@ class PaymentAnalyticsService {
 
         final totalAmount = payments.fold<double>(
           0,
-          (sum, payment) =>
-              sum + ((payment['amount'] as num?)?.toDouble() ?? 0),
+          (accumulator, payment) =>
+              accumulator + ((payment['amount'] as num?)?.toDouble() ?? 0),
         );
 
         final successfulPayments =
@@ -545,7 +538,7 @@ class PaymentAnalyticsService {
             .toList();
         paymentDates.sort();
 
-        final daysBetweenPayments = paymentDates.length > 1
+        final daysBetweenPayments = paymentDates.isNotEmpty
             ? paymentDates.last.difference(paymentDates.first).inDays /
                 (paymentDates.length - 1)
             : 0.0;
@@ -567,8 +560,8 @@ class PaymentAnalyticsService {
           'failedPayments': failedPayments,
           'totalAmount': totalAmount,
           'averageAmount':
-              payments.length > 0 ? totalAmount / payments.length : 0,
-          'successRate': payments.length > 0
+              payments.isNotEmpty ? totalAmount / payments.length : 0,
+          'successRate': payments.isNotEmpty
               ? (successfulPayments / payments.length) * 100
               : 0,
           'daysBetweenPayments': daysBetweenPayments,
@@ -600,8 +593,10 @@ class PaymentAnalyticsService {
           .length;
 
       final avgPaymentsPerCustomer = totalCustomers > 0
-          ? customerPatterns.values
-                  .fold<int>(0, (sum, p) => sum + (p['totalPayments'] as int)) /
+          ? customerPatterns.values.fold<int>(
+                  0,
+                  (accumulator, p) =>
+                      accumulator + (p['totalPayments'] as int)) /
               totalCustomers
           : 0.0;
 
@@ -649,8 +644,8 @@ class PaymentAnalyticsService {
 
         final totalAmount = payments.fold<double>(
           0,
-          (sum, payment) =>
-              sum + ((payment['amount'] as num?)?.toDouble() ?? 0),
+          (accumulator, payment) =>
+              accumulator + ((payment['amount'] as num?)?.toDouble() ?? 0),
         );
 
         final successfulPayments =
@@ -664,8 +659,8 @@ class PaymentAnalyticsService {
           'failedPayments': failedPayments,
           'totalAmount': totalAmount,
           'averageAmount':
-              payments.length > 0 ? totalAmount / payments.length : 0,
-          'successRate': payments.length > 0
+              payments.isNotEmpty ? totalAmount / payments.length : 0,
+          'successRate': payments.isNotEmpty
               ? (successfulPayments / payments.length) * 100
               : 0,
         };
@@ -907,8 +902,8 @@ class PaymentAnalyticsService {
       case AnalyticsMetricType.revenue:
         final totalAmount = rawData.fold<double>(
           0,
-          (sum, payment) =>
-              sum + ((payment['amount'] as num?)?.toDouble() ?? 0),
+          (accumulator, payment) =>
+              accumulator + ((payment['amount'] as num?)?.toDouble() ?? 0),
         );
         dataPoints.add(PaymentAnalyticsDataPoint(
           timestamp: DateTime.now(),
@@ -948,7 +943,8 @@ class PaymentAnalyticsService {
 
     final totalAmount = rawData.fold<double>(
       0,
-      (sum, payment) => sum + ((payment['amount'] as num?)?.toDouble() ?? 0),
+      (accumulator, payment) =>
+          accumulator + ((payment['amount'] as num?)?.toDouble() ?? 0),
     );
 
     return {
