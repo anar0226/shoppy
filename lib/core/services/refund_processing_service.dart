@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'qpay_service.dart';
-import 'database_service.dart';
 import '../../features/notifications/notification_service.dart';
 
 /// Refund Processing Configuration
@@ -254,7 +253,6 @@ class RefundProcessingService {
   RefundProcessingService._internal();
 
   final QPayService _qpayService = QPayService();
-  final DatabaseService _databaseService = DatabaseService();
   final NotificationService _notificationService = NotificationService();
 
   RefundProcessingConfig _config = const RefundProcessingConfig();
@@ -419,7 +417,7 @@ class RefundProcessingService {
       await _processRefund(request);
     } catch (e) {
       log('RefundProcessingService: Error processing refund ${request.id} automatically: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -726,8 +724,8 @@ class RefundProcessingService {
 
     final existingRefundAmount = existingRefundsSnapshot.docs.fold<double>(
       0,
-      (sum, doc) =>
-          sum + ((doc.data()['requestedAmount'] as num?)?.toDouble() ?? 0),
+      (total, doc) =>
+          total + ((doc.data()['requestedAmount'] as num?)?.toDouble() ?? 0),
     );
 
     if (existingRefundAmount + request.requestedAmount > orderTotal) {
@@ -791,7 +789,7 @@ class RefundProcessingService {
       });
     } catch (e) {
       log('RefundProcessingService: Error storing refund request: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -812,7 +810,7 @@ class RefundProcessingService {
       });
     } catch (e) {
       log('RefundProcessingService: Error updating refund status: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -848,9 +846,6 @@ class RefundProcessingService {
       final orderDoc = await orderRef.get();
 
       if (orderDoc.exists) {
-        final orderData = orderDoc.data()!;
-        final currentTotal = (orderData['total'] as num?)?.toDouble() ?? 0;
-
         Map<String, dynamic> updates = {
           'updatedAt': FieldValue.serverTimestamp(),
         };
@@ -1059,8 +1054,8 @@ class RefundProcessingService {
 
       final totalAmount = refunds.fold<double>(
           0,
-          (sum, r) =>
-              sum +
+          (total, r) =>
+              total +
               (((r as Map<String, dynamic>?)?['requestedAmount'] as num?)
                       ?.toDouble() ??
                   0));
@@ -1070,8 +1065,8 @@ class RefundProcessingService {
               RefundStatus.completed.toString())
           .fold<double>(
               0,
-              (sum, r) =>
-                  sum +
+              (total, r) =>
+                  total +
                   (((r as Map<String, dynamic>?)?['requestedAmount'] as num?)
                           ?.toDouble() ??
                       0));

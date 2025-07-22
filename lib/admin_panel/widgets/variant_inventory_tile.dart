@@ -91,8 +91,8 @@ class _VariantInventoryTileState extends State<VariantInventoryTile> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: widget.variant.trackInventory
-            ? Colors.green.withOpacity(0.1)
-            : Colors.grey.withOpacity(0.1),
+            ? Colors.green.withValues(alpha: 0.1)
+            : Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: widget.variant.trackInventory ? Colors.green : Colors.grey,
@@ -188,7 +188,7 @@ class _VariantInventoryTileState extends State<VariantInventoryTile> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: _getStockColor(stock).withOpacity(0.1),
+                      color: _getStockColor(stock).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(color: _getStockColor(stock)),
                     ),

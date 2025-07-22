@@ -28,7 +28,6 @@ class _InventoryManagementWidgetState extends State<InventoryManagementWidget> {
   String _searchQuery = '';
   String _selectedCategory = 'All';
   String _inventoryFilter = 'All';
-  bool _isLoading = false;
 
   final List<String> _categories = [
     'All',
@@ -265,7 +264,7 @@ class _InventoryManagementWidgetState extends State<InventoryManagementWidget> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -620,7 +619,7 @@ class _InventoryManagementWidgetState extends State<InventoryManagementWidget> {
     // Calculate total products from inventory states
     int total = 0;
     for (final storeInventory in inventoryProvider.inventoryStates.values) {
-      total += storeInventory.length;
+      total += storeInventory.length.toInt();
     }
     return total;
   }
@@ -791,10 +790,6 @@ class _InventoryManagementWidgetState extends State<InventoryManagementWidget> {
     int newStock,
   ) async {
     try {
-      setState(() {
-        _isLoading = true;
-      });
-
       final user = AuthService.instance.currentUser;
       if (user == null) return;
 
@@ -808,31 +803,33 @@ class _InventoryManagementWidgetState extends State<InventoryManagementWidget> {
       );
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Inventory adjusted successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Inventory adjusted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to adjust inventory'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to adjust inventory'),
+          SnackBar(
+            content: Text('Error: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -877,14 +874,16 @@ class _InventoryManagementWidgetState extends State<InventoryManagementWidget> {
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: () {
+                onPressed: () async {
                   // TODO: Implement CSV upload
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Bulk update feature coming soon!'),
-                    ),
-                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Bulk update feature coming soon!'),
+                      ),
+                    );
+                  }
                 },
                 icon: const Icon(Icons.upload_file),
                 label: const Text('Upload CSV'),
@@ -903,10 +902,12 @@ class _InventoryManagementWidgetState extends State<InventoryManagementWidget> {
 
   void _exportInventoryReport() {
     // TODO: Implement inventory report export
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Export feature coming soon!'),
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Export feature coming soon!'),
+        ),
+      );
+    }
   }
 }

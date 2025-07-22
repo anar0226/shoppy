@@ -83,7 +83,7 @@ class _LoginPageState extends State<LoginPage> {
                         }
                         await AuthService.instance
                             .sendPasswordReset(_emailCtrl.text.trim());
-                        if (mounted) {
+                        if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                   content: Text(

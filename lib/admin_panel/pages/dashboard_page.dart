@@ -392,7 +392,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
       return recentActivity.take(6).toList();
     } catch (e) {
-      print('Error loading recent activity: $e');
+      debugPrint('Error loading recent activity: $e');
       return [];
     }
   }
@@ -1043,12 +1043,12 @@ class _DashboardPageState extends State<DashboardPage> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isPriorityHigh
-            ? (activity['color'] as Color).withOpacity(0.05)
+            ? (activity['color'] as Color).withValues(alpha: 0.05)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         border: isPriorityHigh
             ? Border.all(
-                color: (activity['color'] as Color).withOpacity(0.2),
+                color: (activity['color'] as Color).withValues(alpha: 0.2),
                 width: 1,
               )
             : null,
@@ -1062,7 +1062,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: (activity['color'] as Color).withOpacity(0.15),
+                  color: (activity['color'] as Color).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(
@@ -1180,7 +1180,7 @@ class _DashboardPageState extends State<DashboardPage> {
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: (activity['color'] as Color).withOpacity(0.1),
+                color: (activity['color'] as Color).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Icon(
@@ -1222,37 +1222,37 @@ class _DashboardPageState extends State<DashboardPage> {
       case 'paid':
         return {
           'label': 'Paid',
-          'backgroundColor': Colors.green.withOpacity(0.1),
+          'backgroundColor': Colors.green.withValues(alpha: 0.1),
           'textColor': Colors.green,
         };
       case 'pending':
         return {
           'label': 'Pending',
-          'backgroundColor': Colors.orange.withOpacity(0.1),
+          'backgroundColor': Colors.orange.withValues(alpha: 0.1),
           'textColor': Colors.orange,
         };
       case 'shipped':
         return {
           'label': 'Shipped',
-          'backgroundColor': Colors.blue.withOpacity(0.1),
+          'backgroundColor': Colors.blue.withValues(alpha: 0.1),
           'textColor': Colors.blue,
         };
       case 'delivered':
         return {
           'label': 'Delivered',
-          'backgroundColor': Colors.green.withOpacity(0.1),
+          'backgroundColor': Colors.green.withValues(alpha: 0.1),
           'textColor': Colors.green,
         };
       case 'canceled':
         return {
           'label': 'Canceled',
-          'backgroundColor': Colors.red.withOpacity(0.1),
+          'backgroundColor': Colors.red.withValues(alpha: 0.1),
           'textColor': Colors.red,
         };
       default:
         return {
           'label': 'Unknown',
-          'backgroundColor': Colors.grey.withOpacity(0.1),
+          'backgroundColor': Colors.grey.withValues(alpha: 0.1),
           'textColor': Colors.grey,
         };
     }

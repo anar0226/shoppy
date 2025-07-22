@@ -292,6 +292,12 @@ class NotificationsDialog extends StatelessWidget {
 
                         if (confirmed == true) {
                           await NotificationService().clearAllNotifications();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Бүх мэдэгдэл устгагдлаа')),
+                            );
+                          }
                         }
                       },
                       tooltip: 'Бүгдийг устгах',
@@ -363,12 +369,12 @@ class NotificationsDialog extends StatelessWidget {
       decoration: BoxDecoration(
         color: notification.isRead
             ? Colors.transparent
-            : Colors.blue.withOpacity(0.05),
+            : Colors.blue.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: notification.isRead
               ? Colors.grey.shade200
-              : Colors.blue.withOpacity(0.2),
+              : Colors.blue.withValues(alpha: 0.2),
         ),
       ),
       child: ListTile(
@@ -376,7 +382,7 @@ class NotificationsDialog extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: notification.color.withOpacity(0.1),
+            color: notification.color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Icon(
@@ -420,8 +426,9 @@ class NotificationsDialog extends StatelessWidget {
           // Handle notification tap based on type
           if (notification.type == NotificationType.order) {
             // Navigate to order details
-            Navigator.of(context).pop();
-            // You can add navigation logic here
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
           }
         },
         trailing: !notification.isRead

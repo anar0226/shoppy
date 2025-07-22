@@ -118,7 +118,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
         }
       });
     } catch (e) {
-      debugPrint('Error loading discounts: $e');
+      // Error loading discounts
       if (mounted) {
         setState(() => _discountsLoaded = true);
       }
@@ -287,8 +287,6 @@ class _AddProductDialogState extends State<AddProductDialog> {
     setState(() => _saving = true);
 
     try {
-      debugPrint('ADD-PRODUCT: started');
-
       // 1. Get current user
       final uid = AuthService.instance.currentUser?.uid;
       if (uid == null) throw Exception('Нэвтрээгүй байна');
@@ -383,7 +381,6 @@ class _AddProductDialogState extends State<AddProductDialog> {
 
       // 6. Save product to Firestore
       await docRef.set(data);
-      debugPrint('Бүтээгдэхүүн амжилттай хадгалагдлаа');
 
       if (mounted) {
         Navigator.of(context).pop();
@@ -391,7 +388,6 @@ class _AddProductDialogState extends State<AddProductDialog> {
             const SnackBar(content: Text('Амжилттай нэмэгдлээ!')));
       }
     } catch (e) {
-      debugPrint('Бүтээгдэхүүн нэмэгдэхэд алдаа гарлаа: $e');
       if (mounted) {
         String errorMessage = 'Бүтээгдэхүүн нэмэгдэхэд алдаа гарлаа';
         if (e.toString().contains('permission-denied')) {
@@ -579,8 +575,8 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                         shape: BoxShape.circle,
                                         boxShadow: [
                                           BoxShadow(
-                                            color:
-                                                Colors.black.withOpacity(0.2),
+                                            color: Colors.black
+                                                .withValues(alpha: 0.2),
                                             blurRadius: 2,
                                             offset: const Offset(0, 1),
                                           ),

@@ -270,8 +270,8 @@ class _StoreScreenState extends State<StoreScreen>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.3),
-                    Colors.black.withOpacity(0.7),
+                    Colors.black.withValues(alpha: 0.3),
+                    Colors.black.withValues(alpha: 0.7),
                     Colors.black,
                   ],
                   stops: const [0.0, 0.8, 1.0],
@@ -340,7 +340,7 @@ class _StoreScreenState extends State<StoreScreen>
                           Text(
                             '(${widget.storeData.reviewCount})',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
+                              color: Colors.white.withValues(alpha: 0.7),
                               fontSize: 14,
                             ),
                           ),
@@ -386,7 +386,7 @@ class _StoreScreenState extends State<StoreScreen>
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Icon(
@@ -405,11 +405,11 @@ class _StoreScreenState extends State<StoreScreen>
         height: 36,
         decoration: BoxDecoration(
           color: _isSearching
-              ? Colors.white.withOpacity(0.25)
-              : Colors.white.withOpacity(0.15),
+              ? Colors.white.withValues(alpha: 0.25)
+              : Colors.white.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(18),
           border: _isSearching
-              ? Border.all(color: Colors.white.withOpacity(0.3), width: 1)
+              ? Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1)
               : null,
         ),
         child: Icon(
@@ -427,7 +427,7 @@ class _StoreScreenState extends State<StoreScreen>
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
+          color: Colors.white.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(18),
         ),
         child: const Center(
@@ -455,11 +455,12 @@ class _StoreScreenState extends State<StoreScreen>
               height: 36,
               decoration: BoxDecoration(
                 color: _isFollowing
-                    ? Colors.white.withOpacity(0.25)
-                    : Colors.white.withOpacity(0.15),
+                    ? Colors.white.withValues(alpha: 0.25)
+                    : Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(18),
                 border: _isFollowing
-                    ? Border.all(color: Colors.white.withOpacity(0.3), width: 1)
+                    ? Border.all(
+                        color: Colors.white.withValues(alpha: 0.3), width: 1)
                     : null,
               ),
               child: _isFollowing
@@ -565,7 +566,7 @@ class _StoreScreenState extends State<StoreScreen>
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    Colors.black.withOpacity(0.8),
+                    Colors.black.withValues(alpha: 0.8),
                   ],
                 ),
               ),
@@ -616,7 +617,7 @@ class _StoreScreenState extends State<StoreScreen>
                   style: TextStyle(
                     color: isSelected
                         ? Colors.black
-                        : Colors.white.withOpacity(0.6),
+                        : Colors.white.withValues(alpha: 0.6),
                     fontWeight:
                         isSelected ? FontWeight.w600 : FontWeight.normal,
                     fontSize: 14,
@@ -650,7 +651,7 @@ class _StoreScreenState extends State<StoreScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
+                color: Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -1281,7 +1282,7 @@ class __PopupMessageState extends State<_PopupMessage>
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Colors.black.withValues(alpha: 0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),

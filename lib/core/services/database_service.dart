@@ -16,7 +16,6 @@ class DatabaseService {
 
   // Multi-level caching system
   final Map<String, QuerySnapshot> _queryCache = {};
-  final Map<String, List<DocumentSnapshot>> _documentCache = {};
   final Map<String, DateTime> _cacheTimestamps = {};
   final Map<String, int> _accessCount = {};
   static const Duration _cacheExpiry = Duration(minutes: 5);

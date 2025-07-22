@@ -91,18 +91,20 @@ class _ShopUBAppState extends State<ShopUBApp> {
 
       if (doc.exists) {
         final product = ProductModel.fromFirestore(doc);
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ProductPage(
-              product: product,
-              storeName: 'Store',
-              storeLogoUrl: '',
-              storeRating: 5.0,
-              storeRatingCount: 0,
+        if (context.mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProductPage(
+                product: product,
+                storeName: 'Store',
+                storeLogoUrl: '',
+                storeRating: 5.0,
+                storeRatingCount: 0,
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
     } catch (e) {
       // Error navigating to product
@@ -676,40 +678,45 @@ class _SearchScreenState extends State<SearchScreen> {
           .toList();
 
       // Navigate to store page
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => StoreScreen(
-            storeData: StoreData(
-              id: store.id,
-              name: store.name,
-              displayName: store.name.toUpperCase(),
-              heroImageUrl: store.banner.isNotEmpty ? store.banner : store.logo,
-              backgroundColor: const Color(0xFF01BCE7),
-              rating: 4.9,
-              reviewCount: '25',
-              collections: const [],
-              categories: const ['All'],
-              productCount: products.length,
-              products: products
-                  .map((p) => StoreProduct(
-                        id: p.id,
-                        name: p.name,
-                        imageUrl: p.images.isNotEmpty ? p.images.first : '',
-                        price: p.price,
-                      ))
-                  .toList(),
-              showFollowButton: true,
-              hasNotification: false,
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => StoreScreen(
+              storeData: StoreData(
+                id: store.id,
+                name: store.name,
+                displayName: store.name.toUpperCase(),
+                heroImageUrl:
+                    store.banner.isNotEmpty ? store.banner : store.logo,
+                backgroundColor: const Color(0xFF01BCE7),
+                rating: 4.9,
+                reviewCount: '25',
+                collections: const [],
+                categories: const ['All'],
+                productCount: products.length,
+                products: products
+                    .map((p) => StoreProduct(
+                          id: p.id,
+                          name: p.name,
+                          imageUrl: p.images.isNotEmpty ? p.images.first : '',
+                          price: p.price,
+                        ))
+                    .toList(),
+                showFollowButton: true,
+                hasNotification: false,
+              ),
             ),
           ),
-        ),
-      );
+        );
+      }
     } catch (e) {
-      PopupUtils.showError(
-        context: context,
-        message: 'Дэлгүүр нээхэд алдаа гарлаа: $e',
-      );
+      if (mounted) {
+        PopupUtils.showError(
+          context: context,
+          message: 'Дэлгүүр нээхэд алдаа гарлаа: $e',
+        );
+      }
     }
   }
 
@@ -1143,19 +1150,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final items = List<Map<String, dynamic>>.from(data['items'] ?? []);
     final storeId = TypeUtils.extractStoreId(data['storeId']);
     final status = data['status'] as String? ?? 'placed';
-    final totalAmount =
-        TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
-    final createdAt = (data['createdAt'] ?? Timestamp.now()) as Timestamp;
-
-    // Extract payment and address information
-    final String paymentMethod = data['paymentMethod'] as String? ?? 'Карт';
-    final String paymentIntentId = (data['paymentIntentId'] as String?) ?? '';
-    final String customerEmail = (data['customerEmail'] as String?) ??
-        (data['userEmail'] as String?) ??
-        '';
-    final Map<String, dynamic> deliveryAddress =
-        (data['deliveryAddress'] as Map<String, dynamic>?) ?? {};
-    final String shippingAddress = (data['shippingAddress'] as String?) ?? '';
 
     return Container(
       decoration: BoxDecoration(
@@ -1531,253 +1525,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  void _showContactStore(BuildContext context, String storeName,
-      [QueryDocumentSnapshot? order]) async {
-    String? storeId;
-
-    // Get store ID from order if provided, otherwise use a recent order
-    if (order != null) {
-      final orderData = order.data() as Map<String, dynamic>;
-      storeId = orderData['storeId'] as String?;
-    } else {
-      // Get the store ID from a recent order
-      final auth = context.read<AuthProvider>();
-      if (auth.user != null) {
-        try {
-          final orderSnapshot = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(auth.user!.uid)
-              .collection('orders')
-              .orderBy('createdAt', descending: true)
-              .limit(1)
-              .get();
-
-          // Check if widget is still mounted after async operation
-          if (!mounted) return;
-
-          if (orderSnapshot.docs.isNotEmpty) {
-            final orderData = orderSnapshot.docs.first.data();
-            storeId = TypeUtils.extractStoreId(orderData['storeId']);
-          }
-        } catch (e) {
-          // Fallback to generic message
-          if (!mounted) return;
-        }
-      }
-    }
-
-    if (storeId == null || storeId.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$storeName-тай холбогдох мэдээлэл олдсонгүй'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
-    try {
-      // Fetch store's contact information
-      final storeDoc = await FirebaseFirestore.instance
-          .collection('stores')
-          .doc(storeId)
-          .get();
-
-      // Check if widget is still mounted after async operation
-      if (!mounted) return;
-
-      if (!storeDoc.exists) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$storeName-тай холбогдох мэдээлэл олдсонгүй'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-        return;
-      }
-
-      final storeData = storeDoc.data() as Map<String, dynamic>;
-      final phone = storeData['phone'] as String? ?? '';
-      final instagram = storeData['instagram'] as String? ?? '';
-      final facebook = storeData['facebook'] as String? ?? '';
-
-      if (phone.isEmpty && instagram.isEmpty && facebook.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$storeName-ийн холбогдох мэдээлэл олдсонгүй'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-        return;
-      }
-
-      _showContactDialog(context, storeName, phone, instagram, facebook);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$storeName-тай холбогдох мэдээлэл олдсонгүй'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  void _showContactDialog(BuildContext context, String storeName, String phone,
-      String instagram, String facebook) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle bar
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Title
-            Text(
-              '$storeName-тай холбогдох',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Contact options
-            if (phone.isNotEmpty) ...[
-              _buildContactOption(
-                context,
-                icon: Icons.phone,
-                label: 'Утас',
-                value: phone,
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Утас: $phone')),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            if (instagram.isNotEmpty) ...[
-              _buildContactOption(
-                context,
-                icon: Icons.camera_alt,
-                label: 'Instagram',
-                value: instagram,
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Instagram: $instagram')),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            if (facebook.isNotEmpty) ...[
-              _buildContactOption(
-                context,
-                icon: Icons.facebook,
-                label: 'Facebook',
-                value: facebook,
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Facebook: $facebook')),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContactOption(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Icon(icon, color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showRefundPolicy(BuildContext context,
       [QueryDocumentSnapshot? order]) async {
     String? storeId;
@@ -1814,7 +1561,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
 
     if (storeId == null || storeId.isEmpty) {
-      if (!mounted) return;
+      if (!context.mounted) return;
       _showGenericRefundPolicy(context);
       return;
     }
@@ -1827,10 +1574,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
           .get();
 
       // Check if widget is still mounted after async operation
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       if (!storeDoc.exists) {
-        _showGenericRefundPolicy(context);
+        if (context.mounted) {
+          _showGenericRefundPolicy(context);
+        }
         return;
       }
 
@@ -1839,30 +1588,34 @@ class _OrdersScreenState extends State<OrdersScreen> {
       final refundPolicy = storeData['refundPolicy'] as String? ?? '';
 
       if (refundPolicy.isEmpty) {
-        _showGenericRefundPolicy(context);
+        if (context.mounted) {
+          _showGenericRefundPolicy(context);
+        }
         return;
       }
 
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('$storeName-ийн буцаалт, солилт'),
-          content: SingleChildScrollView(
-            child: Text(
-              refundPolicy,
-              style: const TextStyle(fontSize: 14, height: 1.5),
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('$storeName-ийн буцаалт, солилт'),
+            content: SingleChildScrollView(
+              child: Text(
+                refundPolicy,
+                style: const TextStyle(fontSize: 14, height: 1.5),
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Ойлголоо'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Ойлголоо'),
-            ),
-          ],
-        ),
-      );
+        );
+      }
     } catch (e) {
-      if (!mounted) return;
+      if (!context.mounted) return;
       _showGenericRefundPolicy(context);
     }
   }
@@ -1996,20 +1749,24 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       .doc(order.id)
                       .delete();
 
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Захиалга амжилттай устгагдлаа'),
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Захиалга амжилттай устгагдлаа'),
+                      content: Text('Захиалга устгахад алдаа гарлаа'),
                     ),
                   );
                 }
-              } catch (e) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Захиалга устгахад алдаа гарлаа'),
-                  ),
-                );
               }
             },
             child: const Text('Устгах'),

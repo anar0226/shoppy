@@ -573,11 +573,15 @@ class _InventoryAdjustmentDialogState extends State<InventoryAdjustmentDialog> {
       );
 
       if (success) {
-        _showSuccessMessage('Inventory adjusted successfully');
-        widget.onAdjustmentComplete?.call();
-        Navigator.pop(context);
+        if (mounted) {
+          _showSuccessMessage('Inventory adjusted successfully');
+          widget.onAdjustmentComplete?.call();
+          Navigator.pop(context);
+        }
       } else {
-        _showErrorMessage('Failed to adjust inventory');
+        if (context.mounted) {
+          _showErrorMessage('Failed to adjust inventory');
+        }
       }
     } catch (e) {
       _showErrorMessage('Error: $e');
@@ -604,20 +608,24 @@ class _InventoryAdjustmentDialogState extends State<InventoryAdjustmentDialog> {
   }
 
   void _showSuccessMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   void _showErrorMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

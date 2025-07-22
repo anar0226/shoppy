@@ -664,7 +664,7 @@ class PaymentTimeoutHandler {
       });
     } catch (e) {
       log('PaymentTimeoutHandler: Error storing timeout record: $e');
-      throw e;
+      rethrow;
     }
   }
 

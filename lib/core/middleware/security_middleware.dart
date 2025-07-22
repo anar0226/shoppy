@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_security_service.dart';
 import '../../features/auth/providers/enhanced_auth_provider.dart';
 import '../utils/popup_utils.dart';
@@ -32,19 +33,21 @@ class SecurityMiddleware {
       );
 
       if (!securityResult.success) {
-        await _handleSecurityFailure(
-          context: context,
-          result: securityResult,
-          showErrorDialog: showErrorDialog,
-          onFailure: onSecurityFailure,
-        );
+        if (context.mounted) {
+          await _handleSecurityFailure(
+            context: context,
+            result: securityResult,
+            showErrorDialog: showErrorDialog,
+            onFailure: onSecurityFailure,
+          );
+        }
         return null;
       }
 
       // Security check passed, execute the action
       return await action();
     } catch (e) {
-      if (showErrorDialog) {
+      if (showErrorDialog && context.mounted) {
         PopupUtils.showError(
           context: context,
           message: 'Алдаа гарлаа: ${e.toString()}',
@@ -149,21 +152,27 @@ class SecurityMiddleware {
       final result = await authProvider.sendEmailVerification();
 
       if (result.success) {
-        PopupUtils.showSuccess(
-          context: context,
-          message: result.message ?? 'Баталгаажуулах имэйл илгээгдлээ',
-        );
+        if (context.mounted) {
+          PopupUtils.showSuccess(
+            context: context,
+            message: result.message ?? 'Баталгаажуулах имэйл илгээгдлээ',
+          );
+        }
       } else {
-        PopupUtils.showError(
-          context: context,
-          message: result.message ?? 'Имэйл илгээхэд алдаа гарлаа',
-        );
+        if (context.mounted) {
+          PopupUtils.showError(
+            context: context,
+            message: result.message ?? 'Имэйл илгээхэд алдаа гарлаа',
+          );
+        }
       }
     } catch (e) {
-      PopupUtils.showError(
-        context: context,
-        message: 'Имэйл илгээхэд алдаа гарлаа: ${e.toString()}',
-      );
+      if (context.mounted) {
+        PopupUtils.showError(
+          context: context,
+          message: 'Имэйл илгээхэд алдаа гарлаа: ${e.toString()}',
+        );
+      }
     }
   }
 
@@ -199,9 +208,12 @@ class SecurityMiddleware {
             child: const Text('Ойлголоо'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop();
-              // TODO: Navigate to support page
+              final url = Uri.parse('https://www.instagram.com/iblameanar');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
             },
             child: const Text('Тусламж'),
           ),
@@ -242,9 +254,12 @@ class SecurityMiddleware {
             child: const Text('Ойлголоо'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop();
-              // TODO: Navigate to support page
+              final url = Uri.parse('https://www.instagram.com/iblameanar');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
             },
             child: const Text('Тусламж'),
           ),

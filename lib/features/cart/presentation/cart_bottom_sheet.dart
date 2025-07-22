@@ -44,7 +44,7 @@ class CartBottomSheet extends StatelessWidget {
                   itemCount: cart.items.length,
                   itemBuilder: (context, index) {
                     final item = cart.items[index];
-                    return _CartItemTile(context: context, item: item);
+                    return _cartItemTile(context: context, item: item);
                   },
                 ),
               ),
@@ -145,7 +145,7 @@ class CartBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _CartItemTile(
+  Widget _cartItemTile(
       {required BuildContext context, required CartItem item}) {
     final cart = Provider.of<CartProvider>(context, listen: false);
 
@@ -246,9 +246,9 @@ class CartBottomSheet extends StatelessWidget {
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.white.withOpacity(0.3)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
         ),
         alignment: Alignment.center,
         child: Text(label,

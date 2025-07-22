@@ -2,8 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import '../../cart/models/cart_item.dart';
-import '../../inventory/providers/inventory_provider.dart';
-import '../../../core/services/inventory_service.dart';
+
 import '../../products/models/product_model.dart';
 
 /// Enhanced checkout service with inventory reservation and management
@@ -20,7 +19,6 @@ class CheckoutInventoryService {
     try {
       final reservationId =
           'checkout_${userId}_${DateTime.now().millisecondsSinceEpoch}';
-      final reservedItems = <ReservedCartItem>[];
       final failedItems = <CartItem>[];
 
       // Pre-validate all items for availability

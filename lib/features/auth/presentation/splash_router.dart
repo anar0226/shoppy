@@ -29,19 +29,27 @@ class _SplashRouterState extends State<SplashRouter> {
     if (auth.user != null) {
       // Check if authenticated user needs profile completion
       if (auth.needsProfileCompletion) {
-        Navigator.of(context).pushReplacementNamed('/profile-completion');
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/profile-completion');
+        }
       } else {
-        Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomeScreen()));
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const HomeScreen()));
+        }
       }
     } else if (seenOnboarding == true) {
-      Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LoginPage()));
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const LoginPage()));
+      }
     } else {
       // For now, navigate to login and set flag
       await prefs.setBool('seen_onboarding', true);
-      Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LoginPage()));
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const LoginPage()));
+      }
     }
   }
 

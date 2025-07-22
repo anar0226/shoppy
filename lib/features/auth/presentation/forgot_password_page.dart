@@ -70,19 +70,22 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               try {
                                 await auth.sendPasswordResetEmail(
                                     _emailController.text.trim());
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'Нууц үг сэргээх холбоос илгээгдлээ'),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                                Navigator.of(context).pop();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Нууц үг сэргээх холбоос илгээгдлээ'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                  Navigator.of(context).pop();
+                                }
                               } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(e.toString())),
-                                );
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(e.toString())),
+                                  );
+                                }
                               }
                             }
                           },

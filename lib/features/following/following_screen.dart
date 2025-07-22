@@ -304,12 +304,14 @@ class _SellerCardWithNav extends StatelessWidget {
       hasNotification: false,
     );
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => StoreScreen(storeData: storeData),
-      ),
-    );
+    if (context.mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StoreScreen(storeData: storeData),
+        ),
+      );
+    }
   }
 
   @override

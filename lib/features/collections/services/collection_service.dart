@@ -99,7 +99,7 @@ class CollectionService {
       );
       return image;
     } catch (e) {
-      debugPrint('Error picking image: $e');
+      // Error picking image
       return null;
     }
   }
@@ -125,10 +125,9 @@ class CollectionService {
       final TaskSnapshot snapshot = await uploadTask;
       final String downloadUrl = await snapshot.ref.getDownloadURL();
 
-      debugPrint('Image uploaded successfully: $downloadUrl');
       return downloadUrl;
     } catch (e) {
-      debugPrint('Error uploading image: $e');
+      // Error uploading image
       return null;
     }
   }
@@ -139,10 +138,9 @@ class CollectionService {
       if (imageUrl.isNotEmpty) {
         final Reference ref = _storage.refFromURL(imageUrl);
         await ref.delete();
-        debugPrint('Image deleted successfully: $imageUrl');
       }
     } catch (e) {
-      debugPrint('Error deleting image: $e');
+      // Error deleting image
       // Don't throw error as the main operation might still succeed
     }
   }
@@ -180,10 +178,9 @@ class CollectionService {
 
       final docRef =
           await _firestore.collection(_collection).add(collection.toMap());
-      debugPrint('Collection created successfully: ${docRef.id}');
       return docRef.id;
     } catch (e) {
-      debugPrint('Error creating collection: $e');
+      // Error creating collection
       return null;
     }
   }
@@ -201,7 +198,6 @@ class CollectionService {
       final doc =
           await _firestore.collection(_collection).doc(collectionId).get();
       if (!doc.exists) {
-        debugPrint('Collection not found: $collectionId');
         return false;
       }
 
@@ -240,10 +236,9 @@ class CollectionService {
           .collection(_collection)
           .doc(collectionId)
           .update(updates);
-      debugPrint('Collection updated successfully: $collectionId');
       return true;
     } catch (e) {
-      debugPrint('Error updating collection: $e');
+      // Error updating collection
       return false;
     }
   }
@@ -255,7 +250,6 @@ class CollectionService {
       final doc =
           await _firestore.collection(_collection).doc(collectionId).get();
       if (!doc.exists) {
-        debugPrint('Collection not found: $collectionId');
         return false;
       }
 
@@ -272,10 +266,9 @@ class CollectionService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      debugPrint('Collection deleted successfully: $collectionId');
       return true;
     } catch (e) {
-      debugPrint('Error deleting collection: $e');
+      // Error deleting collection
       return false;
     }
   }

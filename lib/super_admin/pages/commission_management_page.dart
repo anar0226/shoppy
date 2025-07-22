@@ -187,9 +187,9 @@ class _CommissionManagementPageState extends State<CommissionManagementPage>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -582,8 +582,8 @@ class _CommissionTransactionsTab extends StatelessWidget {
                       .split('.')
                       .last
                       .toUpperCase()),
-                  backgroundColor:
-                      _getStatusColor(transaction.status).withOpacity(0.1),
+                  backgroundColor: _getStatusColor(transaction.status)
+                      .withValues(alpha: 0.1),
                   labelStyle: TextStyle(
                     color: _getStatusColor(transaction.status),
                     fontSize: 12,
@@ -885,7 +885,7 @@ class _CommissionPayoutsTabState extends State<_CommissionPayoutsTab> {
         border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -899,7 +899,7 @@ class _CommissionPayoutsTabState extends State<_CommissionPayoutsTab> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, color: color, size: 20),
@@ -941,8 +941,8 @@ class _CommissionPayoutsTabState extends State<_CommissionPayoutsTab> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color:
-                        _getPayoutStatusColor(payout.status).withOpacity(0.1),
+                    color: _getPayoutStatusColor(payout.status)
+                        .withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -974,8 +974,8 @@ class _CommissionPayoutsTabState extends State<_CommissionPayoutsTab> {
                 const Spacer(),
                 Chip(
                   label: Text(payout.status.displayName),
-                  backgroundColor:
-                      _getPayoutStatusColor(payout.status).withOpacity(0.1),
+                  backgroundColor: _getPayoutStatusColor(payout.status)
+                      .withValues(alpha: 0.1),
                   labelStyle: TextStyle(
                     color: _getPayoutStatusColor(payout.status),
                     fontSize: 12,

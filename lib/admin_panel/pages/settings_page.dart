@@ -109,7 +109,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           alignment: Alignment.centerLeft,
                           child: ElevatedButton(
                             onPressed: () {
-                              // TODO: Persist settings to Firestore if desired
+                              // TODO: Persist settings to Firestore later on
                               ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                       content:

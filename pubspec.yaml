@@ -67,10 +67,23 @@ dependencies:
   dio: ^5.4.0
   flutter_rating_bar: ^4.0.1
   flutter_dotenv: ^5.1.0
+  flutter_cache_manager: ^3.4.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
+
+  # Testing dependencies
+  mockito: ^5.4.4
+  build_runner: ^2.4.7
+  fake_cloud_firestore: ^3.1.0
+  firebase_auth_mocks: ^0.14.0
+  network_image_mock: ^2.1.1
+  test: ^1.24.9
+  bloc_test: ^9.1.5
+  golden_toolkit: ^0.15.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

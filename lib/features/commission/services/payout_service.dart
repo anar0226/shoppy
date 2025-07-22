@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../models/payout_model.dart';
 
 /// Service for managing vendor payouts and financial operations
@@ -289,7 +290,7 @@ class PayoutService {
             });
           }
         } catch (e) {
-          print('Error processing schedule ${doc.id}: $e');
+          // Error processing schedule
         }
       }
 
@@ -581,7 +582,7 @@ class PayoutService {
       }
       await batch.commit();
     } catch (e) {
-      print('Error handling successful payout: $e');
+      // Error handling successful payout
     }
   }
 
@@ -610,7 +611,7 @@ class PayoutService {
       }
       await batch.commit();
     } catch (e) {
-      print('Error handling failed payout: $e');
+      // Error handling failed payout
     }
   }
 }

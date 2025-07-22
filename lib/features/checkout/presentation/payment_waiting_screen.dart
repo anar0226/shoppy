@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import '../../../core/services/qpay_service.dart';
 import '../../../core/utils/popup_utils.dart';
-import '../../../features/home/presentation/main_scaffold.dart';
 
 class PaymentWaitingScreen extends StatefulWidget {
   final String orderId;
@@ -119,29 +118,6 @@ class _PaymentWaitingScreenState extends State<PaymentWaitingScreen> {
           '/orders',
           (route) => route.isFirst,
         );
-      }
-    });
-  }
-
-  void _handlePaymentFailure() {
-    if (!mounted || _paymentCompleted) return;
-
-    setState(() {
-      _paymentCompleted = true;
-      _isCheckingPayment = false;
-    });
-
-    _paymentCheckTimer?.cancel();
-
-    PopupUtils.showError(
-      context: context,
-      message: 'Төлбөр амжилтгүй боллоо. Дахин оролдоно уу.',
-    );
-
-    // Navigate back to checkout after a delay
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.of(context).pop();
       }
     });
   }

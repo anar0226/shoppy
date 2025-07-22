@@ -6,7 +6,6 @@ import 'package:avii/features/categories/presentation/final_category_page.dart';
 class MenShoesCategoryPage extends StatelessWidget {
   const MenShoesCategoryPage({super.key});
 
-  // TODO: replace with real featured store IDs once available
   static const String _featuredStoreId = 'TLLb3tqzvU2TZSsNPol9';
 
   @override

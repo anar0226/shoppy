@@ -126,9 +126,9 @@ class _CategoryPageState extends State<CategoryPage> {
 
           if (reviewsSnapshot.docs.isNotEmpty) {
             final reviews = reviewsSnapshot.docs;
-            final totalRating = reviews.fold<double>(0, (sum, doc) {
+            final totalRating = reviews.fold<double>(0, (total, doc) {
               final data = doc.data();
-              return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+              return total + ((data['rating'] as num?)?.toDouble() ?? 0);
             });
             storeRating = totalRating / reviews.length;
             reviewCount = reviews.length > 1000
@@ -228,12 +228,13 @@ class _CategoryPageState extends State<CategoryPage> {
                   }
                 }
               } catch (e) {
-                print('Error loading featured product $productId: $e');
+                debugPrint('Error loading featured product $productId: $e');
               }
             }
           }
         } catch (e) {
-          print('Error loading featured products for section $section: $e');
+          debugPrint(
+              'Error loading featured products for section $section: $e');
         }
 
         // Step 2: Fill remaining slots with actual category products
@@ -256,7 +257,8 @@ class _CategoryPageState extends State<CategoryPage> {
 
             products.addAll(newProducts);
           } catch (e) {
-            print('Error loading category products for section $section: $e');
+            debugPrint(
+                'Error loading category products for section $section: $e');
           }
         }
 
@@ -277,14 +279,14 @@ class _CategoryPageState extends State<CategoryPage> {
 
             products.addAll(newProducts);
           } catch (e) {
-            print('Error loading broad products for section $section: $e');
+            debugPrint('Error loading broad products for section $section: $e');
           }
         }
 
         sectionProducts[section] = products;
-        print('✅ Loaded ${products.length} products for section $section');
+        debugPrint('✅ Loaded ${products.length} products for section $section');
       } catch (e) {
-        print('❌ Error loading products for section $section: $e');
+        debugPrint('❌ Error loading products for section $section: $e');
         sectionProducts[section] = [];
       }
     }
@@ -362,7 +364,7 @@ class _CategoryPageState extends State<CategoryPage> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -386,8 +388,8 @@ class _CategoryPageState extends State<CategoryPage> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    cat.color.withOpacity(0.3),
-                    cat.color.withOpacity(0.7),
+                    cat.color.withValues(alpha: 0.3),
+                    cat.color.withValues(alpha: 0.7),
                   ],
                 ),
               ),
@@ -572,33 +574,37 @@ class _CategoryPageState extends State<CategoryPage> {
             storeRatingCount = storeData['ratingCount'] ?? 0;
           }
 
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ProductPage(
-                product: product,
-                storeName: storeName,
-                storeLogoUrl: storeLogoUrl,
-                storeRating: storeRating,
-                storeRatingCount: storeRatingCount,
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProductPage(
+                  product: product,
+                  storeName: storeName,
+                  storeLogoUrl: storeLogoUrl,
+                  storeRating: storeRating,
+                  storeRatingCount: storeRatingCount,
+                ),
               ),
-            ),
-          );
+            );
+          }
         } catch (e) {
-          print('Error loading store info: $e');
+          debugPrint('Error loading store info: $e');
           // Navigate anyway with empty store info
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ProductPage(
-                product: product,
-                storeName: '',
-                storeLogoUrl: '',
-                storeRating: 0,
-                storeRatingCount: 0,
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProductPage(
+                  product: product,
+                  storeName: '',
+                  storeLogoUrl: '',
+                  storeRating: 0,
+                  storeRatingCount: 0,
+                ),
               ),
-            ),
-          );
+            );
+          }
         }
       },
       child: Column(
@@ -666,18 +672,20 @@ class _CategoryPageState extends State<CategoryPage> {
           updatedAt: DateTime.now(),
         );
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ProductPage(
-              product: product,
-              storeName: '',
-              storeLogoUrl: '',
-              storeRating: 0,
-              storeRatingCount: 0,
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProductPage(
+                product: product,
+                storeName: '',
+                storeLogoUrl: '',
+                storeRating: 0,
+                storeRatingCount: 0,
+              ),
             ),
-          ),
-        );
+          );
+        }
       },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -758,10 +766,11 @@ class _CategoryPageState extends State<CategoryPage> {
       hasNotification: false,
     );
 
-    if (!mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => StoreScreen(storeData: storeData)),
-    );
+    if (context.mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => StoreScreen(storeData: storeData)),
+      );
+    }
   }
 }

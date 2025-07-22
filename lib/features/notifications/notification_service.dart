@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'fcm_service.dart';
 import '../../core/services/error_handler_service.dart';
 
@@ -254,7 +255,7 @@ class NotificationService {
         }
       }
     } catch (e) {
-      print('Error checking price drops: $e');
+      // Error checking price drops
     }
   }
 
@@ -297,7 +298,7 @@ class NotificationService {
         );
       }
     } catch (e) {
-      print('Error checking new products: $e');
+      // Error checking new products
     }
   }
 

@@ -8,13 +8,9 @@ import 'package:avii/features/discounts/models/discount_model.dart';
 import 'package:avii/features/discounts/services/discount_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:avii/features/orders/services/order_service.dart';
-import 'package:avii/features/cart/models/cart_item.dart';
-import 'package:avii/features/stores/models/store_model.dart';
-import 'package:avii/features/products/models/product_model.dart';
+
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/utils/popup_utils.dart';
-import '../../../admin_panel/services/notification_service.dart';
 import '../../../core/services/qpay_service.dart';
 import '../../../core/services/error_handler_service.dart';
 import 'payment_waiting_screen.dart';
@@ -44,7 +40,6 @@ class CheckoutPage extends StatefulWidget {
 class _CheckoutPageState extends State<CheckoutPage> {
   final _discountCodeController = TextEditingController();
   final _discountService = DiscountService();
-  final _orderService = OrderService();
   final _qpayService = QPayService();
 
   DiscountModel? _appliedDiscount;
@@ -115,9 +110,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
           .get();
 
       if (discountQuery.docs.isEmpty) {
-        setState(() {
-          _discountError = 'Буруу хөнгөлөлтийн код';
-        });
+        if (mounted) {
+          setState(() {
+            _discountError = 'Буруу хөнгөлөлтийн код';
+          });
+        }
         return;
       }
 
@@ -167,27 +164,33 @@ class _CheckoutPageState extends State<CheckoutPage> {
         _discountError = null;
       });
 
-      PopupUtils.showSuccess(
-        context: context,
-        message:
-            'Хөнгөлөлт амжилттай! хөнгөлөлсөн үнэ: ₮${_discountAmount.toStringAsFixed(2)}',
-      );
+      if (mounted) {
+        PopupUtils.showSuccess(
+          context: context,
+          message:
+              'Хөнгөлөлт амжилттай! хөнгөлөлсөн үнэ: ₮${_discountAmount.toStringAsFixed(2)}',
+        );
+      }
     } catch (error, stackTrace) {
-      await ErrorHandlerService.instance.handleError(
-        operation: 'apply_discount_code',
-        error: error,
-        stackTrace: stackTrace,
-        context: context,
-        showUserMessage: false, // We show custom error message
-        additionalContext: {
-          'discountCode': _discountCodeController.text,
-          'userId': FirebaseAuth.instance.currentUser?.uid,
-        },
-      );
+      if (mounted) {
+        await ErrorHandlerService.instance.handleError(
+          operation: 'apply_discount_code',
+          error: error,
+          stackTrace: stackTrace,
+          context: context,
+          showUserMessage: false, // We show custom error message
+          additionalContext: {
+            'discountCode': _discountCodeController.text,
+            'userId': FirebaseAuth.instance.currentUser?.uid,
+          },
+        );
+      }
 
-      setState(() {
-        _discountError = 'Хөнгөлөлтийн кодыг ашиглахад алдаа гарлаа';
-      });
+      if (mounted) {
+        setState(() {
+          _discountError = 'Хөнгөлөлтийн кодыг ашиглахад алдаа гарлаа';
+        });
+      }
     } finally {
       setState(() {
         _isApplyingDiscount = false;
@@ -201,209 +204,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
       _discountCodeController.clear();
       _discountError = null;
     });
-  }
-
-  Future<void> _createOrder(
-    Map<String, dynamic> orderData,
-    String customerEmail,
-    Map<String, dynamic> deliveryAddress,
-  ) async {
-    setState(() {
-      _isProcessingOrder = true;
-    });
-
-    try {
-      final user = FirebaseAuth.instance.currentUser!;
-
-      // Group items by store ID
-      final Map<String, List<CheckoutItem>> itemsByStore = {};
-      for (final item in widget.items) {
-        final storeId = item.storeId ?? 'avii-store';
-        itemsByStore.putIfAbsent(storeId, () => []).add(item);
-      }
-
-      // Create separate orders for each store
-      final List<String> orderIds = [];
-
-      for (final entry in itemsByStore.entries) {
-        final storeId = entry.key;
-        final storeItems = entry.value;
-
-        // Calculate totals for this store
-        final storeSubtotal =
-            storeItems.fold<double>(0, (sum, item) => sum + item.price);
-        final storeShipping = widget.shippingCost /
-            itemsByStore.length; // Distribute shipping cost
-        final storeTax =
-            (widget.tax / widget.subtotal) * storeSubtotal; // Proportional tax
-
-        // Get the store from Firestore
-        StoreModel store;
-        try {
-          final storeDoc = await FirebaseFirestore.instance
-              .collection('stores')
-              .doc(storeId)
-              .get();
-
-          if (storeDoc.exists) {
-            store = StoreModel.fromFirestore(storeDoc);
-          } else {
-            // Get current user to use as store owner
-            final currentUser = FirebaseAuth.instance.currentUser;
-            final ownerId = currentUser?.uid ?? 'default-owner';
-
-            // Create a default store with current user as owner
-            final defaultStoreData = {
-              'name': 'Avii.mn Store',
-              'description': 'Default store for testing',
-              'banner': '',
-              'logo': '',
-              'ownerId': ownerId,
-              'isActive': true,
-              'createdAt': FieldValue.serverTimestamp(),
-              'updatedAt': FieldValue.serverTimestamp(),
-            };
-
-            await FirebaseFirestore.instance
-                .collection('stores')
-                .doc(storeId)
-                .set(defaultStoreData);
-
-            store = StoreModel(
-              id: storeId,
-              name: 'Avii.mn Store',
-              description: 'Default store for testing',
-              banner: '',
-              logo: '',
-              ownerId: ownerId,
-              status: 'active',
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-              settings: {},
-            );
-          }
-        } catch (error, stackTrace) {
-          await ErrorHandlerService.instance.handleFirebaseError(
-            operation: 'load_store_data',
-            error: error,
-            stackTrace: stackTrace,
-            context: context,
-            showUserMessage: false, // Using fallback store
-            additionalContext: {
-              'storeId': storeId,
-              'userId': FirebaseAuth.instance.currentUser?.uid,
-            },
-          );
-
-          // Fallback store with current user as owner
-          final currentUser = FirebaseAuth.instance.currentUser;
-          final ownerId = currentUser?.uid ?? 'default-owner';
-
-          store = StoreModel(
-            id: storeId,
-            name: 'Avii.mn Store',
-            description: 'Default store for testing',
-            banner: '',
-            logo: '',
-            ownerId: ownerId,
-            status: 'active',
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-            settings: {},
-          );
-        }
-
-        // Convert checkout items to cart items for this store
-        final cartItems = <CartItem>[];
-
-        for (int i = 0; i < storeItems.length; i++) {
-          final item = storeItems[i];
-
-          // Create a product from checkout item data
-          final product = ProductModel(
-            id: 'product-${DateTime.now().millisecondsSinceEpoch}-$i',
-            storeId: storeId,
-            name: item.name,
-            description: 'Product from checkout',
-            price: item.price,
-            images: [item.imageUrl],
-            category: item.category ?? 'General',
-            stock: 1,
-            variants: [],
-            isActive: true,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
-
-          cartItems.add(CartItem(
-            product: product,
-            quantity:
-                1, // Default quantity to 1 since CheckoutItem doesn't have quantity
-            selectedVariants:
-                item.variant.isNotEmpty ? {'variant': item.variant} : null,
-          ));
-        }
-
-        // Create the order for this store using OrderService
-        final orderId = await _orderService.createOrder(
-          user: user,
-          subtotal: storeSubtotal,
-          shipping: storeShipping,
-          tax: storeTax,
-          cart: cartItems,
-          store: store,
-        );
-
-        orderIds.add(orderId);
-
-        // Notify store owner about new order
-        try {
-          await NotificationService().notifyNewOrder(
-            storeId: store.id,
-            ownerId: store.ownerId,
-            orderId: orderId,
-            customerEmail: user.email ?? 'Unknown Customer',
-            total: storeSubtotal + storeShipping + storeTax,
-          );
-        } catch (e) {
-          print('Failed to send notification: $e');
-          // Don't fail the order creation if notification fails
-        }
-      }
-
-      // Show success message
-      final orderCount = orderIds.length;
-      final message = orderCount > 1
-          ? 'Захиалга амжилттай үүсгэгдлээ! $orderCount дэлгүүрт захиалга илгээгдлээ.'
-          : 'Захиалга амжилттай үүсгэгдлээ! Таны захиалгыг боловсруулж байна.';
-
-      PopupUtils.showSuccess(
-        context: context,
-        message: message,
-      );
-
-      // Navigate to orders page after a short delay
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            '/orders',
-            (route) => route.isFirst,
-          );
-        }
-      });
-    } catch (e) {
-      // Show error message
-      PopupUtils.showError(
-        context: context,
-        message: 'Захиалга үүсгэхэд алдаа гарлаа: $e',
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessingOrder = false;
-        });
-      }
-    }
   }
 
   Future<void> _handleQPayPayment(
@@ -484,10 +284,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
         throw Exception(result.error ?? 'QPay нэхэмжлэх үүсгэх боломжгүй');
       }
     } catch (e) {
-      PopupUtils.showError(
-        context: context,
-        message: 'QPay төлбөрт алдаа гарлаа: $e',
-      );
+      if (mounted) {
+        PopupUtils.showError(
+          context: context,
+          message: 'QPay төлбөрт алдаа гарлаа: $e',
+        );
+      }
     } finally {
       setState(() {
         _isProcessingOrder = false;
@@ -630,14 +432,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       onPressed: _isProcessingOrder
                           ? null
                           : () async {
+                              // Get address provider early to avoid async gap issues
+                              final addressProvider =
+                                  Provider.of<AddressProvider>(context,
+                                      listen: false);
+
                               // Check if user is authenticated
                               final user = FirebaseAuth.instance.currentUser;
                               if (user == null) {
-                                PopupUtils.showError(
-                                  context: context,
-                                  message:
-                                      'Та төлбөр хийхээс өмнө бүртгүүлэх хэрэгтэй.',
-                                );
+                                if (mounted) {
+                                  PopupUtils.showError(
+                                    context: context,
+                                    message:
+                                        'Та төлбөр хийхээс өмнө бүртгүүлэх хэрэгтэй.',
+                                  );
+                                }
                                 return;
                               }
 
@@ -651,10 +460,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 // Send verification email
                                 try {
                                   await user.sendEmailVerification();
-                                  PopupUtils.showSuccess(
-                                    context: context,
-                                    message: 'Баталгаажуулах имэйл илгээгдлээ',
-                                  );
+                                  if (context.mounted) {
+                                    PopupUtils.showSuccess(
+                                      context: context,
+                                      message:
+                                          'Баталгаажуулах имэйл илгээгдлээ',
+                                    );
+                                  }
                                 } catch (e) {
                                   // Ignore error if verification email fails
                                 }
@@ -662,14 +474,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               }
 
                               // Check if shipping address is provided
-                              final addressProvider =
-                                  Provider.of<AddressProvider>(context,
-                                      listen: false);
                               if (addressProvider.addresses.isEmpty) {
-                                PopupUtils.showError(
-                                  context: context,
-                                  message: 'Хүргэлтийн хаяг оруулна уу',
-                                );
+                                if (mounted) {
+                                  PopupUtils.showError(
+                                    context: context,
+                                    message: 'Хүргэлтийн хаяг оруулна уу',
+                                  );
+                                }
                                 return;
                               }
 

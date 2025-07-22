@@ -65,6 +65,7 @@ class _EnhancedPhoneAuthPageState extends State<EnhancedPhoneAuthPage> {
         throw Exception(securityResult.message);
       }
 
+      if (!mounted) return;
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final phoneNumber = '+976${_phoneController.text.trim()}';
 
@@ -128,6 +129,7 @@ class _EnhancedPhoneAuthPageState extends State<EnhancedPhoneAuthPage> {
     });
 
     try {
+      if (!mounted) return;
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final user = await auth.verifyPhoneCode(_codeController.text.trim());
 

@@ -23,7 +23,7 @@ class AddressModel {
     final buffer = StringBuffer()
       ..write('$firstName $lastName, ')
       ..write(district)
-      ..write(', ${khoroo}-р хороо')
+      ..write(', $khoroo-р хороо')
       ..write(', ')
       ..write(line1);
     if (apartment.isNotEmpty) buffer.write(' $apartment');

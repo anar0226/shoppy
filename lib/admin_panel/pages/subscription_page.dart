@@ -179,11 +179,13 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
           );
 
           if (launched) {
-            PopupUtils.showSuccess(
-              context: context,
-              message:
-                  'QPay төлбөрийн хуудас нээгдлээ. Төлбөр хийсний дараа хуудас шинэчлэгдэх болно.',
-            );
+            if (context.mounted) {
+              PopupUtils.showSuccess(
+                context: context,
+                message:
+                    'QPay төлбөрийн хуудас нээгдлээ. Төлбөр хийсний дараа хуудас шинэчлэгдэх болно.',
+              );
+            }
 
             // Start checking for payment completion
             _startPaymentStatusCheck(paymentId);
@@ -374,7 +376,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -444,7 +446,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -514,7 +516,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -604,7 +606,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),

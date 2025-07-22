@@ -25,7 +25,7 @@ class FollowingService {
 
       return followerStoreIds.contains(storeId);
     } catch (e) {
-      debugPrint('Error checking if following store: $e');
+      // Error checking if following store
       return false;
     }
   }
@@ -52,7 +52,7 @@ class FollowingService {
 
       return true;
     } catch (e) {
-      debugPrint('Error following store: $e');
+      // Error following store
       return false;
     }
   }
@@ -87,7 +87,7 @@ class FollowingService {
 
       return true;
     } catch (e) {
-      debugPrint('Error unfollowing store: $e');
+      // Error unfollowing store
       return false;
     }
   }
@@ -115,7 +115,7 @@ class FollowingService {
       final data = storeDoc.data() as Map<String, dynamic>;
       return data['followerCount'] ?? 0;
     } catch (e) {
-      debugPrint('Error getting store follower count: $e');
+      // Error getting store follower count
       return 0;
     }
   }
@@ -139,7 +139,7 @@ class FollowingService {
 
       return true;
     } catch (e) {
-      debugPrint('Error reporting store: $e');
+      // Error reporting store
       return false;
     }
   }
@@ -160,12 +160,11 @@ class FollowingService {
         await _addFollowEvent(storeId, 'not_interested');
       } catch (analyticsError) {
         // Don't fail the whole operation if analytics fail
-        debugPrint('Analytics event failed: $analyticsError');
       }
 
       return true;
     } catch (e) {
-      debugPrint('Error marking store as not interested: $e');
+      // Error marking store as not interested
       return false;
     }
   }
@@ -185,7 +184,7 @@ class FollowingService {
         'platform': defaultTargetPlatform.name,
       });
     } catch (e) {
-      debugPrint('Error adding follow analytics event: $e');
+      // Error adding follow analytics event
     }
   }
 

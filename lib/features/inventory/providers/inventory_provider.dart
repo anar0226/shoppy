@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../../core/services/inventory_service.dart';
 import '../../products/models/product_model.dart';
 
 /// Real-time inventory provider for global inventory state management
@@ -30,7 +29,6 @@ class InventoryProvider extends ChangeNotifier {
   // Real-time monitoring
   final Map<String, int> _stockLevels = {};
   final Map<String, Map<String, int>> _variantStockLevels = {};
-  final Set<String> _watchedProducts = {};
 
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
@@ -46,209 +44,82 @@ class InventoryProvider extends ChangeNotifier {
         await _initializeUserInventory(currentUser.uid);
       }
 
-      // Setup real-time listeners
-      _setupGlobalInventoryListener();
-
       _isInitialized = true;
       notifyListeners();
     } catch (e) {
-      debugPrint('Error initializing inventory provider: $e');
+      // Error initializing inventory provider
     }
   }
 
-  /// Setup global inventory listener for real-time updates
-  void _setupGlobalInventoryListener() {
-    // Listen to all product changes globally
-    _inventorySubscriptions['global'] = _firestore
+  /// Watch a store's inventory
+  void watchStore(String storeId) {
+    if (_storeStreams.containsKey(storeId)) return;
+
+    final subscription = _firestore
         .collection('products')
+        .where('storeId', isEqualTo: storeId)
         .where('isActive', isEqualTo: true)
         .snapshots()
         .listen((snapshot) {
-      _handleGlobalInventoryUpdate(snapshot);
+      _handleProductChanges(storeId, snapshot);
     });
 
-    // Listen to inventory events collection for coordinated updates
-    _inventorySubscriptions['events'] = _firestore
-        .collection('inventory_events')
-        .orderBy('timestamp', descending: true)
-        .limit(100)
-        .snapshots()
-        .listen((snapshot) {
-      _handleInventoryEvents(snapshot);
-    });
+    _storeStreams[storeId] = subscription;
   }
 
-  /// Handle global inventory updates
-  void _handleGlobalInventoryUpdate(QuerySnapshot snapshot) {
-    for (final change in snapshot.docChanges) {
-      final doc = change.doc;
-      final product = ProductModel.fromFirestore(doc);
+  /// Stop watching a store
+  void unwatchStore(String storeId) {
+    _storeStreams[storeId]?.cancel();
+    _storeStreams.remove(storeId);
+    _inventoryStates.remove(storeId);
+    _lowStockAlerts.remove(storeId);
+  }
 
-      switch (change.type) {
-        case DocumentChangeType.added:
-        case DocumentChangeType.modified:
-          _updateProductInventory(product);
-          break;
-        case DocumentChangeType.removed:
-          _removeProductInventory(product.id);
-          break;
-      }
+  /// Handle product changes for a store
+  void _handleProductChanges(String storeId, QuerySnapshot snapshot) {
+    final storeInventory = <String, dynamic>{};
+
+    for (final doc in snapshot.docs) {
+      final product = ProductModel.fromFirestore(doc);
+      final productInventory = _calculateProductInventory(product);
+      storeInventory[product.id] = productInventory;
+
+      // Check for alerts
+      _checkLowStockAlert(product);
     }
+
+    _inventoryStates[storeId] = storeInventory;
+    _updateLowStockAlerts(storeId);
     notifyListeners();
   }
 
-  /// Update product inventory in local state
-  void _updateProductInventory(ProductModel product) {
-    final storeId = product.storeId;
+  /// Calculate inventory for a product
+  Map<String, dynamic> _calculateProductInventory(ProductModel product) {
+    int totalAvailableStock = 0;
+    int reservedStock = 0;
 
-    // Initialize store inventory if needed
-    _inventoryStates.putIfAbsent(storeId, () => {});
-
-    // Update product inventory
-    _inventoryStates[storeId]![product.id] = {
-      'productId': product.id,
-      'name': product.name,
-      'stock': product.stock,
-      'variants': product.variants.map((v) => v.toMap()).toList(),
-      'totalAvailableStock': product.totalAvailableStock,
-      'hasStock': product.hasStock,
-      'lastUpdated': DateTime.now().toIso8601String(),
-    };
-
-    // Update stock levels cache
-    _stockLevels[product.id] = product.stock;
-
-    // Update variant stock levels
-    if (product.variants.isNotEmpty) {
-      _variantStockLevels[product.id] = {};
+    if (product.variants.isEmpty) {
+      totalAvailableStock = product.stock;
+    } else {
       for (final variant in product.variants) {
-        _variantStockLevels[product.id]![variant.name] = variant.totalStock;
-      }
-    }
-
-    // Check for low stock alerts
-    _checkLowStockAlert(product);
-  }
-
-  /// Remove product inventory from local state
-  void _removeProductInventory(String productId) {
-    for (final storeInventory in _inventoryStates.values) {
-      storeInventory.remove(productId);
-    }
-    _stockLevels.remove(productId);
-    _variantStockLevels.remove(productId);
-  }
-
-  /// Handle inventory events (reservations, releases, adjustments)
-  void _handleInventoryEvents(QuerySnapshot snapshot) {
-    for (final change in snapshot.docChanges) {
-      if (change.type == DocumentChangeType.added) {
-        final data = change.doc.data() as Map<String, dynamic>;
-        final eventType = data['type'] as String;
-
-        switch (eventType) {
-          case 'reservation':
-            _handleReservationEvent(data);
-            break;
-          case 'release':
-            _handleReleaseEvent(data);
-            break;
-          case 'adjustment':
-            _handleAdjustmentEvent(data);
-            break;
-          case 'low_stock_alert':
-            _handleLowStockEvent(data);
-            break;
+        if (variant.trackInventory) {
+          totalAvailableStock += variant.totalStock;
         }
       }
     }
-  }
 
-  /// Handle reservation events
-  void _handleReservationEvent(Map<String, dynamic> data) {
-    final productId = data['productId'] as String;
-    final quantity = data['quantity'] as int;
-    final reservationId = data['reservationId'] as String;
-    final expiresAt = (data['expiresAt'] as Timestamp).toDate();
+    // Get reserved stock from active reservations
+    final reservations = _activeReservations.values
+        .where((r) => r.productId == product.id && !r.isExpired)
+        .toList();
+    reservedStock = reservations.fold(0, (total, r) => total + r.quantity);
 
-    _activeReservations[reservationId] = InventoryReservation(
-      id: reservationId,
-      productId: productId,
-      quantity: quantity,
-      expiresAt: expiresAt,
-      userId: data['userId'] as String,
-    );
-
-    notifyListeners();
-  }
-
-  /// Handle release events
-  void _handleReleaseEvent(Map<String, dynamic> data) {
-    final reservationId = data['reservationId'] as String;
-    _activeReservations.remove(reservationId);
-    notifyListeners();
-  }
-
-  /// Handle adjustment events
-  void _handleAdjustmentEvent(Map<String, dynamic> data) {
-    final productId = data['productId'] as String;
-    final newStock = data['newStock'] as int;
-    final reason = data['reason'] as String;
-
-    // Update local stock levels
-    _stockLevels[productId] = newStock;
-
-    // Show notification for significant adjustments
-    if (reason == 'restock' && newStock > 0) {
-      _showRestockNotification(productId, newStock);
-    }
-
-    notifyListeners();
-  }
-
-  /// Handle low stock events
-  void _handleLowStockEvent(Map<String, dynamic> data) {
-    final productId = data['productId'] as String;
-    final storeId = data['storeId'] as String;
-    final currentStock = data['currentStock'] as int;
-
-    _lowStockAlerts.putIfAbsent(storeId, () => []);
-
-    final alert = InventoryAlert(
-      productId: productId,
-      productName: data['productName'] as String,
-      storeId: storeId,
-      type: InventoryAlertType.lowStock,
-      currentStock: currentStock,
-      threshold: data['threshold'] as int,
-      timestamp: DateTime.now(),
-    );
-
-    // Add alert if not already exists
-    final existingAlert = _lowStockAlerts[storeId]!
-        .where((a) =>
-            a.productId == productId && a.type == InventoryAlertType.lowStock)
-        .firstOrNull;
-
-    if (existingAlert == null) {
-      _lowStockAlerts[storeId]!.add(alert);
-      notifyListeners();
-    }
-  }
-
-  /// Check for low stock alerts
-  void _checkLowStockAlert(ProductModel product) {
-    const lowStockThreshold = 5;
-
-    if (product.totalAvailableStock <= lowStockThreshold &&
-        product.totalAvailableStock > 0) {
-      _createLowStockAlert(product, lowStockThreshold);
-    }
-
-    // Check for out of stock
-    if (product.totalAvailableStock == 0) {
-      _createOutOfStockAlert(product);
-    }
+    return {
+      'totalAvailableStock': totalAvailableStock,
+      'reservedStock': reservedStock,
+      'availableStock': totalAvailableStock - reservedStock,
+      'lastUpdated': DateTime.now(),
+    };
   }
 
   /// Create low stock alert
@@ -310,116 +181,53 @@ class InventoryProvider extends ChangeNotifier {
         'productId': product.id,
         'productName': product.name,
         'storeId': product.storeId,
-        'currentStock': 0,
-        'threshold': 0,
       });
     }
   }
 
-  /// Publish inventory event for real-time coordination
-  Future<void> _publishInventoryEvent(
-      String type, Map<String, dynamic> data) async {
-    try {
-      await _firestore.collection('inventory_events').add({
-        'type': type,
-        'timestamp': FieldValue.serverTimestamp(),
-        'data': data,
-        ...data,
-      });
-    } catch (e) {
-      debugPrint('Error publishing inventory event: $e');
+  /// Check for low stock alerts
+  void _checkLowStockAlert(ProductModel product) {
+    const lowStockThreshold = 5;
+
+    if (product.totalAvailableStock <= lowStockThreshold &&
+        product.totalAvailableStock > 0) {
+      _createLowStockAlert(product, lowStockThreshold);
+    }
+
+    // Check for out of stock
+    if (product.totalAvailableStock == 0) {
+      _createOutOfStockAlert(product);
     }
   }
 
-  /// Show restock notification
-  void _showRestockNotification(String productId, int newStock) {
-    // This would trigger a UI notification
-    debugPrint('Product $productId restocked to $newStock units');
-  }
-
-  /// Watch specific products for real-time updates
-  void watchProduct(String productId) {
-    if (_watchedProducts.contains(productId)) return;
-
-    _watchedProducts.add(productId);
-
-    _productStreams[productId] = _firestore
-        .collection('products')
-        .doc(productId)
-        .snapshots()
-        .listen((snapshot) {
-      if (snapshot.exists) {
-        final product = ProductModel.fromFirestore(snapshot);
-        _updateProductInventory(product);
-        notifyListeners();
-      }
-    });
-  }
-
-  /// Stop watching a product
-  void unwatchProduct(String productId) {
-    _watchedProducts.remove(productId);
-    _productStreams[productId]?.cancel();
-    _productStreams.remove(productId);
-  }
-
-  /// Watch all products in a store
-  void watchStore(String storeId) {
-    if (_storeStreams.containsKey(storeId)) return;
-
-    _storeStreams[storeId] = _firestore
-        .collection('products')
-        .where('storeId', isEqualTo: storeId)
-        .where('isActive', isEqualTo: true)
-        .snapshots()
-        .listen((snapshot) {
-      _handleStoreInventoryUpdate(storeId, snapshot);
-    });
-  }
-
-  /// Stop watching a store
-  void unwatchStore(String storeId) {
-    _storeStreams[storeId]?.cancel();
-    _storeStreams.remove(storeId);
-  }
-
-  /// Handle store inventory updates
-  void _handleStoreInventoryUpdate(String storeId, QuerySnapshot snapshot) {
-    _inventoryStates[storeId] = {};
+  /// Update low stock alerts for a store
+  void _updateLowStockAlerts(String storeId) {
     final alerts = <InventoryAlert>[];
 
-    for (final doc in snapshot.docs) {
-      final product = ProductModel.fromFirestore(doc);
+    for (final productInventory in _inventoryStates[storeId]?.values ?? []) {
+      final productId = productInventory['productId'] as String?;
+      if (productId == null) continue;
 
-      // Update inventory state
-      _inventoryStates[storeId]![product.id] = {
-        'productId': product.id,
-        'name': product.name,
-        'stock': product.stock,
-        'variants': product.variants.map((v) => v.toMap()).toList(),
-        'totalAvailableStock': product.totalAvailableStock,
-        'hasStock': product.hasStock,
-        'lastUpdated': DateTime.now().toIso8601String(),
-      };
+      final stock = productInventory['totalAvailableStock'] as int? ?? 0;
 
       // Check for low stock alerts
-      if (_shouldCreateLowStockAlert(product)) {
+      if (stock <= 5 && stock > 0) {
         alerts.add(InventoryAlert(
-          productId: product.id,
-          productName: product.name,
+          productId: productId,
+          productName: productInventory['productName'] as String? ?? 'Unknown',
           storeId: storeId,
           type: InventoryAlertType.lowStock,
-          currentStock: product.totalAvailableStock,
+          currentStock: stock,
           threshold: 5,
           timestamp: DateTime.now(),
         ));
       }
 
       // Check for out of stock alerts
-      if (product.totalAvailableStock == 0) {
+      if (stock == 0) {
         alerts.add(InventoryAlert(
-          productId: product.id,
-          productName: product.name,
+          productId: productId,
+          productName: productInventory['productName'] as String? ?? 'Unknown',
           storeId: storeId,
           type: InventoryAlertType.outOfStock,
           currentStock: 0,
@@ -447,19 +255,8 @@ class InventoryProvider extends ChangeNotifier {
         watchStore(storeDoc.id);
       }
     } catch (e) {
-      debugPrint('Error initializing user inventory: $e');
+      // Error initializing user inventory
     }
-  }
-
-  bool _shouldCreateLowStockAlert(ProductModel product) {
-    const lowStockThreshold = 5;
-
-    if (product.variants.isNotEmpty) {
-      return product.variants.any((variant) =>
-          variant.trackInventory && variant.totalStock <= lowStockThreshold);
-    }
-
-    return product.stock <= lowStockThreshold && product.stock > 0;
   }
 
   /// Get current stock level for a product
@@ -467,222 +264,52 @@ class InventoryProvider extends ChangeNotifier {
     return _stockLevels[productId] ?? 0;
   }
 
-  /// Get variant stock levels for a product
-  Map<String, int> getVariantStockLevels(String productId) {
-    return _variantStockLevels[productId] ?? {};
+  /// Get variant stock level
+  int getVariantStock(String productId, String variantName, String option) {
+    return _variantStockLevels[productId]?['${variantName}_$option'] ?? 0;
   }
 
-  /// Reserve inventory with real-time coordination
-  Future<bool> reserveInventory({
-    required String productId,
-    required int quantity,
-    required String userId,
-    Map<String, String>? selectedVariants,
-    Duration timeout = const Duration(minutes: 15),
-  }) async {
+  /// Reserve inventory for a product
+  Future<bool> reserveInventory(
+      String productId, int quantity, Duration duration) async {
     try {
-      final reservationId =
-          'res_${DateTime.now().millisecondsSinceEpoch}_$userId';
-      final expiresAt = DateTime.now().add(timeout);
-
-      // Use InventoryService for atomic reservation
-      final success = await InventoryService.reserveInventory(
+      final reservation = InventoryReservation(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
         productId: productId,
         quantity: quantity,
-        selectedVariants: selectedVariants,
+        expiresAt: DateTime.now().add(duration),
+        userId: _auth.currentUser?.uid ?? '',
       );
 
-      if (success) {
-        // Publish reservation event
-        await _publishInventoryEvent('reservation', {
-          'reservationId': reservationId,
-          'productId': productId,
-          'quantity': quantity,
-          'userId': userId,
-          'selectedVariants': selectedVariants,
-          'expiresAt': Timestamp.fromDate(expiresAt),
-        });
+      _activeReservations[reservation.id] = reservation;
+      _lastReservationTime[productId] = DateTime.now();
+      notifyListeners();
 
-        // Track reservation locally
-        _activeReservations[reservationId] = InventoryReservation(
-          id: reservationId,
-          productId: productId,
-          quantity: quantity,
-          expiresAt: expiresAt,
-          userId: userId,
-        );
-
-        // Setup auto-release timer
-        Timer(timeout, () => _autoReleaseReservation(reservationId));
-
-        notifyListeners();
-        return true;
-      }
-
-      return false;
+      return true;
     } catch (e) {
-      debugPrint('Error reserving inventory: $e');
+      // Error reserving inventory
       return false;
-    }
-  }
-
-  /// Auto-release expired reservations
-  Future<void> _autoReleaseReservation(String reservationId) async {
-    final reservation = _activeReservations[reservationId];
-    if (reservation != null && DateTime.now().isAfter(reservation.expiresAt)) {
-      await releaseReservation(reservationId);
     }
   }
 
   /// Release inventory reservation
-  Future<bool> releaseReservation(String reservationId) async {
+  void releaseReservation(String reservationId) {
+    _activeReservations.remove(reservationId);
+    notifyListeners();
+  }
+
+  /// Publish inventory event
+  void _publishInventoryEvent(String eventType, Map<String, dynamic> data) {
     try {
-      final reservation = _activeReservations[reservationId];
-      if (reservation == null) return false;
-
-      // Use InventoryService for atomic release
-      final success = await InventoryService.releaseInventory(
-        productId: reservation.productId,
-        quantity: reservation.quantity,
-      );
-
-      if (success) {
-        // Publish release event
-        await _publishInventoryEvent('release', {
-          'reservationId': reservationId,
-          'productId': reservation.productId,
-          'quantity': reservation.quantity,
-        });
-
-        // Remove from local tracking
-        _activeReservations.remove(reservationId);
-        notifyListeners();
-        return true;
-      }
-
-      return false;
-    } catch (e) {
-      debugPrint('Error releasing reservation: $e');
-      return false;
-    }
-  }
-
-  /// Get inventory state for a specific product
-  Map<String, dynamic>? getProductInventory(String storeId, String productId) {
-    return _inventoryStates[storeId]?[productId];
-  }
-
-  /// Check if product has sufficient stock
-  bool checkStockAvailability({
-    required String storeId,
-    required String productId,
-    required int quantity,
-    Map<String, String>? selectedVariants,
-  }) {
-    final productInventory = getProductInventory(storeId, productId);
-    if (productInventory == null) return false;
-
-    if (selectedVariants != null && selectedVariants.isNotEmpty) {
-      final variants =
-          List<Map<String, dynamic>>.from(productInventory['variants']);
-
-      for (final variantMap in variants) {
-        final variantName = variantMap['name'];
-        final selectedOption = selectedVariants[variantName];
-
-        if (selectedOption != null && variantMap['trackInventory'] == true) {
-          final stockByOption =
-              Map<String, dynamic>.from(variantMap['stockByOption'] ?? {});
-          final stock = stockByOption[selectedOption] ?? 0;
-
-          if (stock < quantity) {
-            return false;
-          }
-        }
-      }
-
-      return true;
-    } else {
-      final stock = productInventory['stock'] ?? 0;
-      return stock >= quantity;
-    }
-  }
-
-  /// Get low stock alerts for a store
-  List<InventoryAlert> getLowStockAlerts(String storeId) {
-    return _lowStockAlerts[storeId] ?? [];
-  }
-
-  /// Mark alert as resolved
-  Future<void> resolveAlert(String storeId, String alertId) async {
-    try {
-      await _firestore
-          .collection('stores')
-          .doc(storeId)
-          .collection('inventory_alerts')
-          .doc(alertId)
-          .update({
-        'resolved': true,
-        'resolvedAt': FieldValue.serverTimestamp(),
+      _firestore.collection('inventory_events').add({
+        'type': eventType,
+        'data': data,
+        'timestamp': FieldValue.serverTimestamp(),
+        'userId': _auth.currentUser?.uid,
       });
-
-      // Remove from local alerts
-      _lowStockAlerts[storeId]?.removeWhere((alert) => alert.id == alertId);
-      notifyListeners();
     } catch (e) {
-      debugPrint('Error resolving alert: $e');
+      // Error publishing inventory event
     }
-  }
-
-  /// Get real-time inventory stream for a specific product
-  Stream<Map<String, dynamic>?> getProductInventoryStream(String productId) {
-    return _firestore
-        .collection('products')
-        .doc(productId)
-        .snapshots()
-        .map((snapshot) {
-      if (snapshot.exists) {
-        final product = ProductModel.fromFirestore(snapshot);
-        return {
-          'productId': product.id,
-          'name': product.name,
-          'stock': product.stock,
-          'variants': product.variants.map((v) => v.toMap()).toList(),
-          'totalAvailableStock': product.totalAvailableStock,
-          'hasStock': product.hasStock,
-          'lastUpdated': DateTime.now().toIso8601String(),
-        };
-      }
-      return null;
-    });
-  }
-
-  /// Get real-time inventory stream for a store
-  Stream<Map<String, Map<String, dynamic>>> getStoreInventoryStream(
-      String storeId) {
-    return _firestore
-        .collection('products')
-        .where('storeId', isEqualTo: storeId)
-        .where('isActive', isEqualTo: true)
-        .snapshots()
-        .map((snapshot) {
-      final storeInventory = <String, Map<String, dynamic>>{};
-
-      for (final doc in snapshot.docs) {
-        final product = ProductModel.fromFirestore(doc);
-        storeInventory[product.id] = {
-          'productId': product.id,
-          'name': product.name,
-          'stock': product.stock,
-          'variants': product.variants.map((v) => v.toMap()).toList(),
-          'totalAvailableStock': product.totalAvailableStock,
-          'hasStock': product.hasStock,
-          'lastUpdated': DateTime.now().toIso8601String(),
-        };
-      }
-
-      return storeInventory;
-    });
   }
 
   /// Clean up all subscriptions

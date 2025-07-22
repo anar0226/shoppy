@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart' as FirebaseAuth;
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:avii/features/auth/providers/auth_provider.dart';
@@ -10,7 +10,7 @@ import '../../notifications/notifications_inbox_page.dart';
 import '../domain/models.dart';
 import 'main_scaffold.dart';
 import 'package:avii/features/stores/presentation/store_screen.dart';
-import 'package:avii/features/products/presentation/product_page.dart';
+
 import 'widgets/seller_card.dart';
 import '../../../core/services/rating_service.dart';
 import '../../recommendations/services/simple_recommendation_service.dart';
@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Check if we've already shown the dialog this session using SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         final hasShownDialog = prefs.getBool(
-                'preferences_dialog_shown_${FirebaseAuth.FirebaseAuth.instance.currentUser?.uid}') ??
+                'preferences_dialog_shown_${firebase_auth.FirebaseAuth.instance.currentUser?.uid}') ??
             false;
 
         if (!hasShownDialog) {
@@ -107,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Mark that we've shown the preferences dialog for this user
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userId = FirebaseAuth.FirebaseAuth.instance.currentUser?.uid;
+      final userId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
       if (userId != null) {
         await prefs.setBool('preferences_dialog_shown_$userId', true);
       }
@@ -162,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           }
         } catch (e) {
-          print('⚠️ Error loading recommended stores: $e');
+          // Error loading recommended stores
         }
       }
 
@@ -188,9 +188,6 @@ class _HomeScreenState extends State<HomeScreen> {
           if (storesSnapshot.docs.isNotEmpty) {
             _lastActiveStoreDoc = storesSnapshot.docs.last;
           }
-
-          print(
-              '📋 Retrieved ${storesSnapshot.docs.length} active store docs (after pagination pointer).');
 
           int addedCount = 0;
 
@@ -222,17 +219,14 @@ class _HomeScreenState extends State<HomeScreen> {
               addedCount++;
             }
           }
-
-          print('✅ Added $addedCount additional stores');
         } catch (e) {
-          print('⚠️ Error loading additional stores: $e');
+          // Error loading additional stores
         }
       }
 
-      print('🎯 Total sellers loaded: ${result.length}');
       return result;
     } catch (e) {
-      print('💥 Fatal error loading sellers: $e');
+      // Fatal error loading sellers
       return [];
     }
   }
@@ -275,7 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
               .map((doc) => ProductModel.fromFirestore(doc))
               .toList();
         } catch (e) {
-          print('Error batch loading featured products: $e');
+          // Error batch loading featured products
           products = [];
         }
       } else {
@@ -313,16 +307,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
           if (reviewsSnapshot.docs.isNotEmpty) {
             final reviews = reviewsSnapshot.docs;
-            final totalRating = reviews.fold<double>(0, (sum, doc) {
+            final totalRating = reviews.fold<double>(0, (total, doc) {
               final data = doc.data();
-              return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+              return total + ((data['rating'] as num?)?.toDouble() ?? 0);
             });
             storeRating = totalRating / reviews.length;
             reviewCount = reviews.length;
           }
         } catch (reviewError) {
-          print(
-              '⚠️ Error loading reviews for ${storeModel.name}: $reviewError');
+          // Error loading reviews
         }
       }
 
@@ -340,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
         isRecommended: isRecommended,
       );
     } catch (e) {
-      print('Error converting store ${storeModel.id} to seller data: $e');
+      // Error converting store to seller data
       return null;
     }
   }
@@ -366,7 +359,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Get user's not interested stores
   Future<List<String>> _getNotInterestedStores() async {
     try {
-      final userId = FirebaseAuth.FirebaseAuth.instance.currentUser?.uid;
+      final userId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) return [];
 
       final userDoc = await _db.collection('users').doc(userId).get();
@@ -375,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final userData = userDoc.data() as Map<String, dynamic>;
       return List<String>.from(userData['notInterestedStoreIds'] ?? []);
     } catch (e) {
-      print('Error getting not interested stores: $e');
+      // Error getting not interested stores
       return [];
     }
   }
@@ -393,24 +386,30 @@ class _HomeScreenState extends State<HomeScreen> {
           _sellersFuture = Future.value(newSellers);
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${newSellers.length} шинэ дэлгүүр ачаалагдлаа'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        if (context.mounted) {
+          // ignore: use_build_context_synchronously
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${newSellers.length} шинэ дэлгүүр ачаалагдлаа'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
       } else {
         // No more stores available, revert page counter
         setState(() {
           _currentPage--;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Илүү дэлгүүр байхгүй байна'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        if (context.mounted) {
+          // ignore: use_build_context_synchronously
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Илүү дэлгүүр байхгүй байна'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
       }
     } catch (e) {
       // Error occurred, revert page counter
@@ -418,19 +417,20 @@ class _HomeScreenState extends State<HomeScreen> {
         _currentPage--;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Дэлгүүр ачаалахад алдаа гарлаа: $e'),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (context.mounted) {
+        // ignore: use_build_context_synchronously
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Дэлгүүр ачаалахад алдаа гарлаа: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
   // Load featured offers dynamically from real stores
   Future<List<Offer>> _loadFeaturedOffers() async {
-    print('🔍 Loading featured offers - Starting...');
-
     try {
       final List<Offer> dynamicOffers = [];
 
@@ -440,23 +440,17 @@ class _HomeScreenState extends State<HomeScreen> {
         'store_rbA5yLk0vadvSWarOpzYW1bRRUz1'
       ];
 
-      print('🔍 Loading stores: $featuredStoreIds');
-
       for (final storeId in featuredStoreIds) {
         try {
-          print('🔍 Loading store: $storeId');
           final storeDoc = await _db.collection('stores').doc(storeId).get();
 
           if (!storeDoc.exists) {
-            print('❌ Store $storeId does not exist');
             continue;
           }
 
           final storeData = storeDoc.data()!;
           final storeName = storeData['name'] ?? 'Unknown Store';
           final storeImage = storeData['banner'] ?? storeData['logo'] ?? '';
-
-          print('✅ Store loaded: $storeName, image: $storeImage');
 
           // Get store reviews to calculate real rating
           double rating = 0.0; // Default rating changed from 4.5 to 0.0
@@ -472,20 +466,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
             if (reviewsSnapshot.docs.isNotEmpty) {
               final reviews = reviewsSnapshot.docs;
-              final totalRating = reviews.fold<double>(0, (sum, doc) {
+              final totalRating = reviews.fold<double>(0, (total, doc) {
                 final data = doc.data();
-                return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+                return total + ((data['rating'] as num?)?.toDouble() ?? 0);
               });
               rating = totalRating / reviews.length;
               reviewCount = reviews.length > 1000
                   ? '${(reviews.length / 1000).toStringAsFixed(1)}K'
                   : reviews.length.toString();
-              print('📊 Reviews loaded: $reviewCount reviews, rating: $rating');
-            } else {
-              print('📊 No reviews found for $storeName');
             }
           } catch (reviewError) {
-            print('⚠️ Error loading reviews for $storeId: $reviewError');
+            // Error loading reviews
           }
 
           final offer = Offer(
@@ -502,16 +493,13 @@ class _HomeScreenState extends State<HomeScreen> {
           );
 
           dynamicOffers.add(offer);
-          print('✅ Offer created for: ${offer.storeName}');
         } catch (e) {
-          print('❌ Error loading offer for store $storeId: $e');
+          // Error loading offer for store
         }
       }
 
-      print('🎯 Total offers loaded: ${dynamicOffers.length}');
       return dynamicOffers;
     } catch (e) {
-      print('💥 Fatal error loading featured offers: $e');
       rethrow; // Re-throw to show in UI
     }
   }
@@ -613,7 +601,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -651,7 +639,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -664,12 +652,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseAuth.FirebaseAuth.instance.currentUser !=
+                      stream: firebase_auth.FirebaseAuth.instance.currentUser !=
                               null
                           ? FirebaseFirestore.instance
                               .collection('notifications')
                               .where('userId',
-                                  isEqualTo: FirebaseAuth
+                                  isEqualTo: firebase_auth
                                       .FirebaseAuth.instance.currentUser!.uid)
                               .where('read', isEqualTo: false)
                               .snapshots()
@@ -797,7 +785,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -876,7 +864,6 @@ class _HomeScreenState extends State<HomeScreen> {
             }
 
             if (snapshot.hasError) {
-              print('Featured offers error: ${snapshot.error}');
               return SizedBox(
                 height: 191,
                 child: Center(
@@ -915,7 +902,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -941,8 +928,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   height: 191,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(20),
-                                    color: Colors.black.withOpacity(
-                                        0.3), // 70% opacity = 30% overlay
+                                    color: Colors.black.withValues(
+                                        alpha:
+                                            0.3), // 70% opacity = 30% overlay
                                   ),
                                 ),
                               ],
@@ -1033,99 +1021,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildProductCard(
-      BuildContext context, SellerProduct product, SellerData seller) {
-    return GestureDetector(
-      onTap: () async {
-        final doc = await FirebaseFirestore.instance
-            .collection('products')
-            .doc(product.id)
-            .get();
-        if (!doc.exists) return;
-        final prodModel = ProductModel.fromFirestore(doc);
-        if (!context.mounted) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ProductPage(
-              product: prodModel,
-              storeName: seller.name,
-              storeLogoUrl: '',
-              storeRating: seller.rating,
-              storeRatingCount: seller.reviews,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8F8F8),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Stack(
-          children: [
-            // Product Image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: SafeImage(
-                imageUrl: product.imageUrl,
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-
-            // Price Tag
-            Positioned(
-              top: 8,
-              left: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  product.price,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-            ),
-
-            // Heart Icon
-            Positioned(
-              bottom: 8,
-              right: 8,
-              child: GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Таалагдлаа!')),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.favorite_border,
-                    size: 16,
-                    color: Colors.black54,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _openStore(BuildContext context, String storeId) async {
     final storeDoc = await FirebaseFirestore.instance
         .collection('stores')
@@ -1189,7 +1084,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 name: p.name,
                 imageUrl: p.images.isNotEmpty ? p.images.first : '',
                 price: p.price,
-                category: _getProductCategory(p.id, categoriesSnapshot.docs),
+                category:
+                    _getProductCategory(p.id, categoriesSnapshot.docs.toList()),
               ))
           .toList(),
       showFollowButton: true,
@@ -1197,17 +1093,22 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     // Use Hours template for all stores (or add logic to choose template)
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => StoreScreen(storeData: storeData),
-      ),
-    );
+    if (context.mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StoreScreen(storeData: storeData),
+        ),
+      );
+    }
   }
 
   String _getProductCategory(
       String productId, List<QueryDocumentSnapshot> categoryDocs) {
-    for (final doc in categoryDocs) {
+    // Create a copy to prevent concurrent modification
+    final docsCopy = List<QueryDocumentSnapshot>.from(categoryDocs);
+
+    for (final doc in docsCopy) {
       final data = doc.data() as Map<String, dynamic>?;
       final productIds = List<String>.from(data?['productIds'] ?? []);
       if (productIds.contains(productId)) {

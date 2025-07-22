@@ -16,7 +16,7 @@ import 'package:avii/features/stores/models/store_model.dart';
 import '../../../core/services/error_handler_service.dart';
 import 'package:avii/features/stores/presentation/store_screen.dart';
 import 'package:avii/features/home/presentation/main_scaffold.dart';
-import 'package:avii/core/services/inventory_service.dart';
+
 import 'package:avii/core/services/rate_limiter_service.dart';
 import 'package:avii/core/constants/shipping.dart';
 import 'package:avii/core/services/listener_manager.dart';
@@ -59,7 +59,6 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
   // Dynamic variant data
   final List<Map<String, dynamic>> _availableVariants = [];
   String _variantType = '';
-  final InventoryService _inventoryService = InventoryService();
   final DatabaseService _db = DatabaseService();
   bool _addingToCart = false;
 
@@ -111,7 +110,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
         _reviewCount = _reviews.length;
         if (_reviewCount > 0) {
           final total = _reviews.fold<int>(
-              0, (sum, r) => sum + (r['rating'] ?? 0) as int);
+              0, (total, r) => total + (r['rating'] ?? 0) as int);
           _avgRating = total / _reviewCount;
         } else {
           _avgRating = 0;
@@ -154,9 +153,9 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
 
           if (reviewsSnapshot.docs.isNotEmpty) {
             final reviews = reviewsSnapshot.docs;
-            final totalRating = reviews.fold<double>(0, (sum, doc) {
+            final totalRating = reviews.fold<double>(0, (total, doc) {
               final data = doc.data();
-              return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+              return total + ((data['rating'] as num?)?.toDouble() ?? 0);
             });
             storeRating = totalRating / reviews.length;
             storeReviewCount = reviews.length;
@@ -177,17 +176,19 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
         }
       }
     } catch (error, stackTrace) {
-      await ErrorHandlerService.instance.handleError(
-        operation: 'load_store_data',
-        error: error,
-        stackTrace: stackTrace,
-        context: context,
-        showUserMessage: false, // Silent failure for store data
-        additionalContext: {
-          'productId': widget.product.id,
-          'storeId': widget.product.storeId,
-        },
-      );
+      if (mounted) {
+        await ErrorHandlerService.instance.handleError(
+          operation: 'load_store_data',
+          error: error,
+          stackTrace: stackTrace,
+          context: context,
+          showUserMessage: false, // Silent failure for store data
+          additionalContext: {
+            'productId': widget.product.id,
+            'storeId': widget.product.storeId,
+          },
+        );
+      }
     }
   }
 
@@ -266,7 +267,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
           }
         }
 
-        if (mounted) {
+        if (context.mounted) {
           setState(() {});
         }
       }
@@ -535,7 +536,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -566,7 +567,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -641,7 +642,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.purple.withOpacity(0.1),
+        color: Colors.purple.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -1764,32 +1765,6 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
       }
     });
   }
-
-  String _getVariantNameForStockIndicator() {
-    if (_availableVariants.isEmpty || _selectedSize.isEmpty) {
-      return '';
-    }
-
-    // Find the variant that contains the selected size
-    for (final variant in widget.product.variants) {
-      if (variant.options.contains(_selectedSize)) {
-        // Return the exact variant name as it appears in the product model
-        return variant.name;
-      }
-    }
-
-    // If no match found in product variants, try to find it in the available variants
-    // This handles the case where variants are loaded from Firestore
-    for (final variant in _availableVariants) {
-      if (variant['size'] == _selectedSize) {
-        // For Firestore-loaded variants, use the variant type
-        return _variantType;
-      }
-    }
-
-    // Fallback to the variant type
-    return _variantType;
-  }
 }
 
 /// Widget for variant option that shows if it's out of stock
@@ -1848,25 +1823,6 @@ class VariantOptionChip extends StatelessWidget {
     if (isSelected) return Colors.blue.shade700;
     return Colors.black87;
   }
-}
-
-class _CrossOutPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.grey.shade400
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawLine(
-      Offset(size.width * 0.2, size.height * 0.8),
-      Offset(size.width * 0.8, size.height * 0.2),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _FlyingImage extends StatefulWidget {
@@ -2005,7 +1961,7 @@ class __PopupMessageState extends State<_PopupMessage>
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Colors.black.withValues(alpha: 0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),

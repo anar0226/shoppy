@@ -415,7 +415,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1976D2).withOpacity(0.1),
+                  color: const Color(0xFF1976D2).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -556,7 +556,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -570,7 +570,14 @@ class _QPayPaymentPageState extends State<QPayPaymentPage> {
               version: QrVersions.auto,
               size: 200,
               backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: Colors.black,
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: Colors.black,
+              ),
             )
           else
             Container(
@@ -595,10 +602,12 @@ class _QPayPaymentPageState extends State<QPayPaymentPage> {
             onPressed: () async {
               if (_invoice!.qrCode.isNotEmpty) {
                 await Clipboard.setData(ClipboardData(text: _invoice!.qrCode));
-                PopupUtils.showSuccess(
-                  context: context,
-                  message: 'QR кодыг хуулбарт хуулгалаа',
-                );
+                if (mounted) {
+                  PopupUtils.showSuccess(
+                    context: context,
+                    message: 'QR кодыг хуулбарт хуулгалаа',
+                  );
+                }
               }
             },
             icon: const Icon(Icons.copy),
@@ -640,7 +649,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -653,7 +662,7 @@ class _QPayPaymentPageState extends State<QPayPaymentPage> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: method.color.withOpacity(0.1),
+                color: method.color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(

@@ -82,7 +82,9 @@ class _SignUpPageState extends State<SignUpPage> {
                 await auth.user!.reload();
                 verified = auth.user!.emailVerified;
                 if (verified) {
-                  Navigator.of(context).pop();
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
                 } else {
                   setState(() {});
                 }
@@ -368,8 +370,11 @@ class _SignUpPageState extends State<SignUpPage> {
                                       }
                                     }
                                   } catch (e) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text(e.toString())));
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(SnackBar(
+                                              content: Text(e.toString())));
+                                    }
                                   }
                                 }
                               },

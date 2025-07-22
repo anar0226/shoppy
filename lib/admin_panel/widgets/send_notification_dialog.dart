@@ -116,7 +116,7 @@ class _SendNotificationDialogState extends State<SendNotificationDialog> {
         );
       }
     } catch (e) {
-      debugPrint('Error sending notification: $e');
+      // Error sending notification
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

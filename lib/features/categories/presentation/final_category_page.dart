@@ -51,7 +51,7 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
 
   Future<void> _loadCategoryProducts() async {
     try {
-      print('🔍 Loading category products for: ${widget.title}');
+      debugPrint('🔍 Loading category products for: ${widget.title}');
 
       // First try loading by exact category hierarchy
       List<ProductModel> products =
@@ -64,7 +64,8 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
 
       // If no products found, try broader searches
       if (products.isEmpty) {
-        print('🔄 No products found with hierarchy, trying term-based search');
+        debugPrint(
+            '🔄 No products found with hierarchy, trying term-based search');
 
         // Create search terms from the category information
         final searchTerms = <String>[];
@@ -86,7 +87,8 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
 
       // Final fallback: load all active products
       if (products.isEmpty) {
-        print('🔄 No products found with terms, loading all active products');
+        debugPrint(
+            '🔄 No products found with terms, loading all active products');
         products = await _categoryService.loadAllActiveProducts(limit: 20);
       }
 
@@ -97,9 +99,9 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
         });
       }
 
-      print('✅ Loaded ${products.length} category products');
+      debugPrint('✅ Loaded ${products.length} category products');
     } catch (e) {
-      print('❌ Error loading category products: $e');
+      debugPrint('❌ Error loading category products: $e');
       if (mounted) {
         setState(() {
           _categoryProducts = [];
@@ -124,7 +126,7 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
         });
       }
     } catch (e) {
-      print('Error loading stores: $e');
+      debugPrint('Error loading stores: $e');
     }
   }
 
@@ -173,7 +175,7 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
               }
             }
           } catch (e) {
-            print('Error loading featured product $productId: $e');
+            debugPrint('Error loading featured product $productId: $e');
           }
         }
 
@@ -190,10 +192,11 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
             _isLoadingFeatured = false;
           });
         }
-        print('No featured products configuration found for: $featuredPath');
+        debugPrint(
+            'No featured products configuration found for: $featuredPath');
       }
     } catch (e) {
-      print('Error loading featured products: $e');
+      debugPrint('Error loading featured products: $e');
       if (mounted) {
         setState(() {
           _featuredProducts = [];
@@ -673,6 +676,7 @@ class _FinalCategoryPageState extends State<FinalCategoryPage> {
     );
   }
 
+  // ignore: unused_element LATER USED
   Widget _productCard() {
     final storeName = _lalarStore?.name ?? 'Store';
     return GestureDetector(

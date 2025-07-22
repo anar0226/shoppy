@@ -152,13 +152,13 @@ class _CategoriesPageState extends State<CategoriesPage> {
               Navigator.of(context).pop();
               final success =
                   await _categoryService.deleteCategory(category.id);
-              if (success && mounted) {
+              if (success && context.mounted) {
                 PopupUtils.showSuccess(
                   context: context,
                   message: '"${category.name}" категорийг амжилттай устгалаа',
                 );
                 await _loadCategories();
-              } else if (mounted) {
+              } else if (context.mounted) {
                 PopupUtils.showError(
                   context: context,
                   message: 'Категорийг устгахад алдаа гарлаа',
@@ -431,7 +431,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
         border: Border.all(color: AppThemes.getBorderColor(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -473,7 +473,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
                                 end: Alignment.bottomCenter,
                                 colors: [
                                   Colors.transparent,
-                                  Colors.black.withOpacity(0.3),
+                                  Colors.black.withValues(alpha: 0.3),
                                 ],
                               ),
                             ),
@@ -528,7 +528,8 @@ class _CategoriesPageState extends State<CategoriesPage> {
                           onPressed: () => _showEditCategoryDialog(category),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 8),
-                            side: const BorderSide(color: AppThemes.primaryColor),
+                            side:
+                                const BorderSide(color: AppThemes.primaryColor),
                           ),
                           child: const Text(
                             'Засах',
@@ -545,7 +546,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
                         icon: const Icon(Icons.delete_outline, size: 18),
                         style: IconButton.styleFrom(
                           foregroundColor: Colors.red,
-                          backgroundColor: Colors.red.withOpacity(0.1),
+                          backgroundColor: Colors.red.withValues(alpha: 0.1),
                           padding: const EdgeInsets.all(8),
                         ),
                         tooltip: 'Устгах',

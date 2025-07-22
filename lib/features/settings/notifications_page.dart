@@ -9,7 +9,7 @@ class NotificationsPage extends StatefulWidget {
   const NotificationsPage({Key? key}) : super(key: key);
 
   @override
-  _NotificationsPageState createState() => _NotificationsPageState();
+  State<NotificationsPage> createState() => _NotificationsPageState();
 }
 
 class _NotificationsPageState extends State<NotificationsPage> {
@@ -70,18 +70,20 @@ class _NotificationsPageState extends State<NotificationsPage> {
           'notificationSettings.$key': value,
         });
       } catch (error, stackTrace) {
-        await ErrorHandlerService.instance.handleFirebaseError(
-          operation: 'update_notification_setting',
-          error: error,
-          stackTrace: stackTrace,
-          context: context,
-          showUserMessage: true,
-          additionalContext: {
-            'settingKey': key,
-            'settingValue': value,
-            'userId': user.uid,
-          },
-        );
+        if (mounted) {
+          await ErrorHandlerService.instance.handleFirebaseError(
+            operation: 'update_notification_setting',
+            error: error,
+            stackTrace: stackTrace,
+            context: context,
+            showUserMessage: true,
+            additionalContext: {
+              'settingKey': key,
+              'settingValue': value,
+              'userId': user.uid,
+            },
+          );
+        }
       }
     }
   }
@@ -301,7 +303,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

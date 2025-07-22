@@ -3,6 +3,7 @@ import '../../products/models/product_model.dart';
 import '../../../core/services/database_service.dart';
 
 import 'dart:developer';
+
 /// Product ranking service that implements e-commerce best practices
 /// for determining product display order in category pages
 class ProductRankingService {
@@ -29,8 +30,7 @@ class ProductRankingService {
     String? userId, // For personalization
   }) async {
     try {
-      log(
-          '🔍 Getting ranked products for category: $category, sub: $subCategory, leaf: $leafCategory');
+      log('🔍 Getting ranked products for category: $category, sub: $subCategory, leaf: $leafCategory');
 
       // Step 1: Load all products for the category
       final allProducts = await _loadCategoryProducts(
@@ -228,6 +228,7 @@ class ProductRankingService {
           .get();
 
       int unitsSold = 0;
+      // ignore: unused_local_variable
       double totalRevenue = 0.0;
 
       for (final orderDoc in ordersSnapshot.docs) {
@@ -270,7 +271,7 @@ class ProductRankingService {
 
       if (productQuery.docs.isNotEmpty) {
         final productDoc = productQuery.docs.first;
-        final data = productDoc.data()!;
+        final data = productDoc.data();
         final views = data['views'] ?? 0;
         final clicks = data['clicks'] ?? 0;
 

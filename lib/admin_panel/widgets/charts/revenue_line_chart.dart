@@ -165,7 +165,7 @@ class _RevenueLineChartState extends State<RevenueLineChart> {
                     ),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: widget.lineColor.withOpacity(0.1),
+                      color: widget.lineColor.withValues(alpha: 0.1),
                     ),
                   ),
                 ],
@@ -188,7 +188,7 @@ class _RevenueLineChartState extends State<RevenueLineChart> {
                     return spotIndexes.map((spotIndex) {
                       return TouchedSpotIndicatorData(
                         FlLine(
-                          color: widget.lineColor.withOpacity(0.8),
+                          color: widget.lineColor.withValues(alpha: 0.8),
                           strokeWidth: 2,
                           dashArray: [5, 5],
                         ),

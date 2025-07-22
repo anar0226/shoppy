@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 class NotificationService {
   static const String _notificationsCollection = 'notifications';
@@ -23,7 +24,7 @@ class NotificationService {
         return notifications[notificationType] ?? true;
       }
     } catch (e) {
-      print('Error checking notification setting: $e');
+      // Error checking notification setting
     }
     return true; // Default to enabled
   }
@@ -141,7 +142,7 @@ class NotificationService {
             .now(), // Use explicit timestamp instead of server timestamp
       });
     } catch (e) {
-      print('Error creating notification: $e');
+      // Error creating notification
     }
   }
 
@@ -162,7 +163,7 @@ class NotificationService {
           .doc(notificationId)
           .update({'read': true});
     } catch (e) {
-      print('Error marking notification as read: $e');
+      // Error marking notification as read
     }
   }
 
@@ -212,7 +213,7 @@ class NotificationService {
         }
       }
     } catch (e) {
-      print('Error checking price drops: $e');
+      // Error checking price drops
     }
   }
 
@@ -255,7 +256,7 @@ class NotificationService {
         );
       }
     } catch (e) {
-      print('Error checking new products: $e');
+      // Error checking new products
     }
   }
 

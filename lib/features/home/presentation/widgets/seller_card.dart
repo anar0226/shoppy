@@ -84,30 +84,36 @@ class SellerCard extends StatelessWidget {
       final success = await FollowingService().markNotInterested(storeId!);
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Таныд дахиж энэ дэлгүүрийг санал болгоxгүй :)'),
-            duration: Duration(seconds: 2),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Таныд дахиж энэ дэлгүүрийг санал болгоxгүй :)'),
+              duration: Duration(seconds: 2),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Алдаа гарлаа. Дахин оролдоно уу.'),
+              duration: Duration(seconds: 2),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (error) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Алдаа гарлаа. Дахин оролдоно уу.'),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: Text('Алдаа гарлаа: $error'),
+            duration: const Duration(seconds: 3),
             backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Алдаа гарлаа: $error'),
-          duration: const Duration(seconds: 3),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -119,7 +125,7 @@ class SellerCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.10),
+            color: Colors.black.withValues(alpha: 0.10),
             blurRadius: 32,
             offset: const Offset(0, 8),
           ),
@@ -154,8 +160,10 @@ class SellerCard extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.white.withOpacity(0.3), // Reduced from 0.95 to 0.3
-                    Colors.white.withOpacity(0.7), // Reduced from 0.98 to 0.7
+                    Colors.white
+                        .withValues(alpha: 0.3), // Reduced from 0.95 to 0.3
+                    Colors.white
+                        .withValues(alpha: 0.7), // Reduced from 0.98 to 0.7
                   ],
                 ),
               ),
@@ -466,7 +474,7 @@ class _SellerProductCardState extends State<SellerProductCard> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -542,7 +550,7 @@ class _SellerProductCardState extends State<SellerProductCard> {
                   size: 28,
                   shadows: [
                     Shadow(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                       offset: const Offset(0, 1),
                       blurRadius: 2,
                     ),

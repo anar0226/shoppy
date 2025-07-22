@@ -43,7 +43,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                 '';
           }
         } catch (e) {
-          print('Error fetching user data: $e');
+          // Error fetching user data
         }
       }
 
@@ -79,7 +79,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
         'phone': phone,
       };
     } catch (e) {
-      print('Error getting delivery info: $e');
+      // Error getting delivery info
       return {
         'name': 'Хэрэглэгч',
         'address': 'Хаяг байхгүй',
@@ -97,9 +97,11 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
           .get();
 
       if (!storeDoc.exists) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Дэлгүүрийн мэдээлэл олдсонгүй')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Дэлгүүрийн мэдээлэл олдсонгүй')),
+          );
+        }
         return;
       }
 
@@ -111,107 +113,111 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
       final storeInstagram = storeData['instagram'] as String? ?? '';
       final storeDescription = storeData['description'] as String? ?? '';
 
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                const Icon(Icons.store, color: Colors.blue),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    storeName,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
                 children: [
-                  if (storeDescription.isNotEmpty) ...[
-                    Text(
-                      storeDescription,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
+                  const Icon(Icons.store, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      storeName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  const Text(
-                    'Холбоо барих',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  if (storePhone.isNotEmpty)
-                    _buildContactItem(
-                      Icons.phone,
-                      'Утас',
-                      storePhone,
-                      () => _launchPhone(storePhone),
-                    ),
-                  if (storeEmail.isNotEmpty)
-                    _buildContactItem(
-                      Icons.email,
-                      'И-мэйл',
-                      storeEmail,
-                      () => _launchEmail(storeEmail),
-                    ),
-                  if (storeFacebook.isNotEmpty)
-                    _buildContactItem(
-                      Icons.facebook,
-                      'Facebook',
-                      storeFacebook,
-                      () => _launchUrl(storeFacebook),
-                    ),
-                  if (storeInstagram.isNotEmpty)
-                    _buildContactItem(
-                      Icons.camera_alt,
-                      'Instagram',
-                      storeInstagram,
-                      () => _launchUrl(storeInstagram),
-                    ),
-                  if (storePhone.isEmpty &&
-                      storeEmail.isEmpty &&
-                      storeFacebook.isEmpty &&
-                      storeInstagram.isEmpty)
-                    Text(
-                      'Холбогдох мэдээлэл байхгүй байна',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
                 ],
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Хаах'),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (storeDescription.isNotEmpty) ...[
+                      Text(
+                        storeDescription,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    const Text(
+                      'Холбоо барих',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (storePhone.isNotEmpty)
+                      _buildContactItem(
+                        Icons.phone,
+                        'Утас',
+                        storePhone,
+                        () => _launchPhone(storePhone),
+                      ),
+                    if (storeEmail.isNotEmpty)
+                      _buildContactItem(
+                        Icons.email,
+                        'И-мэйл',
+                        storeEmail,
+                        () => _launchEmail(storeEmail),
+                      ),
+                    if (storeFacebook.isNotEmpty)
+                      _buildContactItem(
+                        Icons.facebook,
+                        'Facebook',
+                        storeFacebook,
+                        () => _launchUrl(storeFacebook),
+                      ),
+                    if (storeInstagram.isNotEmpty)
+                      _buildContactItem(
+                        Icons.camera_alt,
+                        'Instagram',
+                        storeInstagram,
+                        () => _launchUrl(storeInstagram),
+                      ),
+                    if (storePhone.isEmpty &&
+                        storeEmail.isEmpty &&
+                        storeFacebook.isEmpty &&
+                        storeInstagram.isEmpty)
+                      Text(
+                        'Холбогдох мэдээлэл байхгүй байна',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ],
-          );
-        },
-      );
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Хаах'),
+                ),
+              ],
+            );
+          },
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Алдаа гарлаа: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Алдаа гарлаа: $e')),
+        );
+      }
     }
   }
 
@@ -392,46 +398,28 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Order Header
-            _buildOrderHeader(storeId, items, totalAmount, createdAt),
-
-            const SizedBox(height: 24),
-
-            // Progress Tracker
-            _buildProgressTracker(status, data),
-
-            const SizedBox(height: 32),
-
-            // Order Items
-            _buildOrderItems(items),
-
-            const SizedBox(height: 16),
-
-            // Contact Store Button
-            _buildContactStoreButton(storeId),
-
-            const SizedBox(height: 24),
-
-            // Order Summary
-            _buildOrderSummary(totalAmount, data),
+            _buildOrderHeader(context, storeId, status, totalAmount, createdAt),
+            _buildProgressTracker(context, status),
+            _buildOrderItems(context, items),
+            _buildContactStoreButton(context, storeId),
+            _buildOrderSummary(context, data, totalAmount),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildOrderHeader(String storeId, List<Map<String, dynamic>> items,
+  Widget _buildOrderHeader(BuildContext context, String storeId, String status,
       double totalAmount, Timestamp createdAt) {
     return Container(
-      margin: const EdgeInsets.all(16),
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
@@ -440,125 +428,97 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.receipt_long, color: Colors.blue, size: 28),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Захиалгын дугаар',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '#${widget.order.id.toUpperCase()}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ],
+              Text(
+                'Захиалга #${widget.order.id.substring(0, 8).toUpperCase()}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(status).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _getStatusColor(status).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Text(
+                  _getStatusText(status),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _getStatusColor(status),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Нийт дүн',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '₮${totalAmount.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Захиалсан огноо',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _formatDate(createdAt.toDate()),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+          const SizedBox(height: 8),
+          Text(
+            'Огноо: ${_formatDate(createdAt.toDate())}',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Нийт дүн: ₮${totalAmount.toStringAsFixed(0)}',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProgressTracker(String status, Map<String, dynamic> data) {
+  Widget _buildProgressTracker(BuildContext context, String status) {
     final steps = [
       TrackingStep(
-        title: 'Захиалга баталгаажлаа',
-        description: 'Бид таны захиалгыг хүлээн авлаа',
-        icon: Icons.check_circle,
+        title: 'Захиалга өгөгдсөн',
+        description: 'Захиалга амжилттай өгөгдлөө',
+        icon: Icons.shopping_cart,
         status: _getStepStatus(status, 0),
       ),
       TrackingStep(
-        title: 'Xүргэxэд бэлдэж байна',
-        description: 'Таны захиалгыг xүргэхэд бэлтгэж байна',
-        icon: Icons.inventory_2,
+        title: 'Баталгаажсан',
+        description: 'Захиалга баталгаажлаа',
+        icon: Icons.check_circle,
         status: _getStepStatus(status, 1),
       ),
       TrackingStep(
-        title: 'Бүтээгдэхүүн илгээгдсэн',
-        description: 'Таны захиалга замдаа зарлаа',
+        title: 'Илгээгдсэн',
+        description: 'Захиалга илгээгдлээ',
         icon: Icons.local_shipping,
         status: _getStepStatus(status, 2),
       ),
       TrackingStep(
-        title: 'Бүтээгдэхүүн хүргэгдсэн',
-        description: 'Таны захиалга амжилттай хүргэгдсэн',
+        title: 'Хүргэгдсэн',
+        description: 'Захиалга хүргэгдлээ',
         icon: Icons.home,
         status: _getStepStatus(status, 3),
       ),
     ];
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
@@ -566,297 +526,167 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Захиалгын явц',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              // Show last updated time if available
-              if (data['updatedAt'] != null)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.green.withOpacity(0.3),
-                                blurRadius: 4,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'актив',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.green.shade700,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Шинэчлэгдсэн: ${_formatUpdateTime(data['updatedAt'] as Timestamp?)}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Progress Steps
-          for (int i = 0; i < steps.length; i++) ...[
-            _buildProgressStep(steps[i], i == steps.length - 1),
-            if (i < steps.length - 1) const SizedBox(height: 16),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressStep(TrackingStep step, bool isLast) {
-    Color stepColor = step.status == StepStatus.completed
-        ? Colors.green
-        : step.status == StepStatus.current
-            ? Colors.blue
-            : Colors.grey.shade300;
-
-    Color textColor =
-        step.status == StepStatus.completed || step.status == StepStatus.current
-            ? Colors.black
-            : Colors.grey.shade600;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Step indicator
-        Column(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: stepColor,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                step.status == StepStatus.completed ? Icons.check : step.icon,
-                color: step.status == StepStatus.pending
-                    ? Colors.grey.shade600
-                    : Colors.white,
-                size: 20,
-              ),
-            ),
-            if (!isLast)
-              Container(
-                width: 2,
-                height: 40,
-                color: Colors.grey.shade300,
-                margin: const EdgeInsets.symmetric(vertical: 8),
-              ),
-          ],
-        ),
-
-        const SizedBox(width: 16),
-
-        // Step content
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                step.title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: textColor,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                step.description,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              if (step.status == StepStatus.current)
-                Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Одоогийн төлөв',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.blue.shade700,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildOrderItems(List<Map<String, dynamic>> items) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(20),
-            child: Text(
-              'Захиалсан бараа',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: items.length,
-            separatorBuilder: (_, __) => Divider(
-              height: 1,
-              color: Colors.grey.shade200,
-            ),
-            itemBuilder: (context, index) {
-              final item = items[index];
-              return _buildOrderItem(item);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContactStoreButton(String storeId) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: () => _showContactStoreDialog(storeId),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue.shade600,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            elevation: 2,
-          ),
-          icon: const Icon(Icons.contact_support, size: 20),
-          label: const Text(
-            'Дэлгүүртэй холбогдох',
+          const Text(
+            'Хүргэлтийн явц',
             style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
             ),
           ),
-        ),
+          const SizedBox(height: 20),
+          ...steps.map((step) => _buildProgressStep(context, step)),
+        ],
       ),
     );
   }
 
-  Widget _buildOrderItem(Map<String, dynamic> item) {
-    final productName = item['name'] ?? 'Бүтээгдэхүүн';
-    final price = TypeUtils.safeCastDouble(item['price'], defaultValue: 0.0);
-    final quantity = TypeUtils.safeCastInt(item['quantity'], defaultValue: 1);
-    final variant = item['variant'] ?? '';
-    final imageUrl = item['imageUrl'] ?? '';
+  Widget _buildProgressStep(BuildContext context, TrackingStep step) {
+    Color stepColor;
+    IconData stepIcon;
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
+    switch (step.status) {
+      case StepStatus.completed:
+        stepColor = Colors.green;
+        stepIcon = Icons.check_circle;
+        break;
+      case StepStatus.current:
+        stepColor = Colors.blue;
+        stepIcon = Icons.radio_button_checked;
+        break;
+      case StepStatus.pending:
+        stepColor = Colors.grey;
+        stepIcon = Icons.radio_button_unchecked;
+        break;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          // Product image
           Container(
-            width: 60,
-            height: 60,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: Colors.grey.shade100,
+              color: stepColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: imageUrl.isNotEmpty
-                  ? Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.inventory_2,
-                          color: Colors.grey,
-                          size: 24,
-                        );
-                      },
-                    )
-                  : const Icon(
-                      Icons.inventory_2,
-                      color: Colors.grey,
-                      size: 24,
-                    ),
+            child: Icon(
+              stepIcon,
+              color: stepColor,
+              size: 20,
             ),
           ),
-
-          const SizedBox(width: 12),
-
-          // Product details
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  productName,
+                  step.title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: step.status == StepStatus.pending
+                        ? Colors.grey.shade600
+                        : Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  step.description,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderItems(
+      BuildContext context, List<Map<String, dynamic>> items) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Захиалгын бараанууд',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...items.map((item) => _buildOrderItem(context, item)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderItem(BuildContext context, Map<String, dynamic> item) {
+    final name = item['name'] as String? ?? 'Unknown Product';
+    final price = TypeUtils.safeCastDouble(item['price'], defaultValue: 0.0);
+    final quantity = item['quantity'] as int? ?? 1;
+    final imageUrl = item['imageUrl'] as String? ?? '';
+    final variant = item['variant'] as String? ?? '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: imageUrl.isNotEmpty
+                ? Image.network(
+                    imageUrl,
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 60,
+                      height: 60,
+                      color: Colors.grey.shade300,
+                      child: const Icon(Icons.image, color: Colors.grey),
+                    ),
+                  )
+                : Container(
+                    width: 60,
+                    height: 60,
+                    color: Colors.grey.shade300,
+                    child: const Icon(Icons.image, color: Colors.grey),
+                  ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 if (variant.isNotEmpty) ...[
                   const SizedBox(height: 4),
@@ -869,27 +699,22 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                   ),
                 ],
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      '₮${price.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '× $quantity',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Тоо: $quantity',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
                 ),
               ],
+            ),
+          ),
+          Text(
+            '₮${(price * quantity).toStringAsFixed(0)}',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
             ),
           ),
         ],
@@ -897,71 +722,91 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
     );
   }
 
-  Widget _buildOrderSummary(double totalAmount, Map<String, dynamic> data) {
-    final paymentMethod = data['paymentMethod'] as String? ?? 'Карт';
-
+  Widget _buildContactStoreButton(BuildContext context, String storeId) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+      margin: const EdgeInsets.all(20),
+      child: ElevatedButton.icon(
+        onPressed: () => _showContactStoreDialog(storeId),
+        icon: const Icon(Icons.store),
+        label: const Text('Дэлгүүртэй холбогдох'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
           ),
-        ],
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Захиалгын дэлгэрэнгүй',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+    );
+  }
+
+  Widget _buildOrderSummary(
+      BuildContext context, Map<String, dynamic> data, double totalAmount) {
+    // Get delivery information asynchronously
+    return FutureBuilder<Map<String, String>>(
+      future: _getDeliveryInfo(data),
+      builder: (context, snapshot) {
+        final deliveryInfo = snapshot.data ?? {};
+        final recipientName = deliveryInfo['name'] ?? 'Хэрэглэгч';
+        final fullAddress = deliveryInfo['address'] ?? 'Хаяг байхгүй';
+        final phone = deliveryInfo['phone'] ?? '';
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Захиалгын дэлгэрэнгүй',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 16),
 
-          const SizedBox(height: 16),
+              // Payment method
+              _buildDetailRow(
+                'Төлбөрийн хэлбэр',
+                _getPaymentMethodDisplay(data['paymentMethod'] ?? 'card'),
+              ),
+              const SizedBox(height: 12),
 
-          // Payment Method
-          _buildDetailRow(
-              'Төлбөрийн хэрэгсэл', _getPaymentMethodDisplay(paymentMethod)),
-
-          const SizedBox(height: 12),
-
-          // Delivery Address Section
-          FutureBuilder<Map<String, String>>(
-            future: _getDeliveryInfo(data),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Хүргэлтийн хаяг',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    CircularProgressIndicator(),
-                  ],
-                );
-              }
-
-              final deliveryInfo = snapshot.data ?? {};
-              final recipientName = deliveryInfo['name'] ?? 'Хэрэглэгч';
-              final fullAddress = deliveryInfo['address'] ?? 'Хаяг байхгүй';
-              final phone = deliveryInfo['phone'] ?? '';
-
-              return Column(
+              // Delivery address
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
@@ -999,43 +844,43 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                     ),
                   ],
                 ],
-              );
-            },
-          ),
-
-          const SizedBox(height: 16),
-
-          Container(
-            height: 1,
-            color: Colors.grey.shade300,
-          ),
-
-          const SizedBox(height: 16),
-
-          // Total
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Нийт дүн',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
               ),
-              Text(
-                '₮${totalAmount.toStringAsFixed(0)}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+
+              const SizedBox(height: 16),
+
+              Container(
+                height: 1,
+                color: Colors.grey.shade300,
+              ),
+
+              const SizedBox(height: 16),
+
+              // Total
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Нийт дүн',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  Text(
+                    '₮${totalAmount.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -1106,24 +951,6 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
     }
   }
 
-  String _formatUpdateTime(Timestamp? timestamp) {
-    if (timestamp == null) return '';
-
-    final now = DateTime.now();
-    final updateTime = timestamp.toDate();
-    final difference = now.difference(updateTime);
-
-    if (difference.inMinutes < 1) {
-      return 'Одоо';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} мин өмнө';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours} цаг өмнө';
-    } else {
-      return '${updateTime.day}/${updateTime.month} ${updateTime.hour}:${updateTime.minute.toString().padLeft(2, '0')}';
-    }
-  }
-
   String _formatDate(DateTime date) {
     final months = [
       '1 сарын',
@@ -1141,6 +968,49 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
     ];
 
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'placed':
+        return Colors.orange;
+      case 'confirmed':
+      case 'paid':
+        return Colors.blue;
+      case 'processing':
+        return Colors.purple;
+      case 'shipped':
+        return Colors.indigo;
+      case 'delivered':
+        return Colors.green;
+      case 'cancelled':
+      case 'canceled':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _getStatusText(String status) {
+    switch (status.toLowerCase()) {
+      case 'placed':
+        return 'Өгөгдсөн';
+      case 'confirmed':
+        return 'Баталгаажсан';
+      case 'paid':
+        return 'Төлбөр хийгдсэн';
+      case 'processing':
+        return 'Боловсруулж байна';
+      case 'shipped':
+        return 'Илгээгдсэн';
+      case 'delivered':
+        return 'Хүргэгдсэн';
+      case 'cancelled':
+      case 'canceled':
+        return 'Цуцлагдсан';
+      default:
+        return 'Өгөгдсөн';
+    }
   }
 }
 

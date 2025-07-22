@@ -380,7 +380,7 @@ class _CategorizationPageState extends State<CategorizationPage> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: AppThemes.primaryColor.withOpacity(0.1),
+                    color: AppThemes.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(

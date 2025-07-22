@@ -153,9 +153,11 @@ class _LoginPageState extends State<LoginPage> {
                                               .pushReplacementNamed('/home');
                                         }
                                       } catch (e) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(SnackBar(
-                                                content: Text(e.toString())));
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(SnackBar(
+                                                  content: Text(e.toString())));
+                                        }
                                       }
                                     }
                                   },
@@ -261,8 +263,10 @@ class _SocialButtons extends StatelessWidget {
                           Navigator.of(context).pushReplacementNamed('/home');
                         }
                       } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(e.toString())));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.toString())));
+                        }
                       }
                     },
               child: Container(
@@ -291,8 +295,10 @@ class _SocialButtons extends StatelessWidget {
                           Navigator.of(context).pushReplacementNamed('/home');
                         }
                       } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(e.toString())));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.toString())));
+                        }
                       }
                     },
               child: Container(

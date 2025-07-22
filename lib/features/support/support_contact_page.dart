@@ -140,9 +140,9 @@ class SupportContactPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
@@ -161,7 +161,7 @@ class SupportContactPage extends StatelessWidget {
           Text(
             subtitle,
             style: TextStyle(
-              color: color.withOpacity(0.8),
+              color: color.withValues(alpha: 0.8),
               fontSize: 12,
             ),
             textAlign: TextAlign.center,
@@ -208,7 +208,7 @@ class SupportContactPage extends StatelessWidget {
                   icon: Icons.camera_alt,
                   label: 'Instagram',
                   color: const Color(0xFFE4405F),
-                  url: 'http://instagram.com/iblameanar',
+                  url: 'https://instagram.com/iblameanar',
                 ),
 
                 const SizedBox(height: 12),
@@ -219,7 +219,7 @@ class SupportContactPage extends StatelessWidget {
                   icon: Icons.facebook,
                   label: 'Facebook',
                   color: const Color(0xFF1877F2),
-                  url: 'http://facebook.com/AnarBorgil',
+                  url: 'https://facebook.com/AnarBorgil',
                 ),
 
                 const SizedBox(height: 24),
@@ -283,7 +283,7 @@ class SupportContactPage extends StatelessWidget {
         throw 'Could not launch $urlString';
       }
     } catch (e) {
-      debugPrint('Error launching URL: $e');
+      // Error launching URL
     }
   }
 }

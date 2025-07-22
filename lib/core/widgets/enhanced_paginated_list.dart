@@ -67,7 +67,6 @@ class _EnhancedPaginatedListState<T> extends State<EnhancedPaginatedList<T>>
   String _searchQuery = '';
 
   // Real-time listener management
-  String? _realtimeListenerId;
   Timer? _debounceTimer;
 
   // Performance tracking
@@ -105,8 +104,9 @@ class _EnhancedPaginatedListState<T> extends State<EnhancedPaginatedList<T>>
       widget.scrollController ?? _scrollController;
 
   void _onScroll() {
-    if (!_effectiveScrollController.hasClients || _isLoading || !_hasMore)
+    if (!_effectiveScrollController.hasClients || _isLoading || !_hasMore) {
       return;
+    }
 
     final position = _effectiveScrollController.position;
     if (position.pixels >= position.maxScrollExtent - 200) {
@@ -230,7 +230,7 @@ class _EnhancedPaginatedListState<T> extends State<EnhancedPaginatedList<T>>
   }
 
   void _setupRealTimeUpdates() {
-    _realtimeListenerId = addManagedCollectionListener(
+    addManagedCollectionListener(
       query: widget.baseQuery,
       onData: (QuerySnapshot snapshot) {
         _handleRealTimeUpdate(snapshot);

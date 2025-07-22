@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../../products/models/product_model.dart';
 import '../../../core/services/database_service.dart';
 import '../../../core/services/paginated_query_service.dart';
@@ -21,7 +22,7 @@ class CategoryProductService {
     DocumentSnapshot? lastDocument,
   }) async {
     try {
-      print(
+      debugPrint(
           '🔍 Loading products for category: $category, subcategory: $subCategory, leaf: $leafCategory');
 
       final result = await _paginatedQuery.getPaginatedProducts(
@@ -33,7 +34,7 @@ class CategoryProductService {
         activeOnly: true,
       );
 
-      print('📋 Found ${result.items.length} products');
+      debugPrint('📋 Found ${result.items.length} products');
 
       final products = result.items.map((item) {
         // Convert Map to ProductModel
@@ -62,7 +63,7 @@ class CategoryProductService {
 
       return products;
     } catch (e) {
-      print('❌ Error loading products by category: $e');
+      debugPrint('❌ Error loading products by category: $e');
 
       // Fallback: try loading by simple category field if categorization fields don't exist
       return await _loadProductsByCategoryFallback(
@@ -91,7 +92,7 @@ class CategoryProductService {
     DocumentSnapshot? lastDocument,
   }) async {
     try {
-      print('🔄 Using fallback category loading method');
+      debugPrint('🔄 Using fallback category loading method');
 
       Query query = _db.firestore.collectionGroup('products');
 
@@ -111,7 +112,7 @@ class CategoryProductService {
       query = query.orderBy('createdAt', descending: true).limit(limit);
 
       final querySnapshot = await query.get();
-      print('📋 Fallback found ${querySnapshot.docs.length} products');
+      debugPrint('📋 Fallback found ${querySnapshot.docs.length} products');
 
       final products = querySnapshot.docs
           .map((doc) => ProductModel.fromFirestore(doc))
@@ -119,7 +120,7 @@ class CategoryProductService {
 
       return products;
     } catch (e) {
-      print('❌ Error in fallback category loading: $e');
+      debugPrint('❌ Error in fallback category loading: $e');
       return [];
     }
   }
@@ -130,7 +131,7 @@ class CategoryProductService {
     int limit = 20,
   }) async {
     try {
-      print('🔍 Loading products matching terms: $searchTerms');
+      debugPrint('🔍 Loading products matching terms: $searchTerms');
 
       final allProducts = <ProductModel>[];
       final processedIds = <String>{};
@@ -196,7 +197,7 @@ class CategoryProductService {
             // Ignore if leafCategory field doesn't exist
           }
         } catch (e) {
-          print('❌ Error searching for term "$term": $e');
+          debugPrint('❌ Error searching for term "$term": $e');
         }
       }
 
@@ -204,11 +205,11 @@ class CategoryProductService {
       allProducts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       final result = allProducts.take(limit).toList();
-      print('📋 Found ${result.length} total products matching terms');
+      debugPrint('📋 Found ${result.length} total products matching terms');
 
       return result;
     } catch (e) {
-      print('❌ Error loading products by terms: $e');
+      debugPrint('❌ Error loading products by terms: $e');
       return [];
     }
   }
@@ -216,7 +217,7 @@ class CategoryProductService {
   /// Load all active products (fallback when no category filters work)
   Future<List<ProductModel>> loadAllActiveProducts({int limit = 20}) async {
     try {
-      print('🔍 Loading all active products as fallback');
+      debugPrint('🔍 Loading all active products as fallback');
 
       final query = await _db.firestore
           .collectionGroup('products')
@@ -228,10 +229,10 @@ class CategoryProductService {
       final products =
           query.docs.map((doc) => ProductModel.fromFirestore(doc)).toList();
 
-      print('📋 Found ${products.length} active products');
+      debugPrint('📋 Found ${products.length} active products');
       return products;
     } catch (e) {
-      print('❌ Error loading all active products: $e');
+      debugPrint('❌ Error loading all active products: $e');
       return [];
     }
   }

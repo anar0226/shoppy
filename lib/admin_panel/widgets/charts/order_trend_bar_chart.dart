@@ -189,7 +189,7 @@ class _OrderTrendBarChartState extends State<OrderTrendBarChart> {
                       BarChartRodData(
                         toY: (data['orders'] as int).toDouble(),
                         color: isTouched
-                            ? widget.barColor.withOpacity(0.8)
+                            ? widget.barColor.withValues(alpha: 0.8)
                             : widget.barColor,
                         width: isTouched ? 20 : 16,
                         borderRadius: const BorderRadius.only(
@@ -199,7 +199,7 @@ class _OrderTrendBarChartState extends State<OrderTrendBarChart> {
                         backDrawRodData: BackgroundBarChartRodData(
                           show: true,
                           toY: maxOrders.toDouble(),
-                          color: Colors.grey.withOpacity(0.1),
+                          color: Colors.grey.withValues(alpha: 0.1),
                         ),
                       ),
                     ],

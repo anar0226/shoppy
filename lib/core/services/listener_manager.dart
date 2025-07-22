@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 /// Comprehensive listener management system to prevent memory leaks
@@ -240,7 +239,7 @@ class ListenerManager {
 
   /// Internal methods
   String _generateListenerId() {
-    return 'listener_${DateTime.now().millisecondsSinceEpoch}_${_totalListenersCreated}';
+    return 'listener_${DateTime.now().millisecondsSinceEpoch}_$_totalListenersCreated';
   }
 
   void _removeListener(String listenerId) {
@@ -422,7 +421,8 @@ class _ManagedStreamBuilderState<T> extends State<ManagedStreamBuilder<T>>
   void initState() {
     super.initState();
     _snapshot = widget.initialData != null
-        ? AsyncSnapshot<T>.withData(ConnectionState.none, widget.initialData!)
+        ? AsyncSnapshot<T>.withData(
+            ConnectionState.none, widget.initialData as T)
         : AsyncSnapshot<T>.nothing();
     _subscribe();
   }

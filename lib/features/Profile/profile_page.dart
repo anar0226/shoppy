@@ -2,7 +2,7 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+
 import 'package:avii/features/home/presentation/main_scaffold.dart';
 import 'package:avii/features/settings/settings_page.dart';
 import 'package:avii/features/saved/saved_screen.dart';
@@ -20,7 +20,7 @@ class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
   @override
-  _ProfilePageState createState() => _ProfilePageState();
+  State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
@@ -323,7 +323,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 Expanded(
                   child: _paymentMethodCard(
                     title: 'StorePay',
-                    subtitle: 'Дэлгүүрийн карт',
+                    subtitle: 'Тун удахгүй',
                     backgroundColor: Colors.blue.shade50,
                     iconColor: Colors.blue,
                     iconWidget: Container(
@@ -371,7 +371,7 @@ class _ProfilePageState extends State<ProfilePage> {
             SizedBox(height: 32),
 
             // Support Section
-            Container(
+            SizedBox(
               width: double.infinity,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,7 +381,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
-                  Container(
+                  SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () {
@@ -553,31 +553,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _smartImage(String url,
-      {required double height, required double width}) {
-    if (url.startsWith('http')) {
-      return CachedNetworkImage(
-        imageUrl: url,
-        height: height,
-        width: width,
-        fit: BoxFit.cover,
-      );
-    } else if (url.isNotEmpty) {
-      return Image.asset(
-        url,
-        height: height,
-        width: width,
-        fit: BoxFit.cover,
-      );
-    } else {
-      return Container(
-        color: Colors.grey.shade200,
-        height: height,
-        width: width,
-      );
-    }
-  }
-
   Widget _paymentMethodCard({
     required String title,
     required String subtitle,
@@ -592,7 +567,7 @@ class _ProfilePageState extends State<ProfilePage> {
         color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: iconColor.withOpacity(0.2),
+          color: iconColor.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -609,7 +584,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: iconColor.withOpacity(0.9),
+                  color: iconColor.withValues(alpha: 0.9),
                 ),
               ),
               const SizedBox(height: 2),
@@ -617,7 +592,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 subtitle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: iconColor.withOpacity(0.7),
+                  color: iconColor.withValues(alpha: 0.7),
                 ),
               ),
             ],

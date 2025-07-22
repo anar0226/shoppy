@@ -10,7 +10,7 @@ class SimpleChartPlaceholder extends StatelessWidget {
       height: height,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.1),
+        color: Colors.green.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: const Center(child: Text('Chart')),

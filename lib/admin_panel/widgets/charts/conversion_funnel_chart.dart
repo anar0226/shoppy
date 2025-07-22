@@ -108,13 +108,13 @@ class ConversionFunnelChart extends StatelessWidget {
                 gradient: LinearGradient(
                   colors: [
                     stepColor,
-                    stepColor.withOpacity(0.7),
+                    stepColor.withValues(alpha: 0.7),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: stepColor.withOpacity(0.3),
+                    color: stepColor.withValues(alpha: 0.3),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -128,7 +128,7 @@ class ConversionFunnelChart extends StatelessWidget {
                     widthFactor: widthRatio,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: stepColor.withOpacity(0.2),
+                        color: stepColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
@@ -220,9 +220,9 @@ class ConversionFunnelChart extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
+        color: Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.red.withOpacity(0.3)),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

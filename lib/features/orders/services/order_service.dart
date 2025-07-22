@@ -1,21 +1,21 @@
+// ignore_for_file: prefer_const_declarations
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../../products/models/product_model.dart';
 import '../../stores/models/store_model.dart';
 import '../../cart/models/cart_item.dart';
-import '../../../core/services/inventory_service.dart';
+
 import '../../../admin_panel/services/notification_service.dart';
 import '../../../core/services/error_handler_service.dart';
 import '../../../core/services/production_logger.dart';
 
 class OrderService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Date range helpers
   DateTime get _today => DateTime.now();
-  DateTime get _last7Days => _today.subtract(const Duration(days: 7));
   DateTime get _last30Days => _today.subtract(const Duration(days: 30));
 
   // **ORDER ARCHIVAL CONSTANTS**
@@ -134,7 +134,6 @@ class OrderService {
 
       return orderId;
     } catch (e) {
-      debugPrint('Error creating order: $e');
       throw Exception('Failed to create order: $e');
     }
   }
@@ -187,7 +186,6 @@ class OrderService {
         );
       }
     } catch (e) {
-      debugPrint('Error adjusting inventory for order item: $e');
       throw Exception('Failed to adjust inventory: $e');
     }
   }
@@ -233,7 +231,7 @@ class OrderService {
     String orderId,
     String userId,
   ) async {
-    final updatedVariants = <Map<String, dynamic>>[];
+    final updatedVariants = const <Map<String, dynamic>>[];
 
     for (final variant in product.variants) {
       final selectedOption = selectedVariants[variant.name];
@@ -299,7 +297,7 @@ class OrderService {
         'timestamp': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      debugPrint('Error publishing inventory adjustment event: $e');
+      // Error publishing inventory adjustment event
     }
   }
 
@@ -333,7 +331,7 @@ class OrderService {
 
       await batch.commit();
     } catch (e) {
-      debugPrint('Error creating inventory audit trail: $e');
+      // Error creating inventory audit trail
     }
   }
 
@@ -412,7 +410,6 @@ class OrderService {
         }
       });
     } catch (e) {
-      debugPrint('Error updating order status: $e');
       throw Exception('Failed to update order status: $e');
     }
   }
@@ -462,7 +459,7 @@ class OrderService {
         }
       }
     } catch (e) {
-      debugPrint('Error restocking inventory: $e');
+      // Error restocking inventory
     }
   }
 
@@ -507,7 +504,7 @@ class OrderService {
     String orderId,
     String userId,
   ) async {
-    final updatedVariants = <Map<String, dynamic>>[];
+    final updatedVariants = const <Map<String, dynamic>>[];
 
     for (final variant in product.variants) {
       final selectedOption = selectedVariants[variant.name];
@@ -733,7 +730,7 @@ class OrderService {
           .where('createdAt', isLessThanOrEqualTo: Timestamp.fromDate(end))
           .get();
 
-      final statusCounts = <String, int>{
+      const statusCounts = <String, int>{
         'placed': 0,
         'processing': 0,
         'shipped': 0,
@@ -914,7 +911,7 @@ class OrderService {
           ..sort((a, b) => b.value.compareTo(a.value)),
       };
     } catch (e) {
-      debugPrint('Error getting inventory impact: $e');
+      // Error getting inventory impact
       return {};
     }
   }
@@ -988,23 +985,13 @@ class OrderService {
     return status.toString();
   }
 
-  // Helper method to safely get boolean from dynamic value
-  bool _getBooleanValue(dynamic value, {bool defaultValue = false}) {
-    if (value == null) return defaultValue;
-    if (value is bool) return value;
-    if (value is String) {
-      return value.toLowerCase() == 'true' || value.toLowerCase() == 'active';
-    }
-    if (value is int) return value != 0;
-    return defaultValue;
-  }
-
   // **ORDER ARCHIVAL AND CLEANUP METHODS**
 
   /// Archive delivered orders older than specified days
   Future<void> archiveOldOrders() async {
     try {
-      final cutoffDate = _today.subtract(Duration(days: _archiveAfterDays));
+      final cutoffDate =
+          _today.subtract(const Duration(days: _archiveAfterDays));
 
       // Get orders to archive
       final ordersToArchive = await _firestore
@@ -1056,7 +1043,8 @@ class OrderService {
   /// Compress archived orders older than specified days
   Future<void> compressOldArchivedOrders() async {
     try {
-      final cutoffDate = _today.subtract(Duration(days: _compressAfterDays));
+      final cutoffDate =
+          _today.subtract(const Duration(days: _compressAfterDays));
 
       // Get archived orders to compress
       final ordersToCompress = await _firestore
@@ -1083,17 +1071,16 @@ class OrderService {
       }
 
       await batch.commit();
-
-      print('Compressed ${ordersToCompress.docs.length} archived orders');
     } catch (e) {
-      print('Error compressing archived orders: $e');
+      // Error compressing archived orders
     }
   }
 
   /// Delete historical orders older than specified days
   Future<void> deleteOldHistoricalOrders() async {
     try {
-      final cutoffDate = _today.subtract(Duration(days: _deleteAfterDays));
+      final cutoffDate =
+          _today.subtract(const Duration(days: _deleteAfterDays));
 
       // Get historical orders to delete
       final ordersToDelete = await _firestore
@@ -1109,10 +1096,8 @@ class OrderService {
       }
 
       await batch.commit();
-
-      print('Deleted ${ordersToDelete.docs.length} historical orders');
     } catch (e) {
-      print('Error deleting historical orders: $e');
+      // Error deleting historical orders
     }
   }
 
@@ -1190,14 +1175,17 @@ class OrderService {
       // Get from main orders collection
       Query mainQuery =
           _firestore.collection('orders').where('storeId', isEqualTo: storeId);
-      if (status != null)
+      if (status != null) {
         mainQuery = mainQuery.where('status', isEqualTo: status);
-      if (startDate != null)
+      }
+      if (startDate != null) {
         mainQuery = mainQuery.where('createdAt',
             isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
-      if (endDate != null)
+      }
+      if (endDate != null) {
         mainQuery = mainQuery.where('createdAt',
             isLessThanOrEqualTo: Timestamp.fromDate(endDate));
+      }
 
       final mainOrders =
           await mainQuery.orderBy('createdAt', descending: true).get();
@@ -1206,19 +1194,22 @@ class OrderService {
 
       // Get from archived orders collection (if within date range)
       if (startDate == null ||
-          startDate
-              .isAfter(_today.subtract(Duration(days: _archiveAfterDays)))) {
+          startDate.isAfter(
+              _today.subtract(const Duration(days: _archiveAfterDays)))) {
         Query archivedQuery = _firestore
             .collection('archived_orders')
             .where('storeId', isEqualTo: storeId);
-        if (status != null)
+        if (status != null) {
           archivedQuery = archivedQuery.where('status', isEqualTo: status);
-        if (startDate != null)
+        }
+        if (startDate != null) {
           archivedQuery = archivedQuery.where('deliveredAt',
               isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
-        if (endDate != null)
+        }
+        if (endDate != null) {
           archivedQuery = archivedQuery.where('deliveredAt',
               isLessThanOrEqualTo: Timestamp.fromDate(endDate));
+        }
 
         final archivedOrders =
             await archivedQuery.orderBy('deliveredAt', descending: true).get();
@@ -1236,19 +1227,15 @@ class OrderService {
 
       return allOrders;
     } catch (e) {
-      print('Error fetching store orders: $e');
+      // Error fetching store orders
       return [];
     }
   }
 
   /// Run complete cleanup process
   Future<void> runOrderCleanup() async {
-    print('Starting order cleanup process...');
-
     await archiveOldOrders();
     await compressOldArchivedOrders();
     await deleteOldHistoricalOrders();
-
-    print('Order cleanup process completed');
   }
 }

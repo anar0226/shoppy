@@ -6,7 +6,6 @@ import 'package:firebase_performance/firebase_performance.dart';
 import 'core/services/order_fulfillment_service.dart';
 import 'core/services/production_logger.dart';
 import 'core/services/error_recovery_service.dart';
-import 'core/services/performance_optimizer.dart';
 import 'core/config/environment_config.dart';
 import 'features/notifications/fcm_service.dart';
 import 'main.dart' show ShopUBApp;
@@ -40,8 +39,6 @@ Future<void> bootstrap() async {
   runZonedGuarded(() async {
     await _internalBootstrap();
   }, (error, stack) {
-    debugPrint('Uncaught zone error: $error');
-
     // Log uncaught errors
     Future.microtask(() async {
       await ProductionLogger.instance.error(
@@ -92,12 +89,8 @@ Future<void> _internalBootstrap() async {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     await ProductionLogger.instance.info('FCM background handler configured');
 
-    // 6. Initialize performance optimizer
-    await PerformanceOptimizer.instance.optimizeStartup();
-    await ProductionLogger.instance.info('Performance optimizer initialized');
-
-    // 7. Schedule periodic optimizations
-    PerformanceOptimizer.instance.schedulePeriodicOptimization();
+    // 6. Performance optimization (removed - was unused)
+    await ProductionLogger.instance.info('Performance optimization skipped');
 
     // 8. Payment services with enhanced error handling
     await _initializePaymentServices();
@@ -108,7 +101,6 @@ Future<void> _internalBootstrap() async {
     // 9. Log startup completion with metrics
     await ProductionLogger.instance
         .businessEvent('app_startup_completed', data: {
-      'performance_stats': PerformanceOptimizer.instance.getPerformanceStats(),
       'recovery_stats': ErrorRecoveryService.instance.getRecoveryStats(),
       'environment':
           EnvironmentConfig.isProduction ? 'production' : 'development',
@@ -117,8 +109,6 @@ Future<void> _internalBootstrap() async {
     runApp(const ShopUBApp());
   } catch (error, stackTrace) {
     // Bootstrap failed - log the error and try to continue
-    debugPrint('Bootstrap failed: $error');
-
     try {
       await ProductionLogger.instance.error(
         'Bootstrap failed',
@@ -131,7 +121,7 @@ Future<void> _internalBootstrap() async {
         isFatal: true,
       );
     } catch (logError) {
-      debugPrint('Failed to log bootstrap error: $logError');
+      // Failed to log bootstrap error
     }
 
     // Try to run app anyway for better user experience

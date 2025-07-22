@@ -102,7 +102,8 @@ class _StorefrontPageState extends State<StorefrontPage> {
             reviewCount = reviews.length;
           }
         } catch (reviewError) {
-          print('⚠️ Error loading reviews for admin preview: $reviewError');
+          debugPrint(
+              '⚠️ Error loading reviews for admin preview: $reviewError');
         }
 
         setState(() {
@@ -153,17 +154,21 @@ class _StorefrontPageState extends State<StorefrontPage> {
           _isUploadingImage = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Background image updated!')),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Background image updated!')),
+          );
+        }
       }
     } catch (e) {
       setState(() {
         _isUploadingImage = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error uploading image: $e')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error uploading image: $e')),
+        );
+      }
     }
   }
 
@@ -198,17 +203,21 @@ class _StorefrontPageState extends State<StorefrontPage> {
           _isUploadingProfileImage = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile picture updated!')),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile picture updated!')),
+          );
+        }
       }
     } catch (e) {
       setState(() {
         _isUploadingProfileImage = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error uploading profile picture: $e')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error uploading profile picture: $e')),
+        );
+      }
     }
   }
 
@@ -230,14 +239,18 @@ class _StorefrontPageState extends State<StorefrontPage> {
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Seller card settings saved successfully!')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Seller card settings saved successfully!')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving settings: $e')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving settings: $e')),
+        );
+      }
     } finally {
       setState(() {
         _isSaving = false;
@@ -252,9 +265,12 @@ class _StorefrontPageState extends State<StorefrontPage> {
       } else if (_selectedProductIds.length < 4) {
         _selectedProductIds.add(productId);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You can only select up to 4 products')),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('You can only select up to 4 products')),
+          );
+        }
       }
     });
   }
@@ -448,19 +464,23 @@ class _StorefrontPageState extends State<StorefrontPage> {
                                             _storeModel!.copyWith(logo: '');
                                       });
 
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                            content: Text(
-                                                'Profile picture removed')),
-                                      );
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                              content: Text(
+                                                  'Profile picture removed')),
+                                        );
+                                      }
                                     } catch (e) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                            content: Text(
-                                                'Error removing picture: $e')),
-                                      );
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  'Error removing picture: $e')),
+                                        );
+                                      }
                                     }
                                   },
                                   icon: const Icon(Icons.delete,
@@ -582,7 +602,8 @@ class _StorefrontPageState extends State<StorefrontPage> {
                     ),
                     Chip(
                       label: Text('${_selectedProductIds.length}/4'),
-                      backgroundColor: AppThemes.primaryColor.withOpacity(0.1),
+                      backgroundColor:
+                          AppThemes.primaryColor.withValues(alpha: 0.1),
                       labelStyle: const TextStyle(
                         color: AppThemes.primaryColor,
                         fontWeight: FontWeight.bold,

@@ -426,7 +426,7 @@ class AnalyticsService {
       for (final userId in customerOrderHistory.keys) {
         final orders = customerOrderHistory[userId]!;
         final totalSpent =
-            orders.fold<double>(0, (sum, order) => sum + order['total']);
+            orders.fold<double>(0, (total, order) => total + order['total']);
         final lastOrderDate = orders
             .map((o) => o['createdAt'] as DateTime)
             .reduce((a, b) => a.isAfter(b) ? a : b);
@@ -533,7 +533,7 @@ class AnalyticsService {
 
       final totalOrders = ordersSnapshot.docs.length;
       final totalRevenue = ordersSnapshot.docs.fold<double>(
-          0, (sum, doc) => sum + ((doc.data()['total'] ?? 0).toDouble()));
+          0, (total, doc) => total + ((doc.data()['total'] ?? 0).toDouble()));
 
       // Mock distribution
       return [

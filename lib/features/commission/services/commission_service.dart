@@ -361,7 +361,6 @@ class CommissionService {
           .orderBy('createdAt');
 
       final snapshot = await query.get();
-      final trends = <Map<String, dynamic>>[];
 
       // Group transactions by period
       final groupedData = <String, Map<String, dynamic>>{};

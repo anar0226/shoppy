@@ -44,14 +44,16 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
         }
       }
     } catch (error, stackTrace) {
-      await ErrorHandlerService.instance.handleError(
-        operation: 'load_placeholder_image',
-        error: error,
-        stackTrace: stackTrace,
-        context: context,
-        showUserMessage: false, // Silent failure for placeholder image
-        additionalContext: {'categoryId': 'shirts_tops'},
-      );
+      if (mounted) {
+        await ErrorHandlerService.instance.handleError(
+          operation: 'load_placeholder_image',
+          error: error,
+          stackTrace: stackTrace,
+          context: context,
+          showUserMessage: false, // Silent failure for placeholder image
+          additionalContext: {'categoryId': 'shirts_tops'},
+        );
+      }
     }
   }
 
@@ -78,9 +80,9 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
 
         if (reviewsSnapshot.docs.isNotEmpty) {
           final reviews = reviewsSnapshot.docs;
-          final totalRating = reviews.fold<double>(0, (sum, doc) {
+          final totalRating = reviews.fold<double>(0, (total, doc) {
             final data = doc.data();
-            return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
+            return total + ((data['rating'] as num?)?.toDouble() ?? 0);
           });
           storeRating = totalRating / reviews.length;
           reviewCount = reviews.length > 1000
@@ -88,7 +90,7 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
               : reviews.length.toString();
         }
       } catch (reviewError) {
-        print('⚠️ Error loading reviews for store ${store.id}: $reviewError');
+        // Error loading reviews for store
         // Keep default values
       }
 
@@ -111,14 +113,16 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
         _featuredStores = List<StoreData>.filled(4, storeData);
       });
     } catch (error, stackTrace) {
-      await ErrorHandlerService.instance.handleError(
-        operation: 'load_featured_store',
-        error: error,
-        stackTrace: stackTrace,
-        context: context,
-        showUserMessage: false, // Silent failure for featured stores
-        additionalContext: {'categoryId': 'shirts_tops'},
-      );
+      if (mounted) {
+        await ErrorHandlerService.instance.handleError(
+          operation: 'load_featured_store',
+          error: error,
+          stackTrace: stackTrace,
+          context: context,
+          showUserMessage: false, // Silent failure for featured stores
+          additionalContext: {'categoryId': 'shirts_tops'},
+        );
+      }
     }
   }
 
@@ -197,7 +201,7 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -221,8 +225,8 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    cat.color.withOpacity(0.3),
-                    cat.color.withOpacity(0.7),
+                    cat.color.withValues(alpha: 0.3),
+                    cat.color.withValues(alpha: 0.7),
                   ],
                 ),
               ),
@@ -450,11 +454,12 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
       hasNotification: false,
     );
 
-    if (!mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => StoreScreen(storeData: storeData)),
-    );
+    if (context.mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => StoreScreen(storeData: storeData)),
+      );
+    }
   }
 }
 

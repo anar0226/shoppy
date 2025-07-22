@@ -151,7 +151,7 @@ class ReviewsService {
           .map((doc) => ReviewModel.fromFirestore(doc))
           .toList();
     } catch (e) {
-      debugPrint('Error getting store reviews: $e');
+      // Error getting store reviews
       return [];
     }
   }
@@ -202,7 +202,7 @@ class ReviewsService {
         reviewsWithComments: reviewsWithComments,
       );
     } catch (e) {
-      debugPrint('Error getting store ratings summary: $e');
+      // Error getting store ratings summary
       return StoreRatingsSummary.empty();
     }
   }
@@ -243,7 +243,7 @@ class ReviewsService {
 
       return true;
     } catch (e) {
-      debugPrint('Error toggling review like: $e');
+      // Error toggling review like
       return false;
     }
   }
@@ -284,7 +284,7 @@ class ReviewsService {
 
       return true;
     } catch (e) {
-      debugPrint('Error toggling review dislike: $e');
+      // Error toggling review dislike
       return false;
     }
   }
@@ -318,7 +318,7 @@ class ReviewsService {
 
       return true;
     } catch (e) {
-      debugPrint('Error responding to review: $e');
+      // Error responding to review
       return false;
     }
   }
@@ -343,7 +343,7 @@ class ReviewsService {
 
       return recentReview.docs.isEmpty;
     } catch (e) {
-      debugPrint('Error checking if user can review: $e');
+      // Error checking if user can review
       return false;
     }
   }
@@ -360,7 +360,7 @@ class ReviewsService {
         'lastReviewAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      debugPrint('Error updating store aggregate rating: $e');
+      // Error updating store aggregate rating
     }
   }
 
@@ -391,7 +391,7 @@ class ReviewsService {
           .map((doc) => ReviewModel.fromFirestore(doc))
           .toList();
     } catch (e) {
-      debugPrint('Error getting user reviews: $e');
+      // Error getting user reviews
       return [];
     }
   }

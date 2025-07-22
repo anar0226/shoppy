@@ -158,13 +158,17 @@ class _ReviewFormState extends State<_ReviewForm> {
       });
       if (mounted) {
         setState(() => _submitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Thank you for your review!')));
-        Navigator.pop(context);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Thank you for your review!')));
+          Navigator.pop(context);
+        }
       }
     } on FirebaseException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message ?? 'Failed to submit review')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.message ?? 'Failed to submit review')));
+      }
       setState(() => _submitting = false);
       return;
     }

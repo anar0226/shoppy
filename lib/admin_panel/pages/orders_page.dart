@@ -76,7 +76,7 @@ class _OrdersPageState extends State<OrdersPage> {
               }
             }
           } catch (e) {
-            print('Error fetching product $productId: $e');
+            debugPrint('Error fetching product $productId: $e');
           }
         }
 
@@ -121,7 +121,7 @@ class _OrdersPageState extends State<OrdersPage> {
                 }
               }
             } catch (e) {
-              print('Error fetching variant data: $e');
+              debugPrint('Error fetching variant data: $e');
             }
           }
 
@@ -214,7 +214,7 @@ class _OrdersPageState extends State<OrdersPage> {
         final customerUserId = orderData['userId'] as String?;
 
         if (customerUserId != null) {
-          final statusText = _getStatusText(newStatus);
+          final statusText = getStatusText(newStatus);
           await NotificationService.sendOrderTrackingNotification(
             userId: customerUserId,
             orderId: orderId,
@@ -363,6 +363,7 @@ class _OrdersPageState extends State<OrdersPage> {
     // Get product details
     final productDetails = await _getOrderProductDetails(items);
 
+    if (!mounted) return;
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -429,31 +430,31 @@ class _OrdersPageState extends State<OrdersPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Order Summary
-                      _buildOrderSummarySection(
+                      buildOrderSummarySection(
                           orderId, status, total, createdAt),
                       const SizedBox(height: 24),
 
                       // Customer Information
-                      _buildCustomerInfoSection(
+                      buildCustomerInfoSection(
                           customerName, customerEmail, customerPhone),
                       const SizedBox(height: 24),
 
                       // Delivery Address
-                      _buildDeliveryAddressSection(
+                      buildDeliveryAddressSection(
                           deliveryAddress, shippingAddress),
                       const SizedBox(height: 24),
 
                       // Products
-                      _buildProductsSection(productDetails),
+                      buildProductsSection(productDetails),
                       const SizedBox(height: 24),
 
                       // Payment Information
-                      _buildPaymentInfoSection(
+                      buildPaymentInfoSection(
                           paymentMethod, paymentIntentId, total),
                       const SizedBox(height: 24),
 
                       // Shipping Instructions
-                      _buildShippingInstructionsSection(data),
+                      buildShippingInstructionsSection(data),
                     ],
                   ),
                 ),
@@ -511,7 +512,7 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   // Helper methods for building dialog sections
-  Widget _buildOrderSummarySection(
+  Widget buildOrderSummarySection(
       String orderId, String status, double total, DateTime createdAt) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -561,10 +562,10 @@ class _OrdersPageState extends State<OrdersPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getBadgeColor(status),
+                  color: getBadgeColor(status),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(_getStatusText(status),
+                child: Text(getStatusText(status),
                     style: const TextStyle(
                         fontWeight: FontWeight.w600, fontSize: 12)),
               ),
@@ -585,7 +586,7 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  Widget _buildCustomerInfoSection(
+  Widget buildCustomerInfoSection(
       String customerName, String customerEmail, String customerPhone) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -650,7 +651,7 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  Widget _buildDeliveryAddressSection(
+  Widget buildDeliveryAddressSection(
       Map<String, dynamic> deliveryAddress, String shippingAddress) {
     final hasDetailedAddress = deliveryAddress.isNotEmpty;
     final displayAddress = hasDetailedAddress
@@ -765,7 +766,7 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  Widget _buildProductsSection(List<Map<String, dynamic>> productDetails) {
+  Widget buildProductsSection(List<Map<String, dynamic>> productDetails) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -884,7 +885,7 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  Widget _buildPaymentInfoSection(
+  Widget buildPaymentInfoSection(
       String paymentMethod, String paymentIntentId, double total) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -945,7 +946,7 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  Widget _buildShippingInstructionsSection(Map<String, dynamic> data) {
+  Widget buildShippingInstructionsSection(Map<String, dynamic> data) {
     final notes = data['notes'] as String? ?? '';
     final specialInstructions = data['specialInstructions'] as String? ?? '';
     final deliveryPreference = data['deliveryPreference'] as String? ?? '';
@@ -1067,7 +1068,7 @@ class _OrdersPageState extends State<OrdersPage> {
     }
   }
 
-  void _calculateStatistics(
+  void calculateStatistics(
       List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
     final newTotalOrders = docs.length;
     double newTotalRevenue = 0.0;
@@ -1109,7 +1110,7 @@ class _OrdersPageState extends State<OrdersPage> {
     }
   }
 
-  List<QueryDocumentSnapshot<Map<String, dynamic>>> _filterOrders(
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> filterOrders(
       List<QueryDocumentSnapshot<Map<String, dynamic>>> orders) {
     return orders.where((order) {
       final data = order.data();
@@ -1153,7 +1154,7 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   // Translate status to Mongolian
-  String _getStatusText(String status) {
+  String getStatusText(String status) {
     switch (status.toLowerCase()) {
       case 'placed':
       case 'pending':
@@ -1172,7 +1173,7 @@ class _OrdersPageState extends State<OrdersPage> {
     }
   }
 
-  Color _getBadgeColor(String status) {
+  Color getBadgeColor(String status) {
     switch (status.toLowerCase()) {
       case 'paid':
       case 'delivered':
@@ -1324,7 +1325,7 @@ class _OrdersPageState extends State<OrdersPage> {
                             style: TextStyle(
                                 fontSize: 22, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 12),
-                        _ordersStreamTable(),
+                        ordersStreamTable(),
                       ],
                     ),
                   ),
@@ -1337,7 +1338,7 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  Widget _ordersStreamTable() {
+  Widget ordersStreamTable() {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: DatabaseService()
           .collection('orders')
@@ -1356,13 +1357,13 @@ class _OrdersPageState extends State<OrdersPage> {
         final docs = snapshot.data?.docs ?? [];
 
         // Apply search and status filters
-        final filteredDocs = _filterOrders(docs);
+        final filteredDocs = filterOrders(docs);
 
         // Calculate statistics when data changes
-        _calculateStatistics(filteredDocs);
+        calculateStatistics(filteredDocs);
 
         return FutureBuilder<List<DataRow>>(
-          future: _buildOrderRows(filteredDocs),
+          future: buildOrderRows(filteredDocs),
           builder: (context, rowSnapshot) {
             if (rowSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -1470,7 +1471,7 @@ class _OrdersPageState extends State<OrdersPage> {
                     ),
                   ),
                   // Data rows
-                  ...rows.map((row) => _buildCustomDataRow(row)),
+                  ...rows.map((row) => buildCustomDataRow(row)),
                 ],
               ),
             );
@@ -1480,7 +1481,7 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  Future<List<DataRow>> _buildOrderRows(
+  Future<List<DataRow>> buildOrderRows(
       List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
     final List<DataRow> rows = [];
 
@@ -1622,18 +1623,21 @@ class _OrdersPageState extends State<OrdersPage> {
 
         // Status cell
         DataCell(GestureDetector(
-          onTap: () => _showStatusEditDialog(id, status),
+          onTap: () async {
+            if (!context.mounted) return;
+            _showStatusEditDialog(id, status);
+          },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: _getBadgeColor(status),
+              color: getBadgeColor(status),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.grey.shade300),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(_getStatusText(status),
+                Text(getStatusText(status),
                     style: TextStyle(
                         fontSize: 12, color: AppThemes.getTextColor(context))),
                 const SizedBox(width: 4),
@@ -1645,20 +1649,36 @@ class _OrdersPageState extends State<OrdersPage> {
 
         // Actions cell
         DataCell(Row(children: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-            onPressed: () => _showDeleteOrderDialog(id, customer),
-            tooltip: 'Захиалга устгах',
+          Builder(
+            builder: (context) => IconButton(
+              icon:
+                  const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+              onPressed: () async {
+                if (!context.mounted) return;
+                _showDeleteOrderDialog(id, customer);
+              },
+              tooltip: 'Захиалга устгах',
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.visibility, size: 18, color: Colors.blue),
-            onPressed: () => _showOrderDetailsDialog(doc),
-            tooltip: 'Дэлгэрэнгүй харах',
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.visibility, size: 18, color: Colors.blue),
+              onPressed: () async {
+                if (!context.mounted) return;
+                _showOrderDetailsDialog(doc);
+              },
+              tooltip: 'Дэлгэрэнгүй харах',
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.edit, size: 18),
-            onPressed: () => _showStatusEditDialog(id, status),
-            tooltip: 'Төлөв өөрчлөх',
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.edit, size: 18),
+              onPressed: () async {
+                if (!context.mounted) return;
+                _showStatusEditDialog(id, status);
+              },
+              tooltip: 'Төлөв өөрчлөх',
+            ),
           ),
         ])),
       ]));
@@ -1668,7 +1688,7 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   // Build custom data row with proper column distribution
-  Widget _buildCustomDataRow(DataRow dataRow) {
+  Widget buildCustomDataRow(DataRow dataRow) {
     final cells = dataRow.cells;
 
     return Container(

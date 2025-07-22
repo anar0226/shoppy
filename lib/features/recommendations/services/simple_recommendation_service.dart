@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../models/simple_user_preferences.dart';
 import '../../stores/models/store_model.dart';
 
@@ -23,7 +24,7 @@ class SimpleRecommendationService {
       }
       return null;
     } catch (e) {
-      print('Error getting user preferences: $e');
+      // Error getting user preferences
       return null;
     }
   }
@@ -36,7 +37,7 @@ class SimpleRecommendationService {
           .doc(preferences.userId)
           .set(preferences.toMap());
     } catch (e) {
-      print('Error saving user preferences: $e');
+      // Error saving user preferences
     }
   }
 
@@ -113,7 +114,7 @@ class SimpleRecommendationService {
 
       return recommendedStores;
     } catch (e) {
-      print('Error getting recommended stores: $e');
+      // Error getting recommended stores
       return await _getRandomStores(limit);
     }
   }
@@ -171,7 +172,7 @@ class SimpleRecommendationService {
       final userData = userDoc.data() as Map<String, dynamic>;
       return List<String>.from(userData['notInterestedStoreIds'] ?? []);
     } catch (e) {
-      print('Error getting not interested stores: $e');
+      // Error getting not interested stores
       return [];
     }
   }
@@ -197,7 +198,7 @@ class SimpleRecommendationService {
       stores.shuffle();
       return stores.take(limit).toList();
     } catch (e) {
-      print('Error getting random stores: $e');
+      // Error getting random stores
       return [];
     }
   }

@@ -35,12 +35,24 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
     line1 = a?.line1 ?? '';
     apartment = a?.apartment ?? '';
     phone = a?.phone ?? '';
-    khoroo = a?.khoroo ?? kUbDistrictKhoroos[district]!.first;
+
+    // Ensure khoroo is valid for the selected district
+    final availableKhoroos = kUbDistrictKhoroos[district];
+    if (availableKhoroos != null) {
+      if (a?.khoroo != null && availableKhoroos.contains(a!.khoroo)) {
+        khoroo = a.khoroo;
+      } else {
+        khoroo = availableKhoroos.first;
+      }
+    } else {
+      // Fallback to first district if current district is not found
+      district = kUbDistricts.first;
+      khoroo = kUbDistrictKhoroos[district]!.first;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isEdit = widget.address != null;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -61,9 +73,9 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: district,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Дүүрэг',
-                  labelStyle: const TextStyle(color: kPrimaryBlue),
+                  labelStyle: TextStyle(color: kPrimaryBlue),
                   border: OutlineInputBorder(
                       borderSide: BorderSide(color: kPrimaryBlue)),
                   enabledBorder: OutlineInputBorder(
@@ -76,15 +88,23 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
                     .toList(),
                 onChanged: (v) => setState(() {
                   district = v!;
-                  khoroo = kUbDistrictKhoroos[district]!.first;
+                  // Reset khoroo to first available value for the new district
+                  final availableKhoroos = kUbDistrictKhoroos[district];
+                  if (availableKhoroos != null) {
+                    khoroo = availableKhoroos.first;
+                  } else {
+                    // Fallback to first district if selected district is not found
+                    district = kUbDistricts.first;
+                    khoroo = kUbDistrictKhoroos[district]!.first;
+                  }
                 }),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
                 value: khoroo,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Хороо',
-                  labelStyle: const TextStyle(color: kPrimaryBlue),
+                  labelStyle: TextStyle(color: kPrimaryBlue),
                   border: OutlineInputBorder(
                       borderSide: BorderSide(color: kPrimaryBlue)),
                   enabledBorder: OutlineInputBorder(
@@ -102,7 +122,7 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
               _field('Гэрийн хаяг',
                   initial: apartment,
                   onSaved: (v) => apartment = v,
-                  required: false),
+                  required: true),
               const SizedBox(height: 12),
               _field('Утасны дугаар',
                   initial: phone,
@@ -132,17 +152,17 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: kPrimaryBlue),
-        enabledBorder: OutlineInputBorder(
+        enabledBorder: const OutlineInputBorder(
           borderSide: BorderSide(color: kPrimaryBlue),
         ),
-        focusedBorder: OutlineInputBorder(
+        focusedBorder: const OutlineInputBorder(
           borderSide: BorderSide(color: kPrimaryBlue, width: 2),
         ),
       ),
       validator: required
           ? () {
               final lower = label.toLowerCase();
-              if (lower.contains('phone')) {
+              if (lower.contains('утас') || lower.contains('phone')) {
                 return ValidationUtils.validatePhoneNumber;
               } else if (lower.contains('овог') || lower.contains('нэр')) {
                 return ValidationUtils.validateName;

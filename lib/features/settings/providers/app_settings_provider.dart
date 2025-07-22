@@ -47,7 +47,7 @@ class AppSettingsProvider with ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      debugPrint('Error loading settings: $e');
+      // Error loading settings
     }
   }
 
@@ -62,7 +62,7 @@ class AppSettingsProvider with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_languageKey, locale.languageCode);
     } catch (e) {
-      debugPrint('Error saving language: $e');
+      // Error saving language
     }
   }
 
@@ -84,7 +84,7 @@ class AppSettingsProvider with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_themeKey, themeMode.toString());
     } catch (e) {
-      debugPrint('Error saving theme: $e');
+      // Error saving theme
     }
   }
 

@@ -1,7 +1,6 @@
 class AppAssets {
   // Base paths
   static const String _imagesPath = 'assets/images';
-  static const String _fontsPath = 'assets/fonts';
   static const String _animationsPath = 'assets/animations';
   static const String _dataPath = 'assets/data';
 
@@ -9,7 +8,6 @@ class AppAssets {
   static const String _logosPath = '$_imagesPath/logos';
   static const String _iconsPath = '$_imagesPath/icons';
   static const String _bannersPath = '$_imagesPath/banners';
-  static const String _productsPath = '$_imagesPath/products';
   static const String _storesPath = '$_imagesPath/stores';
   static const String _categoriesPath = '$_imagesPath/categories';
   static const String _placeholdersPath = '$_imagesPath/placeholders';

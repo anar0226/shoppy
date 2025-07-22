@@ -273,16 +273,17 @@ class _CustomersPageState extends State<CustomersPage> {
 
     // Debug: Print order count and first order structure (only in debug mode)
     if (orders.isNotEmpty) {
-      print('📊 Processing ${orders.length} orders for customer extraction');
+      debugPrint(
+          '📊 Processing ${orders.length} orders for customer extraction');
       if (orders.isNotEmpty) {
         final firstOrder = orders.first.data();
-        print('🔍 Sample order fields: ${firstOrder.keys.toList()}');
-        print('📧 Customer fields in first order:');
-        print('   customerEmail: ${firstOrder['customerEmail']}');
-        print('   userEmail: ${firstOrder['userEmail']}');
-        print('   email: ${firstOrder['email']}');
-        print('   customerName: ${firstOrder['customerName']}');
-        print('   userId: ${firstOrder['userId']}');
+        debugPrint('🔍 Sample order fields: ${firstOrder.keys.toList()}');
+        debugPrint('📧 Customer fields in first order:');
+        debugPrint('   customerEmail: ${firstOrder['customerEmail']}');
+        debugPrint('   userEmail: ${firstOrder['userEmail']}');
+        debugPrint('   email: ${firstOrder['email']}');
+        debugPrint('   customerName: ${firstOrder['customerName']}');
+        debugPrint('   userId: ${firstOrder['userId']}');
       }
     }
 
@@ -358,13 +359,13 @@ class _CustomersPageState extends State<CustomersPage> {
     }
 
     // Debug: Print extraction results
-    print(
+    debugPrint(
         '✅ Extracted ${customerData.length} unique customers from ${orders.length} orders');
     if (customerData.isNotEmpty) {
-      print('👥 Sample customers:');
+      debugPrint('👥 Sample customers:');
       customerData.entries.take(3).forEach((entry) {
         final customer = entry.value;
-        print(
+        debugPrint(
             '   ${customer['name']} (${customer['email']}) - ${customer['orders']} orders');
       });
     }
@@ -495,7 +496,8 @@ class _CustomersPageState extends State<CustomersPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.visibility, size: 18, color: Colors.blue),
+                  icon: const Icon(Icons.visibility,
+                      size: 18, color: Colors.blue),
                   onPressed: () => _viewCustomerDetails(customer),
                   tooltip: 'Дэлгэрэнгүй харах',
                 ),

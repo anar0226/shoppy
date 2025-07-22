@@ -254,6 +254,6 @@ class ProductVariant {
 
   int get totalStock {
     if (!trackInventory) return 999;
-    return stockByOption.values.fold(0, (sum, stock) => sum + stock);
+    return stockByOption.values.fold(0, (total, stock) => total + stock);
   }
 }

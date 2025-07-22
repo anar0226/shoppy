@@ -166,7 +166,7 @@ class _EditProductDialogState extends State<EditProductDialog> {
         }
       });
     } catch (e) {
-      debugPrint('Error loading discounts: $e');
+      // Error loading discounts
       if (mounted) {
         setState(() => _discountsLoaded = true);
       }
@@ -619,8 +619,8 @@ class _EditProductDialogState extends State<EditProductDialog> {
                                         shape: BoxShape.circle,
                                         boxShadow: [
                                           BoxShadow(
-                                            color:
-                                                Colors.black.withOpacity(0.2),
+                                            color: Colors.black
+                                                .withValues(alpha: 0.2),
                                             blurRadius: 2,
                                             offset: const Offset(0, 1),
                                           ),
@@ -698,8 +698,8 @@ class _EditProductDialogState extends State<EditProductDialog> {
                                         shape: BoxShape.circle,
                                         boxShadow: [
                                           BoxShadow(
-                                            color:
-                                                Colors.black.withOpacity(0.2),
+                                            color: Colors.black
+                                                .withValues(alpha: 0.2),
                                             blurRadius: 2,
                                             offset: const Offset(0, 1),
                                           ),

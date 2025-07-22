@@ -154,7 +154,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage>
         _unreadCount = snapshot.docs.length;
       });
     } catch (e) {
-      print('Error getting unread count: $e');
+      // Error getting unread count
     }
   }
 
@@ -163,7 +163,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage>
       await NotificationService.markNotificationAsRead(notificationId);
       _getUnreadCount(); // Refresh count
     } catch (e) {
-      print('Error marking notification as read: $e');
+      // Error marking notification as read
     }
   }
 
@@ -196,7 +196,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage>
         );
       }
     } catch (e) {
-      print('Error marking all as read: $e');
+      debugPrint('Error marking all as read: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -299,7 +299,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage>
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -322,7 +322,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage>
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Icon(
@@ -444,7 +444,6 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage>
         final orderId = data['orderId'] as String?;
         if (orderId != null) {
           // Navigator.pushNamed(context, '/order-details', arguments: orderId);
-          print('Navigate to order: $orderId');
         }
         break;
       case 'priceDrops':
@@ -456,18 +455,16 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage>
           //   'productId': productId,
           //   'storeId': storeId,
           // });
-          print('Navigate to product: $productId in store: $storeId');
         }
         break;
       case 'offers':
         final offerId = data['offerId'] as String?;
         if (offerId != null) {
           // Navigator.pushNamed(context, '/offers');
-          print('Navigate to offer: $offerId');
         }
         break;
       default:
-        print('Notification tapped: $type');
+      // Notification tapped
     }
   }
 }

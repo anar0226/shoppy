@@ -44,7 +44,7 @@ class _NotificationPermissionWidgetState
         });
       }
     } catch (e) {
-      debugPrint('Error checking notification permission: $e');
+      // Error checking notification permission
       if (mounted) {
         setState(() {
           _permissionChecked = true;
@@ -76,7 +76,7 @@ class _NotificationPermissionWidgetState
         }
       }
     } catch (e) {
-      debugPrint('Error requesting notification permission: $e');
+      // Error requesting notification permission
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -230,7 +230,7 @@ class _NotificationPermissionWidgetState
         border: Border.all(color: Colors.blue.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withOpacity(0.1),
+            color: Colors.blue.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

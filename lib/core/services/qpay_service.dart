@@ -3,7 +3,6 @@ import 'dart:developer';
 import 'package:http/http.dart' as http;
 import '../config/environment_config.dart';
 import 'dart:async';
-import 'package:crypto/crypto.dart';
 
 /// Production-ready QPay API Integration Service
 /// Enhanced with timeout handling, reconciliation, and refund processing
@@ -20,7 +19,6 @@ class QPayService {
   // Timeout configurations
   static const Duration _defaultTimeout = Duration(minutes: 30);
   static const Duration _apiTimeout = Duration(seconds: 30);
-  static const Duration _reconciliationInterval = Duration(minutes: 5);
 
   static String get _baseUrl => EnvironmentConfig.qpayBaseUrl;
   static const String _authEndpoint = '/auth/token';
@@ -83,7 +81,7 @@ class QPayService {
         return _accessToken;
       } else {
         final errorData = jsonDecode(response.body);
-        log('QPayService: Failed to get access token: ${response.statusCode} - ${errorData}');
+        log('QPayService: Failed to get access token: ${response.statusCode} - $errorData');
         return null;
       }
     } catch (e) {
@@ -647,8 +645,9 @@ class QPayService {
           final paymentDate = payment.paymentDate;
           if (paymentDate == null) return false;
 
-          if (startDate != null && paymentDate.isBefore(startDate))
+          if (startDate != null && paymentDate.isBefore(startDate)) {
             return false;
+          }
           if (endDate != null && paymentDate.isAfter(endDate)) return false;
 
           return true;
@@ -703,8 +702,9 @@ class QPayService {
         if (startDate != null && paymentDate.isBefore(startDate)) return false;
         if (endDate != null && paymentDate.isAfter(endDate)) return false;
 
-        if (paymentMethod != null && payment.paymentMethod != paymentMethod)
+        if (paymentMethod != null && payment.paymentMethod != paymentMethod) {
           return false;
+        }
 
         return true;
       }).toList();

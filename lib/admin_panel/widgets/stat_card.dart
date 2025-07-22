@@ -77,7 +77,7 @@ class StatCard extends StatelessWidget {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: iconBg.withOpacity(0.2),
+                  color: iconBg.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, size: 32, color: iconBg),
@@ -117,15 +117,15 @@ class StatCard extends StatelessWidget {
             ],
           ),
           ...[
-          const SizedBox(height: 4),
-          Text(
-            periodLabel,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppThemes.getSecondaryTextColor(context),
+            const SizedBox(height: 4),
+            Text(
+              periodLabel,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppThemes.getSecondaryTextColor(context),
+              ),
             ),
-          ),
-        ],
+          ],
         ],
       ),
     );

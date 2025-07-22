@@ -1,7 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../services/database_service.dart';
-import '../services/listener_manager.dart';
 import 'enhanced_paginated_list.dart';
 
 /// Generic infinite-scroll list that paginates a Firestore [Query].
