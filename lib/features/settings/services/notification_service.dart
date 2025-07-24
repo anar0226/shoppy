@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:avii/core/services/error_handler_service.dart';
 
 class NotificationService {
   static const String _notificationsCollection = 'notifications';
@@ -24,7 +25,13 @@ class NotificationService {
         return notifications[notificationType] ?? true;
       }
     } catch (e) {
-      // Error checking notification setting
+      await ErrorHandlerService.instance.handleError(
+        operation: 'notification_service_error',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
     return true; // Default to enabled
   }
@@ -142,7 +149,13 @@ class NotificationService {
             .now(), // Use explicit timestamp instead of server timestamp
       });
     } catch (e) {
-      // Error creating notification
+      await ErrorHandlerService.instance.handleError(
+        operation: 'notification_service_error',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 
@@ -163,7 +176,13 @@ class NotificationService {
           .doc(notificationId)
           .update({'read': true});
     } catch (e) {
-      // Error marking notification as read
+      await ErrorHandlerService.instance.handleError(
+        operation: 'notification_service_error',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 
@@ -213,7 +232,13 @@ class NotificationService {
         }
       }
     } catch (e) {
-      // Error checking price drops
+      await ErrorHandlerService.instance.handleError(
+        operation: 'notification_service_error',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 
@@ -256,7 +281,13 @@ class NotificationService {
         );
       }
     } catch (e) {
-      // Error checking new products
+      await ErrorHandlerService.instance.handleError(
+        operation: 'notification_service_error',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 

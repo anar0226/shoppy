@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/widgets.dart';
+import 'error_handler_service.dart';
 
 /// Comprehensive listener management system to prevent memory leaks
 class ListenerManager {
@@ -243,17 +244,35 @@ class ListenerManager {
   }
 
   void _removeListener(String listenerId) {
-    _activeListeners.remove(listenerId);
-    _listenerCreationTimes.remove(listenerId);
-    _listenerDescriptions.remove(listenerId);
-    _totalListenersDisposed++;
+    try {
+      _activeListeners.remove(listenerId);
+      _listenerCreationTimes.remove(listenerId);
+      _listenerDescriptions.remove(listenerId);
+      _totalListenersDisposed++;
 
-    // Remove from widget associations
-    for (final entry in _widgetListeners.entries) {
-      entry.value.remove(listenerId);
-      if (entry.value.isEmpty) {
-        _widgetListeners.remove(entry.key);
+      // Remove from widget associations
+      final keysToRemove = <String>[];
+
+      for (final entry in _widgetListeners.entries) {
+        entry.value.remove(listenerId);
+        if (entry.value.isEmpty) {
+          keysToRemove.add(entry.key);
+        }
       }
+
+      // Remove empty entries after iteration to avoid concurrent modification
+      for (final key in keysToRemove) {
+        _widgetListeners.remove(key);
+      }
+    } catch (e) {
+      // Handle error without await since this is a synchronous method
+      ErrorHandlerService.instance.handleError(
+        operation: 'remove_listener',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 

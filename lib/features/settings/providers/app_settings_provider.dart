@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:avii/core/services/error_handler_service.dart';
 
 class AppSettingsProvider with ChangeNotifier {
   static const String _languageKey = 'language';
@@ -47,7 +48,13 @@ class AppSettingsProvider with ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      // Error loading settings
+      await ErrorHandlerService.instance.handleError(
+        operation: 'app_settings_provider_error',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 
@@ -62,7 +69,13 @@ class AppSettingsProvider with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_languageKey, locale.languageCode);
     } catch (e) {
-      // Error saving language
+      await ErrorHandlerService.instance.handleError(
+        operation: 'app_settings_provider_error',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 
@@ -84,7 +97,13 @@ class AppSettingsProvider with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_themeKey, themeMode.toString());
     } catch (e) {
-      // Error saving theme
+      await ErrorHandlerService.instance.handleError(
+        operation: 'app_settings_provider_error',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 

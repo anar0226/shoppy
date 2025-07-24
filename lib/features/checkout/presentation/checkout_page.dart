@@ -450,28 +450,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 return;
                               }
 
-                              // Check if email is verified
-                              if (!user.emailVerified) {
-                                PopupUtils.showError(
-                                  context: context,
-                                  message:
-                                      'Төлбөр хийхээс өмнө имэйл хаягаа баталгаажуулна уу. Баталгаажуулах холбоосыг имэйл хаягтаа илгээлээ.',
-                                );
-                                // Send verification email
-                                try {
-                                  await user.sendEmailVerification();
-                                  if (context.mounted) {
-                                    PopupUtils.showSuccess(
-                                      context: context,
-                                      message:
-                                          'Баталгаажуулах имэйл илгээгдлээ',
-                                    );
-                                  }
-                                } catch (e) {
-                                  // Ignore error if verification email fails
-                                }
-                                return;
-                              }
+                              // Email verification is now optional for purchases
 
                               // Check if shipping address is provided
                               if (addressProvider.addresses.isEmpty) {

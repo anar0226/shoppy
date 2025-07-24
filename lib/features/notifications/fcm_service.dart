@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/services/error_handler_service.dart';
 
 class FCMService {
   static final FCMService _instance = FCMService._internal();
@@ -56,7 +57,13 @@ class FCMService {
       _isInitialized = true;
       // FCM Service initialized successfully
     } catch (e) {
-      // Error initializing FCM Service
+      await ErrorHandlerService.instance.handleError(
+        operation: 'initialize_fcm_service',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 
@@ -133,7 +140,13 @@ class FCMService {
         // FCM Token retrieved
       }
     } catch (e) {
-      // Error getting FCM token
+      await ErrorHandlerService.instance.handleError(
+        operation: 'get_fcm_token',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 
@@ -166,7 +179,13 @@ class FCMService {
 
       // FCM token saved to Firestore
     } catch (e) {
-      // Error saving FCM token
+      await ErrorHandlerService.instance.handleError(
+        operation: 'save_fcm_token',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 
@@ -281,7 +300,13 @@ class FCMService {
         final data = jsonDecode(response.payload!) as Map<String, dynamic>;
         _navigateFromNotification(data);
       } catch (e) {
-        // Error parsing notification payload
+        ErrorHandlerService.instance.handleError(
+          operation: 'parse_notification_payload',
+          error: e,
+          showUserMessage: false,
+          logError: true,
+          fallbackValue: null,
+        );
       }
     }
   }
@@ -303,7 +328,13 @@ class FCMService {
         'timestamp': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      // Error processing notification data
+      await ErrorHandlerService.instance.handleError(
+        operation: 'process_notification_data',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 
@@ -352,7 +383,13 @@ class FCMService {
         'timestamp': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      // Error tracking notification tap
+      await ErrorHandlerService.instance.handleError(
+        operation: 'track_notification_tap',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 
@@ -404,7 +441,13 @@ class FCMService {
 
       // Push notification queued for user
     } catch (e) {
-      // Error sending push notification
+      await ErrorHandlerService.instance.handleError(
+        operation: 'send_push_notification',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 
@@ -455,7 +498,13 @@ class FCMService {
       await _firebaseMessaging.subscribeToTopic(topic);
       // Subscribed to topic
     } catch (e) {
-      // Error subscribing to topic
+      await ErrorHandlerService.instance.handleError(
+        operation: 'subscribe_to_topic',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 
@@ -465,7 +514,13 @@ class FCMService {
       await _firebaseMessaging.unsubscribeFromTopic(topic);
       // Unsubscribed from topic
     } catch (e) {
-      // Error unsubscribing from topic
+      await ErrorHandlerService.instance.handleError(
+        operation: 'unsubscribe_from_topic',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 

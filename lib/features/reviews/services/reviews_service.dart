@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/review_model.dart';
+import '../../../core/services/error_handler_service.dart';
 
 class ReviewsService {
   static final ReviewsService _instance = ReviewsService._internal();
@@ -69,7 +70,13 @@ class ReviewsService {
 
       return true;
     } catch (e) {
-      // Error submitting review
+      await ErrorHandlerService.instance.handleError(
+        operation: 'submit_review',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: false,
+      );
       return false;
     }
   }
@@ -360,7 +367,13 @@ class ReviewsService {
         'lastReviewAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      // Error updating store aggregate rating
+      await ErrorHandlerService.instance.handleError(
+        operation: 'update_store_aggregate_rating',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/services/error_handler_service.dart';
 
 class FeaturedProductsPage extends StatefulWidget {
   const FeaturedProductsPage({super.key});
@@ -51,7 +52,13 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
             // No super admin document found for this user
           }
         } catch (e) {
-          // Error checking super admin document
+          await ErrorHandlerService.instance.handleError(
+            operation: 'check_super_admin_document',
+            error: e,
+            showUserMessage: false,
+            logError: true,
+            fallbackValue: null,
+          );
         }
 
         // Check if user is regular admin
@@ -65,7 +72,13 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
             // No user document found
           }
         } catch (e) {
-          // Error checking user document
+          await ErrorHandlerService.instance.handleError(
+            operation: 'check_user_document',
+            error: e,
+            showUserMessage: false,
+            logError: true,
+            fallbackValue: null,
+          );
         }
       } else {
         // No authenticated user found
@@ -343,6 +356,14 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
         ),
       );
     } catch (e) {
+      await ErrorHandlerService.instance.handleError(
+        operation: 'save_featured_products',
+        error: e,
+        context: context,
+        showUserMessage: true,
+        logError: true,
+        fallbackValue: null,
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error saving featured products: $e'),

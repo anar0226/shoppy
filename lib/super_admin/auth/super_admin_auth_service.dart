@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/services/error_handler_service.dart';
 
 class SuperAdminAuthService {
   static final SuperAdminAuthService _instance =
@@ -69,7 +70,13 @@ class SuperAdminAuthService {
       });
       await _auth.signOut();
     } catch (e) {
-      // Handle error silently
+      await ErrorHandlerService.instance.handleError(
+        operation: 'super_admin_logout',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 
@@ -87,7 +94,13 @@ class SuperAdminAuthService {
         'timestamp': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      // Log error but don't throw
+      await ErrorHandlerService.instance.handleError(
+        operation: 'log_admin_activity',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 

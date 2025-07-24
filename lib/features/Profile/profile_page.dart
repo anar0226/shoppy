@@ -15,6 +15,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:avii/features/stores/models/store_model.dart';
 import 'package:avii/features/following/following_screen.dart';
 import 'package:avii/core/constants/assets.dart';
+import '../../core/services/error_handler_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -54,7 +55,13 @@ class _ProfilePageState extends State<ProfilePage> {
           .map((doc) => StoreModel.fromFirestore(doc).logo)
           .toList();
     } catch (e) {
-      // Handle error appropriately
+      await ErrorHandlerService.instance.handleError(
+        operation: 'get_followed_stores',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: <String>[],
+      );
       return [];
     }
   }
@@ -73,7 +80,14 @@ class _ProfilePageState extends State<ProfilePage> {
         final images = List<String>.from(d.data()['images'] ?? []);
         return images.isNotEmpty ? images.first : '';
       }).toList();
-    } catch (_) {
+    } catch (e) {
+      await ErrorHandlerService.instance.handleError(
+        operation: 'get_saved_images',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: <String>[],
+      );
       return [];
     }
   }

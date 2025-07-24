@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../home/presentation/main_scaffold.dart';
+import '../../core/services/error_handler_service.dart';
 
 class SupportContactPage extends StatelessWidget {
   const SupportContactPage({super.key});
@@ -253,7 +255,7 @@ class SupportContactPage extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
-        onPressed: () => _launchUrl(url),
+        onPressed: () => _launchUrl(context, url),
         icon: Icon(icon, size: 20),
         label: Text(
           label,
@@ -274,16 +276,57 @@ class SupportContactPage extends StatelessWidget {
     );
   }
 
-  Future<void> _launchUrl(String urlString) async {
+  Future<void> _launchUrl(BuildContext context, String urlString) async {
     try {
+      // Ensure URL has proper scheme
+      if (!urlString.startsWith('http://') &&
+          !urlString.startsWith('https://')) {
+        urlString = 'https://$urlString';
+      }
+
       final Uri url = Uri.parse(urlString);
+
+      // Validate URL has proper host
+      if (url.host.isEmpty) {
+        throw 'Invalid URL: No host specified';
+      }
+
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
-        throw 'Could not launch $urlString';
+        throw 'Could not launch $urlString - URL launcher not available';
       }
     } catch (e) {
-      // Error launching URL
+      await ErrorHandlerService.instance.handleError(
+        operation: 'launch_support_url',
+        error: e,
+        showUserMessage:
+            true, // Show error to user since this is a user-initiated action
+        logError: true,
+        fallbackValue: null,
+      );
+
+      // Show user-friendly error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Холбоос нээхэд алдаа гарлаа: $urlString'),
+          backgroundColor: Colors.red,
+          action: SnackBarAction(
+            label: 'Хуулах',
+            textColor: Colors.white,
+            onPressed: () {
+              // Copy URL to clipboard as fallback
+              Clipboard.setData(ClipboardData(text: urlString));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Холбоос хуулагдлаа'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+          ),
+        ),
+      );
     }
   }
 }

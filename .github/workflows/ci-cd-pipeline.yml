@@ -129,6 +129,22 @@ jobs:
       - name: 📦 Get Dependencies
         run: flutter pub get
 
+      - name: 🔧 Configure Environment Variables for Production
+        if: matrix.build-type == 'release'
+        run: |
+          # Create production environment file with actual secrets
+          echo "F_API_KEY=${{ secrets.FIREBASE_API_KEY }}" > assets/env/prod.env
+          echo "F_APP_ID=${{ secrets.FIREBASE_APP_ID }}" >> assets/env/prod.env
+          echo "F_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> assets/env/prod.env
+          echo "F_SENDER_ID=${{ secrets.FIREBASE_SENDER_ID }}" >> assets/env/prod.env
+          echo "QPAY_USERNAME=${{ secrets.QPAY_USERNAME }}" >> assets/env/prod.env
+          echo "QPAY_PASSWORD=${{ secrets.QPAY_PASSWORD }}" >> assets/env/prod.env
+          echo "QPAY_INVOICE_CODE=${{ secrets.QPAY_INVOICE_CODE }}" >> assets/env/prod.env
+          echo "QPAY_BASE_URL=${{ secrets.QPAY_BASE_URL }}" >> assets/env/prod.env
+          
+          # Verify the file was created correctly (without showing secrets)
+          echo "✅ Production environment file created with $(wc -l < assets/env/prod.env) variables"
+
       - name: 🔧 Configure Android Signing (Release Only)
         if: matrix.build-type == 'release' && github.ref == 'refs/heads/main'
         run: |

@@ -3,6 +3,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
@@ -40,49 +41,59 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBv9U2CdHSEa5PBBlYnYulgG1cRxQfbhwo',
-    appId: '1:110394685689:web:a5d998cdc2fc3b0842ca28',
-    messagingSenderId: '110394685689',
-    projectId: 'shoppy-6d81f',
-    authDomain: 'shoppy-6d81f.firebaseapp.com',
-    storageBucket: 'shoppy-6d81f.firebasestorage.app',
-    measurementId: 'G-BCGNM9C9ED',
-  );
+  static FirebaseOptions get web => FirebaseOptions(
+        apiKey: dotenv.env['F_API_KEY'] ??
+            'AIzaSyBv9U2CdHSEa5PBBlYnYulgG1cRxQfbhwo',
+        appId: dotenv.env['F_APP_ID'] ??
+            '1:110394685689:web:a5d998cdc2fc3b0842ca28',
+        messagingSenderId: dotenv.env['F_SENDER_ID'] ?? '110394685689',
+        projectId: dotenv.env['F_PROJECT_ID'] ?? 'shoppy-6d81f',
+        authDomain: 'shoppy-6d81f.firebaseapp.com',
+        storageBucket: 'shoppy-6d81f.firebasestorage.app',
+        measurementId: 'G-BCGNM9C9ED',
+      );
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBhGaI4YU6skCekK8AG1d70j00WFZfog70',
-    appId: '1:110394685689:android:8848cbe8fc068acf42ca28',
-    messagingSenderId: '110394685689',
-    projectId: 'shoppy-6d81f',
-    storageBucket: 'shoppy-6d81f.firebasestorage.app',
-  );
+  static FirebaseOptions get android => FirebaseOptions(
+        apiKey: dotenv.env['F_API_KEY'] ??
+            'AIzaSyBhGaI4YU6skCekK8AG1d70j00WFZfog70',
+        appId: dotenv.env['F_APP_ID'] ??
+            '1:110394685689:android:8848cbe8fc068acf42ca28',
+        messagingSenderId: dotenv.env['F_SENDER_ID'] ?? '110394685689',
+        projectId: dotenv.env['F_PROJECT_ID'] ?? 'shoppy-6d81f',
+        storageBucket: 'shoppy-6d81f.firebasestorage.app',
+      );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCRDUWPZ3MaxcSPonfO8ubeKqqkmyVyV78',
-    appId: '1:110394685689:ios:be2eb9a923aac7e342ca28',
-    messagingSenderId: '110394685689',
-    projectId: 'shoppy-6d81f',
-    storageBucket: 'shoppy-6d81f.firebasestorage.app',
-    iosBundleId: 'com.avii.marketplace',
-  );
+  static FirebaseOptions get ios => FirebaseOptions(
+        apiKey: dotenv.env['F_API_KEY'] ??
+            'AIzaSyCRDUWPZ3MaxcSPonfO8ubeKqqkmyVyV78',
+        appId: dotenv.env['F_APP_ID'] ??
+            '1:110394685689:ios:be2eb9a923aac7e342ca28',
+        messagingSenderId: dotenv.env['F_SENDER_ID'] ?? '110394685689',
+        projectId: dotenv.env['F_PROJECT_ID'] ?? 'shoppy-6d81f',
+        storageBucket: 'shoppy-6d81f.firebasestorage.app',
+        iosBundleId: 'com.avii.marketplace',
+      );
 
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCRDUWPZ3MaxcSPonfO8ubeKqqkmyVyV78',
-    appId: '1:110394685689:ios:be2eb9a923aac7e342ca28',
-    messagingSenderId: '110394685689',
-    projectId: 'shoppy-6d81f',
-    storageBucket: 'shoppy-6d81f.firebasestorage.app',
-    iosBundleId: 'com.avii.marketplace',
-  );
+  static FirebaseOptions get macos => FirebaseOptions(
+        apiKey: dotenv.env['F_API_KEY'] ??
+            'AIzaSyCRDUWPZ3MaxcSPonfO8ubeKqqkmyVyV78',
+        appId: dotenv.env['F_APP_ID'] ??
+            '1:110394685689:ios:be2eb9a923aac7e342ca28',
+        messagingSenderId: dotenv.env['F_SENDER_ID'] ?? '110394685689',
+        projectId: dotenv.env['F_PROJECT_ID'] ?? 'shoppy-6d81f',
+        storageBucket: 'shoppy-6d81f.firebasestorage.app',
+        iosBundleId: 'com.avii.marketplace',
+      );
 
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBv9U2CdHSEa5PBBlYnYulgG1cRxQfbhwo',
-    appId: '1:110394685689:web:6fc9e10197b847ab42ca28',
-    messagingSenderId: '110394685689',
-    projectId: 'shoppy-6d81f',
-    authDomain: 'shoppy-6d81f.firebaseapp.com',
-    storageBucket: 'shoppy-6d81f.firebasestorage.app',
-    measurementId: 'G-KE94PVC1ZW',
-  );
+  static FirebaseOptions get windows => FirebaseOptions(
+        apiKey: dotenv.env['F_API_KEY'] ??
+            'AIzaSyBv9U2CdHSEa5PBBlYnYulgG1cRxQfbhwo',
+        appId: dotenv.env['F_APP_ID'] ??
+            '1:110394685689:web:6fc9e10197b847ab42ca28',
+        messagingSenderId: dotenv.env['F_SENDER_ID'] ?? '110394685689',
+        projectId: dotenv.env['F_PROJECT_ID'] ?? 'shoppy-6d81f',
+        authDomain: 'shoppy-6d81f.firebaseapp.com',
+        storageBucket: 'shoppy-6d81f.firebasestorage.app',
+        measurementId: 'G-KE94PVC1ZW',
+      );
 }

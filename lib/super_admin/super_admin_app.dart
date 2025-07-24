@@ -16,6 +16,7 @@ import 'pages/featured_products_page.dart';
 import 'pages/backup_management_page.dart';
 import 'widgets/side_menu.dart';
 import 'widgets/top_nav_bar.dart';
+import '../core/services/error_handler_service.dart';
 
 class SuperAdminApp extends StatelessWidget {
   const SuperAdminApp({super.key});
@@ -74,6 +75,13 @@ class _SuperAdminRootState extends State<SuperAdminRoot> {
         });
       }
     } catch (e) {
+      await ErrorHandlerService.instance.handleError(
+        operation: 'super_admin_authentication_check',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
       if (mounted) {
         setState(() {
           _isAuthenticated = false;

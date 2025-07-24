@@ -79,6 +79,7 @@ class ProductionLogger {
         'buildNumber': _appInfo?['buildNumber'],
       },
       timestamp: DateTime.now(),
+      userId: _auth.currentUser?.uid,
     );
 
     await _addLogEntry(logEntry);
@@ -110,6 +111,7 @@ class ProductionLogger {
         'timestamp': DateTime.now().toIso8601String(),
       },
       timestamp: DateTime.now(),
+      userId: _auth.currentUser?.uid,
     );
 
     await _addLogEntry(logEntry);
@@ -133,6 +135,7 @@ class ProductionLogger {
         'timestamp': DateTime.now().toIso8601String(),
       },
       timestamp: DateTime.now(),
+      userId: _auth.currentUser?.uid,
     );
 
     await _addLogEntry(logEntry);
@@ -158,6 +161,7 @@ class ProductionLogger {
         'timestamp': DateTime.now().toIso8601String(),
       },
       timestamp: DateTime.now(),
+      userId: _auth.currentUser?.uid,
     );
 
     await _addLogEntry(logEntry);
@@ -182,6 +186,7 @@ class ProductionLogger {
         'timestamp': DateTime.now().toIso8601String(),
       },
       timestamp: DateTime.now(),
+      userId: _auth.currentUser?.uid,
     );
 
     await _addLogEntry(logEntry);
@@ -243,6 +248,7 @@ class ProductionLogger {
         'sessionId': _getSessionId(),
       },
       timestamp: DateTime.now(),
+      userId: _auth.currentUser?.uid,
     );
 
     await _addLogEntry(logEntry);
@@ -267,6 +273,7 @@ class ProductionLogger {
         'timestamp': DateTime.now().toIso8601String(),
       },
       timestamp: DateTime.now(),
+      userId: _auth.currentUser?.uid,
     );
 
     await _addLogEntry(logEntry);
@@ -294,6 +301,7 @@ class ProductionLogger {
         'ipAddress': await _getClientIP(),
       },
       timestamp: DateTime.now(),
+      userId: _auth.currentUser?.uid,
     );
 
     await _addLogEntry(logEntry);
@@ -421,6 +429,7 @@ class LogEntry {
   final String? stackTrace;
   final Map<String, dynamic>? context;
   final DateTime timestamp;
+  final String? userId;
 
   LogEntry({
     required this.level,
@@ -429,6 +438,7 @@ class LogEntry {
     this.stackTrace,
     this.context,
     required this.timestamp,
+    this.userId,
   });
 
   Map<String, dynamic> toMap() {
@@ -440,6 +450,7 @@ class LogEntry {
       'context': context,
       'timestamp': Timestamp.fromDate(timestamp),
       'createdAt': FieldValue.serverTimestamp(),
+      'userId': userId,
     };
   }
 }

@@ -82,6 +82,20 @@ service cloud.firestore {
       allow create: if isSuperAdmin(); // Allow creation for tracking
     }
     
+    // App logs - authenticated users can create their own logs, super admins can read all
+    match /app_logs/{logId} {
+      allow read: if isSuperAdmin();
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      allow write: if isSuperAdmin();
+    }
+    
+    // User preferences (simple) - users can manage their own preferences
+    match /user_preferences_simple/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
     // Commission rules - super admins only
     match /commission_rules/{ruleId} {
       allow read, write, create: if isSuperAdmin();

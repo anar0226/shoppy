@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -13,8 +14,6 @@ import 'dart:async';
 
 /// Initialise services & run the Flutter app.
 Future<void> bootstrap() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
   // Global Flutter error handling with production logging
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
@@ -58,20 +57,33 @@ Future<void> bootstrap() async {
 // Internal bootstrap moved here to allow zone wrapper
 Future<void> _internalBootstrap() async {
   try {
-    // 1. Load environment file
-    await dotenv.load(fileName: 'assets/env/prod.env');
+    // 1. Initialize Flutter bindings first (outside of any special zones)
+    WidgetsFlutterBinding.ensureInitialized();
 
-    // 2. Firebase initialization with error handling
-    await Firebase.initializeApp(
-      options: FirebaseOptions(
-        apiKey: dotenv.env['F_API_KEY']!,
-        appId: dotenv.env['F_APP_ID']!,
-        projectId: dotenv.env['F_PROJECT_ID']!,
-        messagingSenderId: dotenv.env['F_SENDER_ID']!,
-      ),
-    );
+    // 2. Load environment file (production for release, development for debug)
+    final envFile = kReleaseMode ? 'assets/env/prod.env' : 'assets/env/dev.env';
+    await dotenv.load(fileName: envFile);
 
-    // 3. Initialize production logger
+    // 3. Firebase initialization with error handling
+    try {
+      await Firebase.initializeApp(
+        options: FirebaseOptions(
+          apiKey: dotenv.env['F_API_KEY']!,
+          appId: dotenv.env['F_APP_ID']!,
+          projectId: dotenv.env['F_PROJECT_ID']!,
+          messagingSenderId: dotenv.env['F_SENDER_ID']!,
+        ),
+      );
+    } catch (e) {
+      // If Firebase is already initialized, continue
+      if (e.toString().contains('duplicate-app')) {
+        debugPrint('Firebase already initialized, continuing...');
+      } else {
+        rethrow;
+      }
+    }
+
+    // 4. Initialize production logger
     await ProductionLogger.instance.initialize();
     await ProductionLogger.instance.info('App bootstrap started', context: {
       'environment':

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/simple_user_preferences.dart';
 import '../../stores/models/store_model.dart';
+import '../../../core/services/error_handler_service.dart';
 
 class SimpleRecommendationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -24,7 +25,13 @@ class SimpleRecommendationService {
       }
       return null;
     } catch (e) {
-      // Error getting user preferences
+      await ErrorHandlerService.instance.handleError(
+        operation: 'get_user_preferences',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
       return null;
     }
   }
@@ -37,7 +44,13 @@ class SimpleRecommendationService {
           .doc(preferences.userId)
           .set(preferences.toMap());
     } catch (e) {
-      // Error saving user preferences
+      await ErrorHandlerService.instance.handleError(
+        operation: 'save_user_preferences',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
     }
   }
 
@@ -114,7 +127,13 @@ class SimpleRecommendationService {
 
       return recommendedStores;
     } catch (e) {
-      // Error getting recommended stores
+      await ErrorHandlerService.instance.handleError(
+        operation: 'get_recommended_stores',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
       return await _getRandomStores(limit);
     }
   }
@@ -172,7 +191,13 @@ class SimpleRecommendationService {
       final userData = userDoc.data() as Map<String, dynamic>;
       return List<String>.from(userData['notInterestedStoreIds'] ?? []);
     } catch (e) {
-      // Error getting not interested stores
+      await ErrorHandlerService.instance.handleError(
+        operation: 'get_not_interested_stores',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
       return [];
     }
   }
@@ -198,7 +223,13 @@ class SimpleRecommendationService {
       stores.shuffle();
       return stores.take(limit).toList();
     } catch (e) {
-      // Error getting random stores
+      await ErrorHandlerService.instance.handleError(
+        operation: 'get_random_stores',
+        error: e,
+        showUserMessage: false,
+        logError: true,
+        fallbackValue: null,
+      );
       return [];
     }
   }

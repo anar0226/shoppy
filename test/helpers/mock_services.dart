@@ -1,178 +1,86 @@
+import 'dart:typed_data';
+import 'dart:io';
 import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:avii/core/services/auth_service.dart';
-import 'package:avii/core/services/database_service.dart';
-import 'package:avii/core/services/storage_service.dart';
-import 'package:avii/features/orders/services/order_service.dart';
-import 'package:avii/features/products/services/product_service.dart';
-import 'package:avii/features/notifications/notification_service.dart';
 
-// Generate mocks
-@GenerateMocks([
-  auth.FirebaseAuth,
-  auth.User,
-  auth.UserCredential,
-  FirebaseFirestore,
-  CollectionReference,
-  DocumentReference,
-  DocumentSnapshot,
-  QuerySnapshot,
-  QueryDocumentSnapshot,
-  FirebaseStorage,
-  Reference,
-  UploadTask,
-  TaskSnapshot,
-  AuthService,
-  DatabaseService,
-  StorageService,
-  OrderService,
-  ProductService,
-  NotificationService,
-])
-void main() {}
-
-/// Mock service provider for testing
+/// Simple mock service provider for testing
 class MockServiceProvider {
   static final MockServiceProvider _instance = MockServiceProvider._internal();
   factory MockServiceProvider() => _instance;
   MockServiceProvider._internal();
 
-  late MockFirebaseAuth _mockAuth;
-  late MockFirebaseFirestore _mockFirestore;
-  late MockFirebaseStorage _mockStorage;
-  late MockAuthService _mockAuthService;
-  late MockDatabaseService _mockDatabaseService;
-  late MockStorageService _mockStorageService;
-  late MockOrderService _mockOrderService;
-  late MockProductService _mockProductService;
-  late MockNotificationService _mockNotificationService;
-
-  /// Initialize all mock services
+  /// Initialize mock services
   void initialize() {
-    _mockAuth = MockFirebaseAuth();
-    _mockFirestore = MockFirebaseFirestore();
-    _mockStorage = MockFirebaseStorage();
-    _mockAuthService = MockAuthService();
-    _mockDatabaseService = MockDatabaseService();
-    _mockStorageService = MockStorageService();
-    _mockOrderService = MockOrderService();
-    _mockProductService = MockProductService();
-    _mockNotificationService = MockNotificationService();
+    // This will be implemented when we generate mocks
   }
-
-  /// Get mock Firebase Auth
-  MockFirebaseAuth get auth => _mockAuth;
-
-  /// Get mock Firestore
-  MockFirebaseFirestore get firestore => _mockFirestore;
-
-  /// Get mock Firebase Storage
-  MockFirebaseStorage get storage => _mockStorage;
-
-  /// Get mock Auth Service
-  MockAuthService get authService => _mockAuthService;
-
-  /// Get mock Database Service
-  MockDatabaseService get databaseService => _mockDatabaseService;
-
-  /// Get mock Storage Service
-  MockStorageService get storageService => _mockStorageService;
-
-  /// Get mock Order Service
-  MockOrderService get orderService => _mockOrderService;
-
-  /// Get mock Product Service
-  MockProductService get productService => _mockProductService;
-
-  /// Get mock Notification Service
-  MockNotificationService get notificationService => _mockNotificationService;
 
   /// Reset all mocks
   void reset() {
-    reset(_mockAuth);
-    reset(_mockFirestore);
-    reset(_mockStorage);
-    reset(_mockAuthService);
-    reset(_mockDatabaseService);
-    reset(_mockStorageService);
-    reset(_mockOrderService);
-    reset(_mockProductService);
-    reset(_mockNotificationService);
+    // This will be implemented when we generate mocks
   }
 
   /// Setup common mock behaviors
   void setupCommonMocks() {
-    // Setup auth mocks
-    when(_mockAuth.currentUser).thenReturn(null);
-    when(_mockAuth.authStateChanges()).thenAnswer((_) => Stream.value(null));
-
-    // Setup firestore mocks
-    when(_mockFirestore.collection(any)).thenReturn(MockCollectionReference());
-    when(_mockFirestore.batch()).thenReturn(MockWriteBatch());
-
-    // Setup storage mocks
-    when(_mockStorage.ref()).thenReturn(MockReference());
-    when(_mockStorage.refFromURL(any)).thenReturn(MockReference());
+    // This will be implemented when we generate mocks
   }
 }
 
 /// Mock collection reference
 class MockCollectionReference extends Mock implements CollectionReference {
   @override
-  DocumentReference doc([String? path]) {
+  DocumentReference<Object?> doc([String? path]) {
     return MockDocumentReference();
   }
 
   @override
-  Query where(String field,
-      {dynamic isEqualTo,
-      dynamic isNotEqualTo,
-      dynamic isLessThan,
-      dynamic isLessThanOrEqualTo,
-      dynamic isGreaterThan,
-      dynamic isGreaterThanOrEqualTo,
-      dynamic arrayContains,
-      List<dynamic>? arrayContainsAny,
-      List<dynamic>? whereIn,
-      List<dynamic>? whereNotIn,
+  Query<Object?> where(Object field,
+      {Object? isEqualTo,
+      Object? isNotEqualTo,
+      Object? isLessThan,
+      Object? isLessThanOrEqualTo,
+      Object? isGreaterThan,
+      Object? isGreaterThanOrEqualTo,
+      Object? arrayContains,
+      Iterable<Object?>? arrayContainsAny,
+      Iterable<Object?>? whereIn,
+      Iterable<Object?>? whereNotIn,
       bool? isNull}) {
     return MockQuery();
   }
 
   @override
-  Query orderBy(String field, {bool descending = false}) {
+  Query<Object?> orderBy(Object field, {bool descending = false}) {
     return MockQuery();
   }
 
   @override
-  Query limit(int limit) {
+  Query<Object?> limit(int limit) {
     return MockQuery();
   }
 }
 
 /// Mock document reference
-class MockDocumentReference extends Mock implements DocumentReference {
+class MockDocumentReference extends Mock implements DocumentReference<Object?> {
   @override
   String get id => 'mock_doc_id';
 
   @override
-  CollectionReference get parent => MockCollectionReference();
+  CollectionReference<Object?> get parent => MockCollectionReference();
 
   @override
-  Future<DocumentSnapshot> get([GetOptions? options]) async {
+  Future<DocumentSnapshot<Object?>> get([GetOptions? options]) async {
     return MockDocumentSnapshot();
   }
 
   @override
-  Future<void> set(Map<String, dynamic> data, [SetOptions? options]) async {
+  Future<void> set(Object? data, [SetOptions? options]) async {
     // Mock implementation
   }
 
   @override
-  Future<void> update(Map<String, dynamic> data) async {
+  Future<void> update(Map<Object, Object?> data) async {
     // Mock implementation
   }
 
@@ -183,46 +91,46 @@ class MockDocumentReference extends Mock implements DocumentReference {
 }
 
 /// Mock query
-class MockQuery extends Mock implements Query {
+class MockQuery extends Mock implements Query<Object?> {
   @override
-  Query where(String field,
-      {dynamic isEqualTo,
-      dynamic isNotEqualTo,
-      dynamic isLessThan,
-      dynamic isLessThanOrEqualTo,
-      dynamic isGreaterThan,
-      dynamic isGreaterThanOrEqualTo,
-      dynamic arrayContains,
-      List<dynamic>? arrayContainsAny,
-      List<dynamic>? whereIn,
-      List<dynamic>? whereNotIn,
+  Query<Object?> where(Object field,
+      {Object? isEqualTo,
+      Object? isNotEqualTo,
+      Object? isLessThan,
+      Object? isLessThanOrEqualTo,
+      Object? isGreaterThan,
+      Object? isGreaterThanOrEqualTo,
+      Object? arrayContains,
+      Iterable<Object?>? arrayContainsAny,
+      Iterable<Object?>? whereIn,
+      Iterable<Object?>? whereNotIn,
       bool? isNull}) {
     return this;
   }
 
   @override
-  Query orderBy(String field, {bool descending = false}) {
+  Query<Object?> orderBy(Object field, {bool descending = false}) {
     return this;
   }
 
   @override
-  Query limit(int limit) {
+  Query<Object?> limit(int limit) {
     return this;
   }
 
   @override
-  Query startAfterDocument(DocumentSnapshot document) {
+  Query<Object?> startAfterDocument(DocumentSnapshot<Object?> document) {
     return this;
   }
 
   @override
-  Future<QuerySnapshot> get([GetOptions? options]) async {
+  Future<QuerySnapshot<Object?>> get([GetOptions? options]) async {
     return MockQuerySnapshot();
   }
 }
 
 /// Mock document snapshot
-class MockDocumentSnapshot extends Mock implements DocumentSnapshot {
+class MockDocumentSnapshot extends Mock implements DocumentSnapshot<Object?> {
   @override
   String get id => 'mock_doc_id';
 
@@ -230,13 +138,13 @@ class MockDocumentSnapshot extends Mock implements DocumentSnapshot {
   bool get exists => true;
 
   @override
-  Map<String, dynamic> data() => <String, dynamic>{};
+  Object? data() => <String, dynamic>{};
 }
 
 /// Mock query snapshot
-class MockQuerySnapshot extends Mock implements QuerySnapshot {
+class MockQuerySnapshot extends Mock implements QuerySnapshot<Object?> {
   @override
-  List<QueryDocumentSnapshot> get docs => [];
+  List<QueryDocumentSnapshot<Object?>> get docs => [];
 
   @override
   int get size => 0;
@@ -245,18 +153,17 @@ class MockQuerySnapshot extends Mock implements QuerySnapshot {
 /// Mock write batch
 class MockWriteBatch extends Mock implements WriteBatch {
   @override
-  void set(DocumentReference document, Map<String, dynamic> data,
-      [SetOptions? options]) {
+  void set<T>(DocumentReference<T> document, T data, [SetOptions? options]) {
     // Mock implementation
   }
 
   @override
-  void update(DocumentReference document, Map<String, dynamic> data) {
+  void update(DocumentReference<Object?> document, Map<Object, Object?> data) {
     // Mock implementation
   }
 
   @override
-  void delete(DocumentReference document) {
+  void delete(DocumentReference<Object?> document) {
     // Mock implementation
   }
 
@@ -325,4 +232,40 @@ class MockUser extends Mock implements auth.User {
 class MockUserCredential extends Mock implements auth.UserCredential {
   @override
   auth.User? get user => MockUser();
+}
+
+/// Mock Firebase Auth
+class MockFirebaseAuth extends Mock implements auth.FirebaseAuth {
+  @override
+  auth.User? get currentUser => null;
+
+  @override
+  Stream<auth.User?> authStateChanges() => Stream.value(null);
+}
+
+/// Mock Firebase Firestore
+class MockFirebaseFirestore extends Mock implements FirebaseFirestore {
+  @override
+  CollectionReference<Map<String, dynamic>> collection(String collectionPath) {
+    return MockCollectionReference()
+        as CollectionReference<Map<String, dynamic>>;
+  }
+
+  @override
+  WriteBatch batch() {
+    return MockWriteBatch();
+  }
+}
+
+/// Mock Firebase Storage
+class MockFirebaseStorage extends Mock implements FirebaseStorage {
+  @override
+  Reference ref([String? path]) {
+    return MockReference();
+  }
+
+  @override
+  Reference refFromURL(String url) {
+    return MockReference();
+  }
 }

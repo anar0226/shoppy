@@ -45,6 +45,7 @@ app.*.map.json
 
 # Environment files with sensitive data
 assets/env/prod.env
+assets/env/dev.env
 assets/env/*.env
 .env
 .env.local

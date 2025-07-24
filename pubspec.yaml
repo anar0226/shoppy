@@ -192,6 +192,7 @@ flutter:
     - assets/images/logos/STOREPAY.png
     # env file
     - assets/env/prod.env
+    - assets/env/dev.env
   
 
   # Custom fonts configuration

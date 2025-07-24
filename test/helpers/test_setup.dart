@@ -44,12 +44,10 @@ class TestSetup {
     required Widget child,
     List<NavigatorObserver> navigatorObservers = const [],
   }) {
-    return NetworkImageMock(
-      child: MaterialApp(
-        home: child,
-        navigatorObservers: navigatorObservers,
-        debugShowCheckedModeBanner: false,
-      ),
+    return MaterialApp(
+      home: child,
+      navigatorObservers: navigatorObservers,
+      debugShowCheckedModeBanner: false,
     );
   }
 

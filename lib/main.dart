@@ -32,6 +32,7 @@ import 'features/support/support_contact_page.dart';
 import 'bootstrap.dart' as boot;
 import 'core/widgets/paginated_firestore_list.dart';
 import 'core/providers/connectivity_provider.dart';
+import 'core/services/error_handler_service.dart';
 
 void main() => boot.bootstrap();
 
@@ -107,7 +108,13 @@ class _ShopUBAppState extends State<ShopUBApp> {
         }
       }
     } catch (e) {
-      // Error navigating to product
+      await ErrorHandlerService.instance.handleError(
+        operation: 'navigate_to_product',
+        error: e,
+        context: context,
+        showUserMessage: true,
+        fallbackValue: null,
+      );
     }
   }
 

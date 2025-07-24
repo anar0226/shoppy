@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "110394685689-2fkov20juoag3vqipt4h97acsr3it0bo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.avii.marketplace",
+            "certificate_hash": "bd20373674eaa1b95dc787d06162bd67a145ccd0"
+          }
+        },
+        {
           "client_id": "110394685689-cgratj82borj9lsgqh7gocciia7nbvrq.apps.googleusercontent.com",
           "client_type": 3
         }
