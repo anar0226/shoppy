@@ -9,9 +9,9 @@ class AppThemes {
   static const Color infoColor = Color(0xFF8B5CF6); // Purple
 
   // Light theme colors
-  static const Color lightBackground = Color(0xFFFFFFFF);
-  static const Color lightSurface = Color(0xFFF8FAFC);
-  static const Color lightSurfaceVariant = Color(0xFFF1F5F9);
+  static const Color lightBackground = Color(0xFFFFFFFF); // Pure white
+  static const Color lightSurface = Color(0xFFFFFFFF); // Pure white
+  static const Color lightSurfaceVariant = Color(0xFFFFFFFF); // Pure white
   static const Color lightOnBackground = Color(0xFF0F172A);
   static const Color lightOnSurface = Color(0xFF334155);
   static const Color lightOnSurfaceVariant = Color(0xFF64748B);
@@ -34,7 +34,9 @@ class AppThemes {
       brightness: Brightness.light,
       primarySwatch: Colors.blue,
       primaryColor: primaryColor,
-      scaffoldBackgroundColor: lightBackground,
+      scaffoldBackgroundColor: lightBackground, // Pure white
+      canvasColor: lightBackground, // Pure white
+      cardColor: lightBackground, // Pure white
       appBarTheme: const AppBarTheme(
         backgroundColor: lightBackground,
         foregroundColor: lightOnBackground,
@@ -59,12 +61,20 @@ class AppThemes {
         ),
       ),
       cardTheme: CardTheme(
-        color: lightBackground,
+        color: lightBackground, // Pure white
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: lightBorder),
         ),
+      ),
+      colorScheme: const ColorScheme.light(
+        background: lightBackground, // Pure white
+        surface: lightBackground, // Pure white
+        surfaceVariant: lightBackground, // Pure white
+        onBackground: lightOnBackground,
+        onSurface: lightOnSurface,
+        primary: primaryColor,
       ),
     );
   }

@@ -10,14 +10,37 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
 
   Future<UserCredential> signIn(String email, String password) async {
-    return _auth.signInWithEmailAndPassword(email: email, password: password);
+    try {
+      return await _auth.signInWithEmailAndPassword(
+          email: email, password: password);
+    } on FirebaseAuthException {
+      // Re-throw with the original exception to maintain error codes
+      rethrow;
+    } catch (e) {
+      // Convert other errors to FirebaseAuthException-like format
+      throw FirebaseAuthException(
+        code: 'unknown',
+        message: 'An unexpected error occurred during signin: $e',
+      );
+    }
   }
 
   Future<void> signOut() => _auth.signOut();
 
   Future<UserCredential> signUp(String email, String password) async {
-    return _auth.createUserWithEmailAndPassword(
-        email: email, password: password);
+    try {
+      return await _auth.createUserWithEmailAndPassword(
+          email: email, password: password);
+    } on FirebaseAuthException {
+      // Re-throw with the original exception to maintain error codes
+      rethrow;
+    } catch (e) {
+      // Convert other errors to FirebaseAuthException-like format
+      throw FirebaseAuthException(
+        code: 'unknown',
+        message: 'An unexpected error occurred during signup: $e',
+      );
+    }
   }
 
   Future<void> sendPasswordReset(String email) async {

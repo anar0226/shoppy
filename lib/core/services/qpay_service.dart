@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:async';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../config/environment_config.dart';
-import 'dart:async';
 
 /// Production-ready QPay API Integration Service
 /// Enhanced with timeout handling, reconciliation, and refund processing
@@ -47,9 +48,16 @@ class QPayService {
         if (refreshed) return _accessToken;
       }
 
-      log('QPayService: Requesting new access token');
-      log('QPayService: Base URL: $_baseUrl');
-      log('QPayService: Username (client_id): ${EnvironmentConfig.qpayUsername}');
+      // Get credentials from environment
+      final username = EnvironmentConfig.qpayUsername;
+      final password = EnvironmentConfig.qpayPassword;
+
+      if (username.isEmpty || password.isEmpty) {
+        log('QPayService: Missing QPay credentials in environment');
+        throw Exception('QPay credentials not configured');
+      }
+
+      log('QPayService: Requesting new access token from $_baseUrl$_authEndpoint');
 
       final response = await http
           .post(
@@ -57,36 +65,44 @@ class QPayService {
             headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
-              'Authorization':
-                  'Basic ${base64Encode(utf8.encode('${EnvironmentConfig.qpayUsername}:${EnvironmentConfig.qpayPassword}'))}',
+              'User-Agent': 'Shoppy-Mobile-App/1.0',
             },
-            body: jsonEncode({}), // Empty body as per documentation
+            body: jsonEncode({
+              'username': username,
+              'password': password,
+            }),
           )
           .timeout(_apiTimeout);
 
-      log('QPayService: Auth response status: ${response.statusCode}');
-      log('QPayService: Auth response body: ${response.body}');
+      log('QPayService: Token response status: ${response.statusCode}');
+      log('QPayService: Token response headers: ${response.headers}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
         _accessToken = data['access_token'];
         _refreshToken = data['refresh_token'];
 
-        // Set expiry based on expires_in or default to 1 hour
         final expiresIn = data['expires_in'] ?? 3600;
         _tokenExpiry = DateTime.now().add(Duration(seconds: expiresIn));
 
         log('QPayService: Successfully obtained access token');
         return _accessToken;
       } else {
-        final errorData = jsonDecode(response.body);
-        log('QPayService: Failed to get access token: ${response.statusCode} - $errorData');
-        return null;
+        final errorBody = response.body;
+        log('QPayService: Failed to get access token: ${response.statusCode} - $errorBody');
+        throw Exception(
+            'QPay authentication failed: ${response.statusCode} - $errorBody');
       }
     } catch (e) {
       log('QPayService: Error getting access token: $e');
-      return null;
+      if (e is TimeoutException) {
+        throw Exception('QPay API timeout - check network connection');
+      } else if (e.toString().contains('SocketException')) {
+        throw Exception('Network error - unable to connect to QPay API');
+      } else if (e.toString().contains('HandshakeException')) {
+        throw Exception('SSL/TLS error - check certificate configuration');
+      }
+      rethrow;
     }
   }
 
@@ -156,8 +172,9 @@ class QPayService {
             customerEmail.replaceAll('@', '_').replaceAll('.', '_'),
         'invoice_description': description,
         'amount': amount,
-        'callback_url':
-            'https://us-central1-shoppy-6d81f.cloudfunctions.net/qpayWebhook',
+        'callback_url': metadata?['type'] == 'subscription'
+            ? 'https://us-central1-shoppy-6d81f.cloudfunctions.net/subscriptionWebhook'
+            : 'https://us-central1-shoppy-6d81f.cloudfunctions.net/qpayWebhook',
         'return_url': 'avii://payment?action=success&order_id=$orderId',
         'cancel_url': 'avii://payment?action=cancelled&order_id=$orderId',
         'expiry_date': expiryTime.toIso8601String(),
@@ -819,6 +836,17 @@ class QPayService {
     }
 
     return debugInfo;
+  }
+
+  /// Simple debug method to check environment variables
+  static Map<String, dynamic> debugEnvironment() {
+    return {
+      'qpayUsername': EnvironmentConfig.qpayUsername,
+      'hasQpayPassword': EnvironmentConfig.qpayPassword.isNotEmpty,
+      'qpayInvoiceCode': EnvironmentConfig.qpayInvoiceCode,
+      'qpayBaseUrl': EnvironmentConfig.qpayBaseUrl,
+      'hasPaymentConfig': EnvironmentConfig.hasPaymentConfig,
+    };
   }
 }
 

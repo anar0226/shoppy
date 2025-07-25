@@ -9,6 +9,7 @@ import '../../features/products/services/product_service.dart';
 import '../../features/products/models/product_model.dart';
 import '../../core/services/image_upload_service.dart';
 import '../auth/auth_service.dart';
+import 'store_payout_settings_page.dart';
 
 class StorefrontPage extends StatefulWidget {
   const StorefrontPage({super.key});
@@ -746,6 +747,102 @@ class _StorefrontPageState extends State<StorefrontPage> {
                       },
                     ),
                   ),
+              ],
+            ),
+          ),
+        ),
+
+        // Payout Settings Section
+        const SizedBox(height: 24),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.account_balance_wallet,
+                        color: Colors.green),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Төлбөрийн тохиргоо',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const Spacer(),
+                    if (_storeModel != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _storeModel!.isPayoutSetupComplete
+                              ? Colors.green.shade100
+                              : Colors.orange.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _storeModel!.isPayoutSetupComplete
+                              ? 'Бүрэн'
+                              : 'Бүрэн бус',
+                          style: TextStyle(
+                            color: _storeModel!.isPayoutSetupComplete
+                                ? Colors.green.shade700
+                                : Colors.orange.shade700,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Олсон орлогоо хүлээн авахын тулд банкны мэдээлэл, QPay хэтэвч, төлбөрийн тохиргоогоо тохируулна уу.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                ),
+                const SizedBox(height: 16),
+                if (_storeModel != null) ...[
+                  // Progress indicator
+                  LinearProgressIndicator(
+                    value: _storeModel!.payoutSetupProgress / 100,
+                    backgroundColor: Colors.grey.shade200,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      _storeModel!.payoutSetupProgress == 100
+                          ? Colors.green
+                          : Colors.orange,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${_storeModel!.payoutSetupProgress.toInt()}% Бүрэн',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => StorePayoutSettingsPage(
+                          storeId: _storeModel?.id ?? '',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.settings),
+                  label: const Text('Төлбөрийн тохиргоог тохируулах'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppThemes.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
               ],
             ),
           ),

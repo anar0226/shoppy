@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'pages/dashboard_page.dart';
+import 'pages/admin_panel_layout.dart';
 import 'auth/auth_service.dart';
 import 'auth/login_page.dart';
 import 'auth/verify_email_page.dart';
@@ -66,7 +66,7 @@ class _AdminAppState extends State<AdminApp> {
                           return _StoreSetupWrapper(userId: user.uid);
                         }
 
-                        return const DashboardPage();
+                        return const AdminPanelLayout();
                       },
                     );
                   } else {

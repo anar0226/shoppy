@@ -1,279 +1,313 @@
-import { onRequest } from "firebase-functions/v2/https";
-import { onSchedule } from "firebase-functions/v2/scheduler";
-import { logger } from "firebase-functions";
-import { initializeApp } from "firebase-admin/app";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import * as crypto from "crypto";
+import * as functions from 'firebase-functions';
+import * as admin from 'firebase-admin';
 
-// Initialize Firebase Admin
-const app = initializeApp();
-const db = getFirestore(app);
-
-// QPay webhook verification (if QPay provides webhook signature verification)
-function verifyQPayWebhook(payload: string, signature: string, secret: string): boolean {
-  try {
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(payload)
-      .digest('hex');
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expectedSignature, 'hex')
-    );
-  } catch (error) {
-    logger.error('Webhook signature verification failed:', error);
-    return false;
-  }
+// Initialize Firebase Admin if not already initialized
+if (!admin.apps.length) {
+  admin.initializeApp();
 }
 
-export const subscriptionWebhook = onRequest(
-  {
-    cors: true,
-    secrets: ["QPAY_WEBHOOK_SECRET"],
-  },
-  async (req, res) => {
-    logger.info('QPay subscription webhook received', { 
-      method: req.method,
-      headers: req.headers,
-      body: req.body 
-    });
+const db = admin.firestore();
 
-    // Only accept POST requests
+interface QPayWebhookData {
+  object_type: string;
+  object_id: string;
+  payment_status: string;
+  payment_amount: number;
+  payment_date: string;
+  payment_id: string;
+  payment_currency: string;
+  paid_by: string;
+  metadata?: {
+    type?: string;
+    storeId?: string;
+    userId?: string;
+  };
+}
+
+interface SubscriptionPayment {
+  storeId: string;
+  userId: string;
+  amount: number;
+  status: string;
+  paymentId: string;
+  paymentDate: Date;
+  paymentMethod: string;
+  currency: string;
+}
+
+/**
+ * Webhook handler for QPay subscription payments
+ * Handles payment notifications from QPay for subscription payments
+ */
+export const subscriptionWebhook = functions.https.onRequest(async (req, res) => {
+  try {
+    // Verify request method
     if (req.method !== 'POST') {
-      res.status(405).json({ error: 'Method not allowed' });
+      res.status(405).send('Method Not Allowed');
       return;
     }
 
-    try {
-      const payload = req.body;
-      
-      // Verify webhook signature if QPay provides it
-      const signature = req.headers['x-qpay-signature'] as string;
-      const webhookSecret = process.env.QPAY_WEBHOOK_SECRET || '';
-      
-      if (signature && webhookSecret) {
-        const payloadString = JSON.stringify(payload);
-        if (!verifyQPayWebhook(payloadString, signature, webhookSecret)) {
-          logger.error('Invalid webhook signature');
-          res.status(401).json({ error: 'Invalid signature' });
-          return;
-        }
-      }
+    // Log the webhook data
+    console.log('Subscription webhook received:', JSON.stringify(req.body, null, 2));
 
-      // Extract payment information from QPay webhook
-      const paymentId = payload.sender_invoice_no || payload.invoice_id;
-      const paymentStatus = payload.payment_status || payload.status;
-      const paidAmount = parseFloat(payload.payment_amount || payload.amount || '0');
-      const paymentDate = payload.payment_date || payload.paid_at;
-      const qpayInvoiceId = payload.qpay_invoice_id || payload.invoice_id;
-      const qpayPaymentId = payload.payment_id;
+    const webhookData: QPayWebhookData = req.body;
 
-      logger.info('Processing subscription payment', {
-        paymentId,
-        paymentStatus,
-        paidAmount,
-        paymentDate,
-        qpayInvoiceId,
-        qpayPaymentId
-      });
-
-      if (!paymentId) {
-        logger.error('No payment ID found in webhook payload');
-        res.status(400).json({ error: 'Invalid payment data' });
-        return;
-      }
-
-      // Extract store ID from payment ID (format: storeId_timestamp)
-      const storeId = paymentId.split('_')[0];
-      
-      if (!storeId) {
-        logger.error('Could not extract store ID from payment ID:', paymentId);
-        res.status(400).json({ error: 'Invalid payment ID format' });
-        return;
-      }
-
-      // Update payment status in Firestore
-      const paymentRef = db
-        .collection('store_subscriptions')
-        .doc(storeId)
-        .collection('payment_history')
-        .doc(paymentId);
-
-      const paymentDoc = await paymentRef.get();
-      if (!paymentDoc.exists) {
-        logger.error('Payment document not found:', paymentId);
-        res.status(404).json({ error: 'Payment not found' });
-        return;
-      }
-
-      const currentPaymentData = paymentDoc.data()!;
-      const currentStatus = currentPaymentData.status;
-
-      // Only process if payment is currently pending
-      if (currentStatus !== 'pending') {
-        logger.info('Payment already processed:', paymentId, 'current status:', currentStatus);
-        res.status(200).json({ message: 'Payment already processed' });
-        return;
-      }
-
-      // Determine new payment status
-      let newStatus = 'pending';
-      if (paymentStatus === 'PAID' || paymentStatus === 'COMPLETED' || paymentStatus === 'SUCCESS') {
-        newStatus = 'completed';
-      } else if (paymentStatus === 'FAILED' || paymentStatus === 'CANCELED' || paymentStatus === 'EXPIRED') {
-        newStatus = 'failed';
-      }
-
-      // Update payment document
-      await paymentRef.update({
-        status: newStatus,
-        paymentDate: paymentDate ? new Date(paymentDate) : FieldValue.serverTimestamp(),
-        paidAmount: paidAmount,
-        qpayPaymentId: qpayPaymentId,
-        qpayInvoiceId: qpayInvoiceId,
-        updatedAt: FieldValue.serverTimestamp(),
-        webhookData: payload, // Store original webhook data for debugging
-      });
-
-      logger.info('Payment status updated to:', newStatus, 'for payment:', paymentId);
-
-      // If payment is completed, update subscription status
-      if (newStatus === 'completed') {
-        await updateSubscriptionStatus(storeId, paidAmount);
-      }
-
-      res.status(200).json({ message: 'Webhook processed successfully' });
-    } catch (error) {
-      logger.error('Error processing subscription webhook:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-);
-
-async function updateSubscriptionStatus(storeId: string, paidAmount: number): Promise<void> {
-  try {
-    const subscriptionRef = db.collection('store_subscriptions').doc(storeId);
-    
-    // Get current subscription data
-    const subscriptionDoc = await subscriptionRef.get();
-    if (!subscriptionDoc.exists) {
-      logger.error('Subscription document not found for store:', storeId);
+    // Validate required fields
+    if (!webhookData.object_id || !webhookData.payment_status) {
+      console.error('Missing required fields in webhook data');
+      res.status(400).send('Bad Request - Missing required fields');
       return;
     }
 
-    const subscriptionData = subscriptionDoc.data()!;
-    const currentDate = new Date();
-    
-    // Calculate next payment date (30 days from now)
-    const nextPaymentDate = new Date(currentDate);
-    nextPaymentDate.setDate(nextPaymentDate.getDate() + 30);
-
-    // Update subscription document
-    await subscriptionRef.update({
-      isActive: true,
-      lastPaymentDate: FieldValue.serverTimestamp(),
-      nextPaymentDate: nextPaymentDate,
-      totalPaid: (subscriptionData.totalPaid || 0) + paidAmount,
-      paymentCount: (subscriptionData.paymentCount || 0) + 1,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-
-    logger.info('Subscription status updated for store:', storeId, {
-      isActive: true,
-      nextPaymentDate: nextPaymentDate.toISOString(),
-      totalPaid: (subscriptionData.totalPaid || 0) + paidAmount,
-    });
-
-    // Update store status to active if it was suspended
-    const storeRef = db.collection('stores').doc(storeId);
-    const storeDoc = await storeRef.get();
-    
-    if (storeDoc.exists) {
-      const storeData = storeDoc.data()!;
-      if (storeData.status === 'suspended' || storeData.status === 'payment_overdue') {
-        await storeRef.update({
-          status: 'active',
-          updatedAt: FieldValue.serverTimestamp(),
-        });
-        logger.info('Store status updated to active for store:', storeId);
-      }
+    // Check if this is a subscription payment
+    if (webhookData.metadata?.type !== 'subscription') {
+      console.log('Not a subscription payment, ignoring');
+      res.status(200).send('OK - Not a subscription payment');
+      return;
     }
 
+    // Extract subscription payment data
+    const subscriptionPayment: SubscriptionPayment = {
+      storeId: webhookData.metadata?.storeId || '',
+      userId: webhookData.metadata?.userId || '',
+      amount: webhookData.payment_amount || 0,
+      status: webhookData.payment_status,
+      paymentId: webhookData.payment_id || '',
+      paymentDate: new Date(webhookData.payment_date),
+      paymentMethod: webhookData.paid_by || 'QPay',
+      currency: webhookData.payment_currency || 'MNT',
+    };
+
+    // Process the subscription payment
+    await processSubscriptionPayment(subscriptionPayment);
+
+    // Send success response
+    res.status(200).send('OK');
   } catch (error) {
-    logger.error('Error updating subscription status:', error);
+    console.error('Error processing subscription webhook:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+/**
+ * Process subscription payment and update store subscription status
+ */
+async function processSubscriptionPayment(payment: SubscriptionPayment): Promise<void> {
+  try {
+    console.log('Processing subscription payment:', JSON.stringify(payment, null, 2));
+
+    // Validate payment data
+    if (!payment.storeId || !payment.userId) {
+      throw new Error('Missing storeId or userId in payment data');
+    }
+
+    // Check if payment is successful
+    if (payment.status !== 'PAID') {
+      console.log('Payment not successful, status:', payment.status);
+      return;
+    }
+
+    // Get store document
+    const storeRef = db.collection('stores').doc(payment.storeId);
+    const storeDoc = await storeRef.get();
+
+    if (!storeDoc.exists) {
+      throw new Error(`Store not found: ${payment.storeId}`);
+    }
+
+    const storeData = storeDoc.data();
+    if (!storeData) {
+      throw new Error('Store data is null');
+    }
+
+    // Verify payment amount matches expected monthly fee
+    const expectedAmount = 100; // 100 MNT monthly fee
+    if (payment.amount !== expectedAmount) {
+      console.warn(`Payment amount mismatch. Expected: ${expectedAmount}, Received: ${payment.amount}`);
+      // You might want to handle this differently based on your business logic
+    }
+
+    // Update store subscription status
+    const now = admin.firestore.Timestamp.now();
+    const nextPaymentDate = new Date();
+    nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
+    const subscriptionEndDate = new Date();
+    subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
+
+    const updateData = {
+      subscriptionStatus: 'active',
+      lastPaymentDate: now,
+      nextPaymentDate: admin.firestore.Timestamp.fromDate(nextPaymentDate),
+      subscriptionEndDate: admin.firestore.Timestamp.fromDate(subscriptionEndDate),
+      updatedAt: now,
+    };
+
+    // Add payment to history
+    const paymentRecord = {
+      id: payment.paymentId,
+      storeId: payment.storeId,
+      userId: payment.userId,
+      amount: payment.amount,
+      currency: payment.currency,
+      status: 'completed',
+      paymentMethod: 'qpay',
+      transactionId: payment.paymentId,
+      createdAt: now,
+      processedAt: now,
+      description: 'Сарын төлбөр - Shoppy дэлгүүр',
+      metadata: {
+        type: 'subscription',
+        webhookProcessed: true,
+      },
+    };
+
+    // Update store document
+    await storeRef.update({
+      ...updateData,
+      paymentHistory: admin.firestore.FieldValue.arrayUnion([paymentRecord]),
+    });
+
+    // Create payment record in payments collection
+    await db.collection('payments').add(paymentRecord);
+
+    // Send notification to store owner (optional)
+    await sendSubscriptionActivationNotification(payment.userId, payment.storeId);
+
+    console.log('Subscription payment processed successfully for store:', payment.storeId);
+  } catch (error) {
+    console.error('Error processing subscription payment:', error);
+    throw error;
   }
 }
 
-// Daily scheduled function to check for overdue subscriptions
-export const checkSubscriptionStatus = onSchedule(
-  "0 9 * * *", // Run daily at 9 AM
-  async (event) => {
-    logger.info('Running daily subscription status check');
-
-    try {
-      const currentDate = new Date();
-      
-      // Get all active subscriptions
-      const subscriptionsSnapshot = await db
-        .collection('store_subscriptions')
-        .where('isActive', '==', true)
-        .get();
-
-      let processedCount = 0;
-      let overdueCount = 0;
-
-      for (const doc of subscriptionsSnapshot.docs) {
-        const subscriptionData = doc.data();
-        const storeId = doc.id;
-        const nextPaymentDate = subscriptionData.nextPaymentDate?.toDate();
-
-        if (nextPaymentDate && nextPaymentDate < currentDate) {
-          // Subscription is overdue
-          const daysPastDue = Math.floor((currentDate.getTime() - nextPaymentDate.getTime()) / (1000 * 60 * 60 * 24));
-          
-          logger.info(`Subscription overdue for store ${storeId}: ${daysPastDue} days`);
-          
-          if (daysPastDue > 7) {
-            // Suspend store after 7 days
-            await db.collection('stores').doc(storeId).update({
-              status: 'suspended',
-              suspendedAt: FieldValue.serverTimestamp(),
-              suspendedReason: 'Payment overdue',
-              updatedAt: FieldValue.serverTimestamp(),
-            });
-
-            // Update subscription status
-            await db.collection('store_subscriptions').doc(storeId).update({
-              isActive: false,
-              suspendedAt: FieldValue.serverTimestamp(),
-              suspendedReason: 'Payment overdue',
-              updatedAt: FieldValue.serverTimestamp(),
-            });
-
-            logger.info(`Store ${storeId} suspended due to overdue payment`);
-          } else {
-            // Mark as payment overdue but don't suspend yet
-            await db.collection('stores').doc(storeId).update({
-              status: 'payment_overdue',
-              overdueDate: nextPaymentDate,
-              daysPastDue: daysPastDue,
-              updatedAt: FieldValue.serverTimestamp(),
-            });
-
-            logger.info(`Store ${storeId} marked as payment overdue`);
-          }
-          
-          overdueCount++;
-        }
-        
-        processedCount++;
-      }
-
-      logger.info(`Subscription status check completed: ${processedCount} subscriptions processed, ${overdueCount} overdue`);
-      
-    } catch (error) {
-      logger.error('Error in subscription status check:', error);
-      throw error;
+/**
+ * Send notification to store owner about subscription activation
+ */
+async function sendSubscriptionActivationNotification(userId: string, storeId: string): Promise<void> {
+  try {
+    // Get user's FCM token
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      console.log('User document not found for notification:', userId);
+      return;
     }
+
+    const userData = userDoc.data();
+    const fcmToken = userData?.fcmToken;
+
+    if (!fcmToken) {
+      console.log('No FCM token found for user:', userId);
+      return;
+    }
+
+    // Send notification
+    const message = {
+      token: fcmToken,
+      notification: {
+        title: 'Захиалга идэвхжлээ',
+        body: 'Таны сарын төлбөр амжилттай төлөгдлөө. Дэлгүүрээ тохируулж эхлээрэй!',
+      },
+      data: {
+        type: 'subscription_activated',
+        storeId: storeId,
+        click_action: 'FLUTTER_NOTIFICATION_CLICK',
+      },
+    };
+
+    const response = await admin.messaging().send(message);
+    console.log('Subscription activation notification sent:', response);
+  } catch (error) {
+    console.error('Error sending subscription activation notification:', error);
+    // Don't throw error as notification is not critical
   }
-); 
+}
+
+/**
+ * Manual subscription payment verification
+ * Can be called to manually verify and process a subscription payment
+ */
+export const verifySubscriptionPayment = functions.https.onCall(async (data, context) => {
+  try {
+    // Verify authentication
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { paymentId, storeId } = data;
+
+    if (!paymentId || !storeId) {
+      throw new functions.https.HttpsError('invalid-argument', 'Missing paymentId or storeId');
+    }
+
+    // Get payment record
+    const paymentQuery = await db.collection('payments')
+      .where('transactionId', '==', paymentId)
+      .where('storeId', '==', storeId)
+      .limit(1)
+      .get();
+
+    if (paymentQuery.empty) {
+      throw new functions.https.HttpsError('not-found', 'Payment record not found');
+    }
+
+    const paymentDoc = paymentQuery.docs[0];
+    const paymentData = paymentDoc.data();
+
+    // Create subscription payment object
+    const subscriptionPayment: SubscriptionPayment = {
+      storeId: paymentData.storeId,
+      userId: paymentData.userId,
+      amount: paymentData.amount,
+      status: paymentData.status,
+      paymentId: paymentData.transactionId,
+      paymentDate: paymentData.createdAt.toDate(),
+      paymentMethod: paymentData.paymentMethod,
+      currency: paymentData.currency,
+    };
+
+    // Process the payment
+    await processSubscriptionPayment(subscriptionPayment);
+
+    return { success: true, message: 'Subscription payment verified and processed' };
+  } catch (error) {
+    console.error('Error verifying subscription payment:', error);
+    throw new functions.https.HttpsError('internal', 'Error verifying subscription payment');
+  }
+});
+
+/**
+ * Get subscription payment history for a store
+ */
+export const getSubscriptionPaymentHistory = functions.https.onCall(async (data, context) => {
+  try {
+    // Verify authentication
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { storeId } = data;
+
+    if (!storeId) {
+      throw new functions.https.HttpsError('invalid-argument', 'Missing storeId');
+    }
+
+    // Get payment history
+    const paymentsQuery = await db.collection('payments')
+      .where('storeId', '==', storeId)
+      .where('description', '==', 'Сарын төлбөр - Shoppy дэлгүүр')
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const payments = paymentsQuery.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt.toDate(),
+      processedAt: doc.data().processedAt?.toDate(),
+    }));
+
+    return { payments };
+  } catch (error) {
+    console.error('Error getting subscription payment history:', error);
+    throw new functions.https.HttpsError('internal', 'Error getting payment history');
+  }
+}); 

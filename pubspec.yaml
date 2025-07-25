@@ -193,6 +193,7 @@ flutter:
     # env file
     - assets/env/prod.env
     - assets/env/dev.env
+    - assets/env/local-release.env
   
 
   # Custom fonts configuration

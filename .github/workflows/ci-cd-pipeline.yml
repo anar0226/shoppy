@@ -129,22 +129,6 @@ jobs:
       - name: 📦 Get Dependencies
         run: flutter pub get
 
-      - name: 🔧 Configure Environment Variables for Production
-        if: matrix.build-type == 'release'
-        run: |
-          # Create production environment file with actual secrets
-          echo "F_API_KEY=${{ secrets.FIREBASE_API_KEY }}" > assets/env/prod.env
-          echo "F_APP_ID=${{ secrets.FIREBASE_APP_ID }}" >> assets/env/prod.env
-          echo "F_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> assets/env/prod.env
-          echo "F_SENDER_ID=${{ secrets.FIREBASE_SENDER_ID }}" >> assets/env/prod.env
-          echo "QPAY_USERNAME=${{ secrets.QPAY_USERNAME }}" >> assets/env/prod.env
-          echo "QPAY_PASSWORD=${{ secrets.QPAY_PASSWORD }}" >> assets/env/prod.env
-          echo "QPAY_INVOICE_CODE=${{ secrets.QPAY_INVOICE_CODE }}" >> assets/env/prod.env
-          echo "QPAY_BASE_URL=${{ secrets.QPAY_BASE_URL }}" >> assets/env/prod.env
-          
-          # Verify the file was created correctly (without showing secrets)
-          echo "✅ Production environment file created with $(wc -l < assets/env/prod.env) variables"
-
       - name: 🔧 Configure Android Signing (Release Only)
         if: matrix.build-type == 'release' && github.ref == 'refs/heads/main'
         run: |
@@ -155,16 +139,54 @@ jobs:
           echo "storeFile=shoppy-release.jks" >> android/key.properties
 
       - name: 🏗️ Build Android APK
+        env:
+          # Pass secrets as environment variables for compile-time injection
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_SENDER_ID: ${{ secrets.FIREBASE_SENDER_ID }}
+          QPAY_USERNAME: ${{ secrets.QPAY_USERNAME }}
+          QPAY_PASSWORD: ${{ secrets.QPAY_PASSWORD }}
+          QPAY_INVOICE_CODE: ${{ secrets.QPAY_INVOICE_CODE }}
+          QPAY_BASE_URL: ${{ secrets.QPAY_BASE_URL }}
         run: |
           if [ "${{ matrix.build-type }}" == "release" ]; then
-            flutter build apk --release --split-per-abi --build-number=${{ github.run_number }}
+            flutter build apk --release --split-per-abi --build-number=${{ github.run_number }} \
+              --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY" \
+              --dart-define=FIREBASE_APP_ID="$FIREBASE_APP_ID" \
+              --dart-define=FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
+              --dart-define=FIREBASE_SENDER_ID="$FIREBASE_SENDER_ID" \
+              --dart-define=QPAY_USERNAME="$QPAY_USERNAME" \
+              --dart-define=QPAY_PASSWORD="$QPAY_PASSWORD" \
+              --dart-define=QPAY_INVOICE_CODE="$QPAY_INVOICE_CODE" \
+              --dart-define=QPAY_BASE_URL="$QPAY_BASE_URL" \
+              --dart-define=PRODUCTION=true
           else
             flutter build apk --debug --build-number=${{ github.run_number }}
           fi
 
       - name: 🏗️ Build Android App Bundle (Release)
         if: matrix.build-type == 'release'
-        run: flutter build appbundle --release --build-number=${{ github.run_number }}
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_SENDER_ID: ${{ secrets.FIREBASE_SENDER_ID }}
+          QPAY_USERNAME: ${{ secrets.QPAY_USERNAME }}
+          QPAY_PASSWORD: ${{ secrets.QPAY_PASSWORD }}
+          QPAY_INVOICE_CODE: ${{ secrets.QPAY_INVOICE_CODE }}
+          QPAY_BASE_URL: ${{ secrets.QPAY_BASE_URL }}
+        run: |
+          flutter build appbundle --release --build-number=${{ github.run_number }} \
+            --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY" \
+            --dart-define=FIREBASE_APP_ID="$FIREBASE_APP_ID" \
+            --dart-define=FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
+            --dart-define=FIREBASE_SENDER_ID="$FIREBASE_SENDER_ID" \
+            --dart-define=QPAY_USERNAME="$QPAY_USERNAME" \
+            --dart-define=QPAY_PASSWORD="$QPAY_PASSWORD" \
+            --dart-define=QPAY_INVOICE_CODE="$QPAY_INVOICE_CODE" \
+            --dart-define=QPAY_BASE_URL="$QPAY_BASE_URL" \
+            --dart-define=PRODUCTION=true
 
       - name: 🔒 Sign APK (Release)
         if: matrix.build-type == 'release'

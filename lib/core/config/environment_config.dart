@@ -8,20 +8,130 @@ class EnvironmentConfig {
   static const bool isDebug =
       bool.fromEnvironment('DEBUG', defaultValue: false);
 
-  // Payment configurations - Load from dotenv at runtime
-  static String get qpayUsername =>
-      dotenv.env['QPAY_USERNAME'] ??
-      const String.fromEnvironment('QPAY_USERNAME', defaultValue: '');
-  static String get qpayPassword =>
-      dotenv.env['QPAY_PASSWORD'] ??
-      const String.fromEnvironment('QPAY_PASSWORD', defaultValue: '');
-  static String get qpayInvoiceCode =>
-      dotenv.env['QPAY_INVOICE_CODE'] ??
-      const String.fromEnvironment('QPAY_INVOICE_CODE', defaultValue: '');
-  static String get qpayBaseUrl =>
-      dotenv.env['QPAY_BASE_URL'] ??
-      const String.fromEnvironment('QPAY_BASE_URL',
-          defaultValue: 'https://merchant.qpay.mn/v2');
+  // Payment configurations - Prioritize compile-time variables for production
+  static String get qpayUsername {
+    // First try compile-time environment variables (for CI/CD builds)
+    final envValue =
+        const String.fromEnvironment('QPAY_USERNAME', defaultValue: '');
+    if (envValue.isNotEmpty) {
+      return envValue;
+    }
+
+    // Fallback to dotenv for development
+    final dotenvValue = dotenv.env['QPAY_USERNAME'];
+    if (dotenvValue != null && dotenvValue.isNotEmpty) {
+      return dotenvValue;
+    }
+
+    return '';
+  }
+
+  static String get qpayPassword {
+    final envValue =
+        const String.fromEnvironment('QPAY_PASSWORD', defaultValue: '');
+    if (envValue.isNotEmpty) {
+      return envValue;
+    }
+
+    final dotenvValue = dotenv.env['QPAY_PASSWORD'];
+    if (dotenvValue != null && dotenvValue.isNotEmpty) {
+      return dotenvValue;
+    }
+
+    return '';
+  }
+
+  static String get qpayInvoiceCode {
+    final envValue =
+        const String.fromEnvironment('QPAY_INVOICE_CODE', defaultValue: '');
+    if (envValue.isNotEmpty) {
+      return envValue;
+    }
+
+    final dotenvValue = dotenv.env['QPAY_INVOICE_CODE'];
+    if (dotenvValue != null && dotenvValue.isNotEmpty) {
+      return dotenvValue;
+    }
+
+    return '';
+  }
+
+  static String get qpayBaseUrl {
+    final envValue =
+        const String.fromEnvironment('QPAY_BASE_URL', defaultValue: '');
+    if (envValue.isNotEmpty) {
+      return envValue;
+    }
+
+    final dotenvValue = dotenv.env['QPAY_BASE_URL'];
+    if (dotenvValue != null && dotenvValue.isNotEmpty) {
+      return dotenvValue;
+    }
+
+    // Default to production QPay URL
+    return 'https://merchant.qpay.mn/v2';
+  }
+
+  // Firebase configurations - Also prioritize compile-time variables
+  static String get firebaseApiKey {
+    final envValue =
+        const String.fromEnvironment('FIREBASE_API_KEY', defaultValue: '');
+    if (envValue.isNotEmpty) {
+      return envValue;
+    }
+
+    final dotenvValue = dotenv.env['F_API_KEY'];
+    if (dotenvValue != null && dotenvValue.isNotEmpty) {
+      return dotenvValue;
+    }
+
+    return '';
+  }
+
+  static String get firebaseAppId {
+    final envValue =
+        const String.fromEnvironment('FIREBASE_APP_ID', defaultValue: '');
+    if (envValue.isNotEmpty) {
+      return envValue;
+    }
+
+    final dotenvValue = dotenv.env['F_APP_ID'];
+    if (dotenvValue != null && dotenvValue.isNotEmpty) {
+      return dotenvValue;
+    }
+
+    return '';
+  }
+
+  static String get firebaseProjectId {
+    final envValue =
+        const String.fromEnvironment('FIREBASE_PROJECT_ID', defaultValue: '');
+    if (envValue.isNotEmpty) {
+      return envValue;
+    }
+
+    final dotenvValue = dotenv.env['F_PROJECT_ID'];
+    if (dotenvValue != null && dotenvValue.isNotEmpty) {
+      return dotenvValue;
+    }
+
+    return '';
+  }
+
+  static String get firebaseSenderId {
+    final envValue =
+        const String.fromEnvironment('FIREBASE_SENDER_ID', defaultValue: '');
+    if (envValue.isNotEmpty) {
+      return envValue;
+    }
+
+    final dotenvValue = dotenv.env['F_SENDER_ID'];
+    if (dotenvValue != null && dotenvValue.isNotEmpty) {
+      return dotenvValue;
+    }
+
+    return '';
+  }
 
   // App configurations
   static const String appVersion =

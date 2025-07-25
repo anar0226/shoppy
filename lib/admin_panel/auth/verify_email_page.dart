@@ -18,7 +18,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
     await AuthService.instance.sendEmailVerification();
     setState(() {
       _sent = true;
-      _msg = 'Verification email sent';
+      _msg = 'Имэйл баталгаажуулах холбоосыг илгээсэн';
     });
   }
 
@@ -51,12 +51,12 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Verify your email',
+                const Text('Имэйлээ баталгаажуулна уу',
                     style:
                         TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 const Text(
-                    'We sent a verification link to your email address. Please confirm to continue.'),
+                    'Бид баталгаажуулах холбоосыг таны имэйлд илгээсэн. Та имэйлээ баталгаажуулаад дахин оролдоно уу.'),
                 if (_msg != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
@@ -66,7 +66,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: _sent ? null : _send,
-                  child: const Text('Resend email'),
+                  child: const Text('Имэйл дахин илгээх'),
                 ),
                 const SizedBox(height: 12),
                 ElevatedButton(
@@ -76,14 +76,14 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('I have verified'),
+                      : const Text('Имэйл баталгаажуулсан'),
                 ),
                 const SizedBox(height: 24),
                 TextButton(
                   onPressed: () async {
                     await AuthService.instance.signOut();
                   },
-                  child: const Text('Sign out'),
+                  child: const Text('Гарах'),
                 )
               ],
             ),

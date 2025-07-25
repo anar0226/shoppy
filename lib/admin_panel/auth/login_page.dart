@@ -27,9 +27,34 @@ class _LoginPageState extends State<LoginPage> {
       await AuthService.instance
           .signIn(_emailCtrl.text.trim(), _passCtrl.text.trim());
     } on FirebaseAuthException catch (e) {
-      setState(() => _error = e.message ?? 'Login failed');
+      // Handle Firebase Auth specific errors
+      String errorMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'Энэ и-мэйл хаягаар бүртгэгдээгүй байна';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Нууц үг буруу байна';
+          break;
+        case 'invalid-email':
+          errorMessage = 'И-мэйл хаягийн хэлбэр буруу байна';
+          break;
+        case 'user-disabled':
+          errorMessage = 'Энэ хэрэглэгчийн эрх хаагдсан байна';
+          break;
+        case 'too-many-requests':
+          errorMessage =
+              'Хэт олон удаа оролдлоо. Хэсэг хүлээгээд дахин оролдоно уу';
+          break;
+        case 'operation-not-allowed':
+          errorMessage = 'И-мэйл/нууц үгээр нэвтрэх боломжгүй байна';
+          break;
+        default:
+          errorMessage = e.message ?? 'Нэвтрэхэд алдаа гарлаа';
+      }
+      setState(() => _error = errorMessage);
     } catch (e) {
-      setState(() => _error = 'Login failed');
+      setState(() => _error = 'Нэвтрэхэд алдаа гарлаа');
     } finally {
       if (mounted) setState(() => _loading = false);
     }

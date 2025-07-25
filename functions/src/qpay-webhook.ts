@@ -226,7 +226,7 @@ async function performSecurityChecks(req: functions.https.Request): Promise<{
 
 function checkRateLimit(clientIp: string): { allowed: boolean; remaining: number } {
   const now = Date.now();
-  const windowStart = now - (60 * 1000); // 1 minute window
+  // const windowStart = now - (60 * 1000); // 1 minute window
   
   const tracker = rateLimitTracker.get(clientIp);
   

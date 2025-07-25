@@ -32,11 +32,14 @@ __exportStar(require("./inventory-management"), exports);
 // Export Rate Limiting functions
 __exportStar(require("./rate-limiting"), exports);
 // Export Data Consistency functions
-__exportStar(require("./data-consistency"), exports);
+// export * from './data-consistency';
 // Export Order Cleanup functions
 __exportStar(require("./order-cleanup"), exports);
 // Export QPay Webhook functions
 __exportStar(require("./qpay-webhook"), exports);
+// Export Subscription management functions
+__exportStar(require("./subscription-webhook"), exports);
+__exportStar(require("./subscription-management"), exports);
 // QPay Webhook Handler
 exports.handleQPayWebhook = functions.https.onRequest(async (req, res) => {
     try {

@@ -336,7 +336,6 @@ enum PayoutMethod {
   digitalWallet,
   check,
   paypal,
-  qpay, // For Mongolia
 }
 
 enum PayoutFrequency {
@@ -390,8 +389,6 @@ extension PayoutMethodExtension on PayoutMethod {
         return 'Check';
       case PayoutMethod.paypal:
         return 'PayPal';
-      case PayoutMethod.qpay:
-        return 'QPay';
     }
   }
 }

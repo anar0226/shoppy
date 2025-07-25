@@ -60,18 +60,42 @@ Future<void> _internalBootstrap() async {
     // 1. Initialize Flutter bindings first (outside of any special zones)
     WidgetsFlutterBinding.ensureInitialized();
 
-    // 2. Load environment file (production for release, development for debug)
-    final envFile = kReleaseMode ? 'assets/env/prod.env' : 'assets/env/dev.env';
-    await dotenv.load(fileName: envFile);
+    // 2. Load environment file with smart selection - but don't fail if missing
+    String envFile;
+    if (kReleaseMode) {
+      // Check if we're in a CI/CD environment or local testing
+      const bool isCICD = bool.fromEnvironment('CI', defaultValue: false);
+      if (isCICD) {
+        // CI/CD build - use prod.env (secrets will be injected)
+        envFile = 'assets/env/prod.env';
+      } else {
+        // Local release testing - use local-release.env
+        envFile = 'assets/env/local-release.env';
+      }
+    } else {
+      // Debug mode - use dev.env
+      envFile = 'assets/env/dev.env';
+    }
+
+    debugPrint('🔧 Loading environment from: $envFile');
+
+    // Try to load .env file, but don't fail if it doesn't exist
+    try {
+      await dotenv.load(fileName: envFile);
+      debugPrint('✅ Environment file loaded successfully');
+    } catch (e) {
+      debugPrint('⚠️ Environment file not found or failed to load: $e');
+      debugPrint(' Using compile-time environment variables instead');
+    }
 
     // 3. Firebase initialization with error handling
     try {
       await Firebase.initializeApp(
         options: FirebaseOptions(
-          apiKey: dotenv.env['F_API_KEY']!,
-          appId: dotenv.env['F_APP_ID']!,
-          projectId: dotenv.env['F_PROJECT_ID']!,
-          messagingSenderId: dotenv.env['F_SENDER_ID']!,
+          apiKey: EnvironmentConfig.firebaseApiKey,
+          appId: EnvironmentConfig.firebaseAppId,
+          projectId: EnvironmentConfig.firebaseProjectId,
+          messagingSenderId: EnvironmentConfig.firebaseSenderId,
         ),
       );
     } catch (e) {
