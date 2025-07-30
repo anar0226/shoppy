@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import '../../../core/services/qpay_service.dart';
+import '../../../core/services/payment_debug_service.dart';
 import '../../../core/utils/popup_utils.dart';
+import '../widgets/payment_timeout_countdown.dart';
 
 class PaymentWaitingScreen extends StatefulWidget {
   final String orderId;
@@ -23,6 +26,7 @@ class PaymentWaitingScreen extends StatefulWidget {
 class _PaymentWaitingScreenState extends State<PaymentWaitingScreen> {
   Timer? _paymentCheckTimer;
   final QPayService _qpayService = QPayService();
+  final PaymentDebugService _debugService = PaymentDebugService();
   bool _isCheckingPayment = true;
   bool _paymentCompleted = false;
 
@@ -52,7 +56,7 @@ class _PaymentWaitingScreenState extends State<PaymentWaitingScreen> {
     if (!mounted || _paymentCompleted) return;
 
     try {
-      // Check if order exists in Firestore (created by webhook)
+      // First, check if order exists in Firestore (created by webhook)
       final orderDoc = await FirebaseFirestore.instance
           .collection('orders')
           .doc(widget.orderId)
@@ -64,28 +68,97 @@ class _PaymentWaitingScreenState extends State<PaymentWaitingScreen> {
         return;
       }
 
-      // Also check QPay payment status as backup
-      final paymentStatus =
-          await _qpayService.checkPaymentStatus(widget.qpayInvoiceId);
+      // Check temporary order status
+      final tempOrderDoc = await FirebaseFirestore.instance
+          .collection('temporary_orders')
+          .doc(widget.orderId)
+          .get();
 
-      if (paymentStatus.success && paymentStatus.isPaid) {
-        // Payment confirmed by QPay but order might not be created yet
-        // Wait a bit more for webhook to process
-        await Future.delayed(const Duration(seconds: 3));
+      if (tempOrderDoc.exists) {
+        final tempOrderData = tempOrderDoc.data();
+        final status = tempOrderData?['status'] as String?;
 
-        // Check again if order was created
-        final orderDocRetry = await FirebaseFirestore.instance
-            .collection('orders')
-            .doc(widget.orderId)
-            .get();
-
-        if (orderDocRetry.exists) {
-          _handlePaymentSuccess();
-        } else {
-          // Webhook might have failed, but payment was successful
-          // Show success but note that order processing might be delayed
+        if (status == 'payment_successful') {
+          // Payment was successful but order creation might be delayed
           _handlePaymentSuccess(delayedProcessing: true);
+          return;
+        } else if (status == 'payment_failed' || status == 'timeout_expired') {
+          // Payment failed or timed out
+          _handlePaymentFailure(status ?? 'payment_failed');
+          return;
         }
+      }
+
+      // Check QPay payment status directly
+      try {
+        final paymentStatus =
+            await _qpayService.checkPaymentStatus(widget.qpayInvoiceId);
+        final qpayStatus = paymentStatus['payment_status'] as String?;
+
+        debugPrint(
+            'QPay Payment Status: $qpayStatus for invoice: ${widget.qpayInvoiceId}');
+
+        if (qpayStatus == 'PAID') {
+          // Payment confirmed by QPay but webhook might be delayed
+          // Wait a bit more for webhook to process
+          await Future.delayed(const Duration(seconds: 5));
+
+          // Check again if order was created
+          final orderDocRetry = await FirebaseFirestore.instance
+              .collection('orders')
+              .doc(widget.orderId)
+              .get();
+
+          if (orderDocRetry.exists) {
+            _handlePaymentSuccess();
+          } else {
+            // Payment successful but order processing delayed
+            _handlePaymentSuccess(delayedProcessing: true);
+          }
+        } else if (qpayStatus == 'FAILED' ||
+            qpayStatus == 'CANCELLED' ||
+            qpayStatus == 'EXPIRED') {
+          _handlePaymentFailure(qpayStatus ?? 'FAILED');
+        } else if (qpayStatus == 'NEW') {
+          // Payment is still pending, continue monitoring
+          debugPrint('Payment still pending (NEW status)');
+        } else {
+          debugPrint('Unknown QPay status: $qpayStatus');
+        }
+        // For 'NEW' status, continue monitoring
+      } catch (qpayError) {
+        debugPrint('QPay status check error: $qpayError');
+
+        // Try alternative method - check if we have a payment ID
+        try {
+          // Check if we can get payment info from temporary order
+          final tempOrderDoc = await FirebaseFirestore.instance
+              .collection('temporary_orders')
+              .doc(widget.orderId)
+              .get();
+
+          if (tempOrderDoc.exists) {
+            final tempOrderData = tempOrderDoc.data();
+            final paymentId = tempOrderData?['paymentId'] as String?;
+
+            if (paymentId != null) {
+              debugPrint(
+                  'Trying alternative payment check with payment ID: $paymentId');
+              final altPaymentStatus =
+                  await _qpayService.checkPaymentStatusByPaymentId(paymentId);
+              final altQpayStatus =
+                  altPaymentStatus['payment_status'] as String?;
+
+              if (altQpayStatus == 'PAID') {
+                _handlePaymentSuccess(delayedProcessing: true);
+              }
+            }
+          }
+        } catch (altError) {
+          debugPrint('Alternative payment check also failed: $altError');
+        }
+
+        // Continue monitoring even if QPay check fails
       }
     } catch (e) {
       debugPrint('Error checking payment status: $e');
@@ -122,6 +195,51 @@ class _PaymentWaitingScreenState extends State<PaymentWaitingScreen> {
     });
   }
 
+  void _handlePaymentFailure(String status) {
+    if (!mounted || _paymentCompleted) return;
+
+    setState(() {
+      _paymentCompleted = true;
+      _isCheckingPayment = false;
+    });
+
+    _paymentCheckTimer?.cancel();
+
+    // Show failure message based on status
+    String message;
+    switch (status) {
+      case 'payment_failed':
+        message = 'Төлбөр амжилтгүй болсон. Дахин оролдоно уу.';
+        break;
+      case 'timeout_expired':
+        message = 'Төлбөрийн хугацаа дууссан. Дахин оролдоно уу.';
+        break;
+      case 'FAILED':
+        message = 'QPay дээр төлбөр амжилтгүй болсон.';
+        break;
+      case 'CANCELLED':
+        message = 'Төлбөр цуцлагдсан.';
+        break;
+      case 'EXPIRED':
+        message = 'QPay нэхэмжлэхийн хугацаа дууссан.';
+        break;
+      default:
+        message = 'Төлбөр амжилтгүй болсон. Дахин оролдоно уу.';
+    }
+
+    PopupUtils.showError(
+      context: context,
+      message: message,
+    );
+
+    // Navigate back to checkout after a delay
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    });
+  }
+
   void _closeScreen() {
     _paymentCheckTimer?.cancel();
 
@@ -150,6 +268,57 @@ class _PaymentWaitingScreenState extends State<PaymentWaitingScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _debugPaymentStatus() async {
+    try {
+      final debugInfo = await _debugService.debugPaymentStatus(
+        widget.orderId,
+        widget.qpayInvoiceId,
+      );
+
+      // Show debug info in a dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Payment Debug Info'),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Order ID: ${widget.orderId}'),
+                  Text('QPay Invoice ID: ${widget.qpayInvoiceId}'),
+                  const SizedBox(height: 8),
+                  Text('Order Exists: ${debugInfo['orderExists']}'),
+                  Text('Temp Order Exists: ${debugInfo['tempOrderExists']}'),
+                  if (debugInfo['qpayStatus'] != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                        'QPay Status: ${debugInfo['qpayStatus']['payment_status']}'),
+                  ],
+                  if (debugInfo['webhookCount'] != null) ...[
+                    const SizedBox(height: 8),
+                    Text('Webhook Count: ${debugInfo['webhookCount']}'),
+                  ],
+                  if (debugInfo['timeoutLogCount'] != null) ...[
+                    Text('Timeout Log Count: ${debugInfo['timeoutLogCount']}'),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error debugging payment status: $e');
+    }
   }
 
   @override
@@ -256,7 +425,26 @@ class _PaymentWaitingScreenState extends State<PaymentWaitingScreen> {
                 ),
               ),
 
-              const SizedBox(height: 48),
+              const SizedBox(height: 24),
+
+              // Payment timeout countdown
+              if (!_paymentCompleted)
+                PaymentTimeoutCountdown(
+                  initialDuration: const Duration(minutes: 10),
+                  orderId: widget.orderId,
+                  onTimeout: () {
+                    // Handle timeout - show message to user
+                    if (mounted) {
+                      PopupUtils.showError(
+                        context: context,
+                        message:
+                            'Төлбөрийн хугацаа дууссан. Дахин оролдоно уу.',
+                      );
+                    }
+                  },
+                ),
+
+              const SizedBox(height: 24),
 
               // Close button
               if (!_paymentCompleted)
@@ -276,6 +464,29 @@ class _PaymentWaitingScreenState extends State<PaymentWaitingScreen> {
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Debug button (only in debug mode)
+              if (!_paymentCompleted && kDebugMode)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: _debugPaymentStatus,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        backgroundColor: Colors.orange.withValues(alpha: 0.1),
+                      ),
+                      child: const Text(
+                        'Debug Payment Status',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.orange,
+                        ),
                       ),
                     ),
                   ),

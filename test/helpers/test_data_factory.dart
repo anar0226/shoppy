@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:avii/features/products/models/product_model.dart';
 import 'package:avii/features/stores/models/store_model.dart';
-import 'package:avii/features/auth/providers/auth_provider.dart';
 
 /// Factory class for creating test data
 class TestDataFactory {
@@ -246,8 +245,20 @@ class TestDataFactory {
       isActive: isActive,
     );
 
-    return ProductModel.fromFirestore(
-      FakeDocumentSnapshot(data: data, id: data['id']),
+    // Create ProductModel directly instead of using fromFirestore
+    return ProductModel(
+      id: data['id'] as String,
+      storeId: data['storeId'] as String,
+      name: data['name'] as String,
+      description: data['description'] as String,
+      price: (data['price'] as num).toDouble(),
+      images: List<String>.from(data['images'] as List),
+      category: data['category'] as String,
+      stock: data['stock'] as int,
+      variants: <ProductVariant>[],
+      isActive: data['isActive'] as bool,
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
     );
   }
 
@@ -271,30 +282,18 @@ class TestDataFactory {
       status: status,
     );
 
-    return StoreModel.fromFirestore(
-      FakeDocumentSnapshot(data: data, id: data['id']),
+    // Create StoreModel directly instead of using fromFirestore
+    return StoreModel(
+      id: data['id'] as String,
+      name: data['name'] as String,
+      description: data['description'] as String,
+      logo: data['logo'] as String,
+      banner: data['banner'] as String,
+      ownerId: data['ownerId'] as String,
+      status: data['status'] as String,
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+      settings: data['settings'] as Map<String, dynamic>? ?? {},
     );
   }
-}
-
-/// Fake DocumentSnapshot for testing
-class FakeDocumentSnapshot implements DocumentSnapshot {
-  final Map<String, dynamic> _data;
-  final String _id;
-
-  FakeDocumentSnapshot({required Map<String, dynamic> data, required String id})
-      : _data = data,
-        _id = id;
-
-  @override
-  Map<String, dynamic> data() => _data;
-
-  @override
-  bool get exists => true;
-
-  @override
-  String get id => _id;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

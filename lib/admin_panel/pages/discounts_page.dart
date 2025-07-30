@@ -88,7 +88,7 @@ class _DiscountsPageState extends State<DiscountsPage> {
         final discounts = snapshot.data ?? [];
         final activeDiscounts = discounts.where((d) => d.isActive).length;
         final totalUses =
-            discounts.fold<int>(0, (sum, d) => sum + d.currentUseCount);
+            discounts.fold<int>(0, (total, d) => total + d.currentUseCount);
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -229,7 +229,8 @@ class _DiscountsPageState extends State<DiscountsPage> {
       child: DataTable(
         columnSpacing: 24,
         headingRowHeight: 56,
-        dataRowHeight: 64,
+        dataRowMinHeight: 64,
+        dataRowMaxHeight: 64,
         headingTextStyle: TextStyle(
             fontWeight: FontWeight.w600,
             color: AppThemes.getSecondaryTextColor(context)),

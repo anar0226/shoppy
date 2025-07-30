@@ -114,9 +114,36 @@ class _EditProductDialogState extends State<EditProductDialog> {
     _descCtrl.text = data['description'] ?? '';
     _priceCtrl.text = (data['price'] ?? 0.0).toString();
     _status = (data['isActive'] ?? true) ? 'Active' : 'Inactive';
-    _category = data['category'];
-    _subcategory = data['subcategory'];
-    _leafCategory = data['leafCategory'];
+
+    // Validate category exists in dropdown options
+    final category = data['category'];
+    if (category != null && _catMap.containsKey(category)) {
+      _category = category;
+    } else {
+      _category = null; // Reset if category doesn't exist in options
+    }
+
+    // Validate subcategory exists in dropdown options
+    final subcategory = data['subcategory'];
+    if (subcategory != null &&
+        _category != null &&
+        _catMap[_category]!.containsKey(subcategory)) {
+      _subcategory = subcategory;
+    } else {
+      _subcategory = null; // Reset if subcategory doesn't exist in options
+    }
+
+    // Validate leaf category exists in dropdown options
+    final leafCategory = data['leafCategory'];
+    if (leafCategory != null &&
+        _category != null &&
+        _subcategory != null &&
+        _catMap[_category]![_subcategory]!.contains(leafCategory)) {
+      _leafCategory = leafCategory;
+    } else {
+      _leafCategory = null; // Reset if leaf category doesn't exist in options
+    }
+
     _existingImages = List<String>.from(data['images'] ?? []);
 
     // Load variant data
@@ -184,24 +211,11 @@ class _EditProductDialogState extends State<EditProductDialog> {
     super.dispose();
   }
 
-  final double _uploadProgress = 0.0;
-
   Widget _label(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
     );
-  }
-
-  Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() => _imageFile = pickedFile);
-    }
-  }
-
-  void _removeImage() {
-    setState(() => _imageFile = null);
   }
 
   void _removeExistingImage(int index) {
@@ -283,7 +297,8 @@ class _EditProductDialogState extends State<EditProductDialog> {
         'variants':
             _hasVariants ? _variants.map((v) => v.toMap()).toList() : null,
         'totalStock': _hasVariants
-            ? _variants.fold<int>(0, (sum, variant) => sum + variant.inventory)
+            ? _variants.fold<int>(
+                0, (total, variant) => total + variant.inventory)
             : inventory,
         'discount': {
           'isDiscounted': _isDiscounted,
@@ -740,8 +755,9 @@ class _EditProductDialogState extends State<EditProductDialog> {
                             hintText: 'Бүтээгдэхүүний үнэ оруулна уу'),
                         validator: (v) {
                           final p = double.tryParse(v ?? '');
-                          if (p == null || p <= 0)
+                          if (p == null || p <= 0) {
                             return 'Бүтээгдэхүүний үнэ оруулна уу';
+                          }
                           return null;
                         },
                       ),
@@ -984,7 +1000,7 @@ class _EditProductDialogState extends State<EditProductDialog> {
                                     }).toList(),
                                     const Divider(),
                                     Text(
-                                      'Нийт нөөц: ${_variants.fold<int>(0, (sum, v) => sum + v.inventory)}',
+                                      'Нийт нөөц: ${_variants.fold<int>(0, (total, v) => total + v.inventory)}',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w600,
                                         color: Colors.green,
@@ -1032,8 +1048,7 @@ class _EditProductDialogState extends State<EditProductDialog> {
                         items: _catMap.keys
                             .map<DropdownMenuItem<String>>((c) =>
                                 DropdownMenuItem<String>(
-                                    value: c as String,
-                                    child: Text(c as String)))
+                                    value: c, child: Text(c)))
                             .toList(),
                         onChanged: (v) => setState(() {
                           _category = v;
@@ -1053,8 +1068,7 @@ class _EditProductDialogState extends State<EditProductDialog> {
                                 .keys
                                 .map<DropdownMenuItem<String>>((s) =>
                                     DropdownMenuItem<String>(
-                                        value: s as String,
-                                        child: Text(s as String)))
+                                        value: s, child: Text(s)))
                                 .toList()
                             : const [],
                         onChanged: _category == null
@@ -1075,8 +1089,7 @@ class _EditProductDialogState extends State<EditProductDialog> {
                             ? (_catMap[_category]![_subcategory]! as List)
                                 .map<DropdownMenuItem<String>>((leaf) =>
                                     DropdownMenuItem<String>(
-                                        value: leaf as String,
-                                        child: Text(leaf as String)))
+                                        value: leaf, child: Text(leaf)))
                                 .toList()
                             : const [],
                         onChanged: (_category == null || _subcategory == null)

@@ -38,50 +38,32 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
 
       // Check current user
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        // User is authenticated
+      if (user == null) {
+        setState(() {
+          _error = 'Authentication required. Please log in as a super admin.';
+          _isLoading = false;
+        });
+        return;
+      }
 
-        // Check if user has super admin document
-        try {
-          final superAdminDoc =
-              await _firestore.collection('super_admins').doc(user.uid).get();
-          if (superAdminDoc.exists) {
-            final data = superAdminDoc.data();
-            // Super admin document found
-          } else {
-            // No super admin document found for this user
-          }
-        } catch (e) {
-          await ErrorHandlerService.instance.handleError(
-            operation: 'check_super_admin_document',
-            error: e,
-            showUserMessage: false,
-            logError: true,
-            fallbackValue: null,
-          );
+      // Check if user has super admin document
+      bool isSuperAdmin = false;
+      try {
+        final superAdminDoc =
+            await _firestore.collection('super_admins').doc(user.uid).get();
+        if (superAdminDoc.exists) {
+          isSuperAdmin = true;
         }
+      } catch (e) {
+        debugPrint('Error checking super admin status: $e');
+      }
 
-        // Check if user is regular admin
-        try {
-          final userDoc =
-              await _firestore.collection('users').doc(user.uid).get();
-          if (userDoc.exists) {
-            final userData = userDoc.data();
-            // User document found
-          } else {
-            // No user document found
-          }
-        } catch (e) {
-          await ErrorHandlerService.instance.handleError(
-            operation: 'check_user_document',
-            error: e,
-            showUserMessage: false,
-            logError: true,
-            fallbackValue: null,
-          );
-        }
-      } else {
-        // No authenticated user found
+      if (!isSuperAdmin) {
+        setState(() {
+          _error = 'Insufficient permissions. Super admin access required.';
+          _isLoading = false;
+        });
+        return;
       }
 
       // Now proceed with loading data
@@ -120,11 +102,13 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
       });
     } catch (e) {
       // Error in _loadInitialData()
+      String errorMessage = 'Failed to load data: $e';
       if (e.toString().contains('permission-denied')) {
-        // This is a Firestore permission error
+        errorMessage =
+            'Permission denied. Please ensure you have super admin access and proper Firestore rules are configured.';
       }
       setState(() {
-        _error = 'Failed to load data: $e';
+        _error = errorMessage;
         _isLoading = false;
       });
     }
@@ -164,7 +148,8 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
     } catch (e) {
       // Error in _loadCategories()
       if (e.toString().contains('permission-denied')) {
-        // Categories collection access DENIED - check Firestore rules
+        throw Exception(
+            'Permission denied accessing categories. Please check Firestore rules for super admin access.');
       }
       rethrow;
     }
@@ -198,8 +183,8 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
     } catch (e) {
       // Error in _createSampleCategories()
       if (e.toString().contains('permission-denied')) {
-        // Categories collection WRITE access DENIED
-        // Cannot create sample categories - check Firestore rules
+        throw Exception(
+            'Permission denied creating categories. Please check Firestore write rules for super admin access.');
       }
       rethrow;
     }
@@ -228,16 +213,14 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
       if (_allProducts.isNotEmpty) {
         // Sample products loaded
         for (int i = 0; i < _allProducts.length && i < 3; i++) {
-          final product = _allProducts[i];
           // Product loaded
         }
       }
     } catch (e) {
       // Error in _loadAllProducts()
       if (e.toString().contains('permission-denied')) {
-        // CollectionGroup("products") access DENIED
-        // This means Firestore rules don't allow reading products from stores
-        // Check rules for: /stores/{storeId}/products/{productId}
+        throw Exception(
+            'Permission denied accessing products. Please check Firestore rules for collectionGroup("products") access.');
       }
       rethrow;
     }
@@ -349,12 +332,14 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
         'updatedBy': 'super_admin',
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Featured products updated successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Featured products updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
       await ErrorHandlerService.instance.handleError(
         operation: 'save_featured_products',
@@ -364,12 +349,15 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
         logError: true,
         fallbackValue: null,
       );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving featured products: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        // ignore: use_build_context_synchronously
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving featured products: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

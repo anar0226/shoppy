@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:provider/provider.dart';
 import '../auth/auth_service.dart';
-import '../auth/login_page.dart';
+import '../auth/unified_auth_page.dart';
 import '../services/notification_service.dart';
 import '../../features/settings/providers/app_settings_provider.dart';
 import '../../features/settings/themes/app_themes.dart';
@@ -19,7 +20,7 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
     final theme = Theme.of(context);
     return Material(
       elevation: 0,
-      color: AppThemes.getSurfaceColor(context),
+      color: const Color(0xFF0053A3), // Brand blue background
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         alignment: Alignment.center,
@@ -29,7 +30,7 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
             Text(title,
                 style: theme.textTheme.headlineSmall!.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: AppThemes.getTextColor(context),
+                  color: Colors.white,
                 )),
             const SizedBox(width: 16),
             Expanded(
@@ -71,8 +72,8 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
                   clipBehavior: Clip.none,
                   children: [
                     IconButton(
-                      icon: Icon(Icons.notifications_none_outlined,
-                          color: AppThemes.getTextColor(context)),
+                      icon: const Icon(Icons.notifications_none_outlined,
+                          color: Colors.white),
                       onPressed: () => _showNotificationsDropdown(context),
                     ),
                     if (unreadCount > 0)
@@ -82,9 +83,9 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 4, vertical: 1),
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: Colors.red,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.all(Radius.circular(8)),
                           ),
                           constraints: const BoxConstraints(minWidth: 16),
                           child: Text(
@@ -102,8 +103,7 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
 
             // Settings dropdown
             PopupMenuButton<String>(
-              icon:
-                  Icon(Icons.settings, color: AppThemes.getTextColor(context)),
+              icon: const Icon(Icons.settings, color: Colors.white),
               tooltip: 'Settings',
               offset: const Offset(0, 40),
               onSelected: (value) {
@@ -154,19 +154,6 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
             ),
 
             const SizedBox(width: 8),
-            // Display user name if available
-            Builder(builder: (_) {
-              final user = FirebaseAuth.instance.currentUser;
-              final name = user?.displayName ?? user?.email ?? 'User';
-              return Padding(
-                padding: const EdgeInsets.only(right: 12.0),
-                child: Text(name,
-                    style: theme.textTheme.bodyMedium!.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppThemes.getTextColor(context),
-                    )),
-              );
-            }),
             PopupMenuButton<String>(
               offset: const Offset(0, 40),
               tooltip: 'Account',
@@ -175,7 +162,8 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
                   await AuthService.instance.signOut();
                   if (context.mounted) {
                     Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const LoginPage()),
+                      MaterialPageRoute(
+                          builder: (_) => const UnifiedAuthPage()),
                       (route) => false,
                     );
                   }

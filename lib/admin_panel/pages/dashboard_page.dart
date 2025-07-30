@@ -620,7 +620,7 @@ class _DashboardPageState extends State<DashboardPage> {
               data: _revenueTrends,
               height: 320,
               title: 'Орлого ба захиалгууд',
-              lineColor: Colors.green,
+              lineColor: const Color(0xFF0053A3),
             ),
           ),
         ),
@@ -651,7 +651,13 @@ class _DashboardPageState extends State<DashboardPage> {
                       onPressed: () {
                         // Navigate to full products analytics
                       },
-                      child: const Text('Бүгдийг харах'),
+                      child: const Text(
+                        'Бүгдийг харах',
+                        style: TextStyle(
+                          color: Color(0xFF0053A3),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -792,7 +798,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         // Navigate to orders page
                       },
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.green,
+                        foregroundColor: const Color(0xFF0053A3),
                         padding: EdgeInsets.zero,
                         minimumSize: Size.zero,
                       ),
@@ -800,7 +806,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         'Бүгдийг харах',
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -841,7 +847,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         // Navigate to full activity log
                       },
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.green,
+                        foregroundColor: const Color(0xFF0053A3),
                         padding: EdgeInsets.zero,
                         minimumSize: Size.zero,
                       ),
@@ -849,7 +855,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         'Бүгдийг харах',
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),

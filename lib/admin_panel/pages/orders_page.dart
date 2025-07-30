@@ -18,6 +18,9 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> {
+  // Store ID for queries
+  String? _storeId;
+
   // Statistics variables
   int totalOrders = 0;
   double totalRevenue = 0.0;
@@ -33,9 +36,36 @@ class _OrdersPageState extends State<OrdersPage> {
   final Map<String, ProductModel> _productCache = {};
 
   @override
+  void initState() {
+    super.initState();
+    _loadStoreId();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadStoreId() async {
+    try {
+      final ownerId = AuthService.instance.currentUser?.uid;
+      if (ownerId == null) return;
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('stores')
+          .where('ownerId', isEqualTo: ownerId)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        setState(() {
+          _storeId = snapshot.docs.first.id;
+        });
+      }
+    } catch (e) {
+      // Handle error silently
+    }
   }
 
   // Get product details for order items
@@ -238,96 +268,6 @@ class _OrdersPageState extends State<OrdersPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Алдаа гарлаа: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  // Show delete order confirmation dialog
-  Future<void> _showDeleteOrderDialog(String orderId, String customer) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Захиалга устгах'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Та энэ захиалгыг устгахдаа итгэлтэй байна уу?'),
-            const SizedBox(height: 8),
-            Text('Захиалгын ID: #${orderId.substring(0, 8)}...'),
-            Text('Хэрэглэгч: $customer'),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.shade200),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.warning, color: Colors.orange.shade700, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Энэ үйлдлийг буцаах боломжгүй!',
-                      style: TextStyle(
-                        color: Colors.orange.shade700,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Цуцлах'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Устгах'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      await _deleteOrder(orderId);
-    }
-  }
-
-  // Delete order from Firestore
-  Future<void> _deleteOrder(String orderId) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('orders')
-          .doc(orderId)
-          .delete();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Захиалга амжилттай устгагдлаа'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Захиалга устгахад алдаа гарлаа: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1339,10 +1279,14 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   Widget ordersStreamTable() {
+    if (_storeId == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: DatabaseService()
           .collection('orders')
-          .where('vendorId', isEqualTo: AuthService.instance.currentUser?.uid)
+          .where('storeId', isEqualTo: _storeId)
           .orderBy('createdAt', descending: true)
           .limit(50) // Add pagination limit
           .snapshots(),
@@ -1508,31 +1452,33 @@ class _OrdersPageState extends State<OrdersPage> {
 
       rows.add(DataRow(cells: [
         // Order cell
-        DataCell(Row(children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: Colors.green.shade100,
-              borderRadius: BorderRadius.circular(8),
+        DataCell(Builder(
+          builder: (context) => Row(children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.green.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.shopping_cart_outlined,
+                  size: 20, color: Colors.black),
             ),
-            child: const Icon(Icons.shopping_cart_outlined,
-                size: 20, color: Colors.black),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('#${id.substring(0, 8)}...',
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
-              Text('Захиалгын дугаар',
-                  style: TextStyle(
-                      color: AppThemes.getSecondaryTextColor(context),
-                      fontSize: 12)),
-            ],
-          )
-        ])),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('#${id.substring(0, 8)}...',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text('Захиалгын дугаар',
+                    style: TextStyle(
+                        color: AppThemes.getSecondaryTextColor(context),
+                        fontSize: 12)),
+              ],
+            )
+          ]),
+        )),
 
         // Product details cell
         DataCell(Column(
@@ -1603,16 +1549,18 @@ class _OrdersPageState extends State<OrdersPage> {
         )),
 
         // Customer cell
-        DataCell(Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(customer),
-            Text(email,
-                style: TextStyle(
-                    color: AppThemes.getSecondaryTextColor(context),
-                    fontSize: 12)),
-          ],
+        DataCell(Builder(
+          builder: (context) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(customer),
+              Text(email,
+                  style: TextStyle(
+                      color: AppThemes.getSecondaryTextColor(context),
+                      fontSize: 12)),
+            ],
+          ),
         )),
 
         // Date cell
@@ -1622,27 +1570,30 @@ class _OrdersPageState extends State<OrdersPage> {
         DataCell(Text('₮${total.toStringAsFixed(0)}')),
 
         // Status cell
-        DataCell(GestureDetector(
-          onTap: () async {
-            if (!context.mounted) return;
-            _showStatusEditDialog(id, status);
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: getBadgeColor(status),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(getStatusText(status),
-                    style: TextStyle(
-                        fontSize: 12, color: AppThemes.getTextColor(context))),
-                const SizedBox(width: 4),
-                const Icon(Icons.edit, size: 12),
-              ],
+        DataCell(Builder(
+          builder: (context) => GestureDetector(
+            onTap: () async {
+              if (!mounted) return;
+              _showStatusEditDialog(id, status);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: getBadgeColor(status),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(getStatusText(status),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: AppThemes.getTextColor(context))),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.edit, size: 12),
+                ],
+              ),
             ),
           ),
         )),
@@ -1651,20 +1602,9 @@ class _OrdersPageState extends State<OrdersPage> {
         DataCell(Row(children: [
           Builder(
             builder: (context) => IconButton(
-              icon:
-                  const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-              onPressed: () async {
-                if (!context.mounted) return;
-                _showDeleteOrderDialog(id, customer);
-              },
-              tooltip: 'Захиалга устгах',
-            ),
-          ),
-          Builder(
-            builder: (context) => IconButton(
               icon: const Icon(Icons.visibility, size: 18, color: Colors.blue),
               onPressed: () async {
-                if (!context.mounted) return;
+                if (!mounted) return;
                 _showOrderDetailsDialog(doc);
               },
               tooltip: 'Дэлгэрэнгүй харах',
@@ -1674,7 +1614,7 @@ class _OrdersPageState extends State<OrdersPage> {
             builder: (context) => IconButton(
               icon: const Icon(Icons.edit, size: 18),
               onPressed: () async {
-                if (!context.mounted) return;
+                if (!mounted) return;
                 _showStatusEditDialog(id, status);
               },
               tooltip: 'Төлөв өөрчлөх',

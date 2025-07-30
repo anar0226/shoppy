@@ -11,8 +11,7 @@ class EnvironmentConfig {
   // Payment configurations - Prioritize compile-time variables for production
   static String get qpayUsername {
     // First try compile-time environment variables (for CI/CD builds)
-    final envValue =
-        const String.fromEnvironment('QPAY_USERNAME', defaultValue: '');
+    const envValue = String.fromEnvironment('QPAY_USERNAME', defaultValue: '');
     if (envValue.isNotEmpty) {
       return envValue;
     }
@@ -27,8 +26,7 @@ class EnvironmentConfig {
   }
 
   static String get qpayPassword {
-    final envValue =
-        const String.fromEnvironment('QPAY_PASSWORD', defaultValue: '');
+    const envValue = String.fromEnvironment('QPAY_PASSWORD', defaultValue: '');
     if (envValue.isNotEmpty) {
       return envValue;
     }
@@ -42,8 +40,8 @@ class EnvironmentConfig {
   }
 
   static String get qpayInvoiceCode {
-    final envValue =
-        const String.fromEnvironment('QPAY_INVOICE_CODE', defaultValue: '');
+    const envValue =
+        String.fromEnvironment('QPAY_INVOICE_CODE', defaultValue: '');
     if (envValue.isNotEmpty) {
       return envValue;
     }
@@ -57,8 +55,7 @@ class EnvironmentConfig {
   }
 
   static String get qpayBaseUrl {
-    final envValue =
-        const String.fromEnvironment('QPAY_BASE_URL', defaultValue: '');
+    const envValue = String.fromEnvironment('QPAY_BASE_URL', defaultValue: '');
     if (envValue.isNotEmpty) {
       return envValue;
     }
@@ -74,8 +71,8 @@ class EnvironmentConfig {
 
   // Firebase configurations - Also prioritize compile-time variables
   static String get firebaseApiKey {
-    final envValue =
-        const String.fromEnvironment('FIREBASE_API_KEY', defaultValue: '');
+    const envValue =
+        String.fromEnvironment('FIREBASE_API_KEY', defaultValue: '');
     if (envValue.isNotEmpty) {
       return envValue;
     }
@@ -89,8 +86,8 @@ class EnvironmentConfig {
   }
 
   static String get firebaseAppId {
-    final envValue =
-        const String.fromEnvironment('FIREBASE_APP_ID', defaultValue: '');
+    const envValue =
+        String.fromEnvironment('FIREBASE_APP_ID', defaultValue: '');
     if (envValue.isNotEmpty) {
       return envValue;
     }
@@ -104,8 +101,8 @@ class EnvironmentConfig {
   }
 
   static String get firebaseProjectId {
-    final envValue =
-        const String.fromEnvironment('FIREBASE_PROJECT_ID', defaultValue: '');
+    const envValue =
+        String.fromEnvironment('FIREBASE_PROJECT_ID', defaultValue: '');
     if (envValue.isNotEmpty) {
       return envValue;
     }
@@ -119,8 +116,8 @@ class EnvironmentConfig {
   }
 
   static String get firebaseSenderId {
-    final envValue =
-        const String.fromEnvironment('FIREBASE_SENDER_ID', defaultValue: '');
+    const envValue =
+        String.fromEnvironment('FIREBASE_SENDER_ID', defaultValue: '');
     if (envValue.isNotEmpty) {
       return envValue;
     }

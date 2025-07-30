@@ -15,39 +15,8 @@ class _SendNotificationDialogState extends State<SendNotificationDialog> {
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
 
-  final String _selectedTarget = 'all_customers';
   final String _notificationType = 'promotion';
   bool _isSending = false;
-
-  final List<Map<String, dynamic>> _targetOptions = [
-    {'value': 'all_customers', 'label': 'All Customers', 'icon': Icons.group},
-    {
-      'value': 'recent_customers',
-      'label': 'Recent Customers (30 days)',
-      'icon': Icons.schedule
-    },
-    {
-      'value': 'high_value',
-      'label': 'High Value Customers',
-      'icon': Icons.star
-    },
-    {
-      'value': 'cart_abandoners',
-      'label': 'Cart Abandoners',
-      'icon': Icons.shopping_cart_outlined
-    },
-  ];
-
-  final List<Map<String, dynamic>> _notificationTypes = [
-    {'value': 'promotion', 'label': 'Promotion', 'icon': Icons.local_offer},
-    {'value': 'announcement', 'label': 'Announcement', 'icon': Icons.campaign},
-    {
-      'value': 'product_alert',
-      'label': 'Product Alert',
-      'icon': Icons.inventory
-    },
-    {'value': 'event', 'label': 'Event', 'icon': Icons.event},
-  ];
 
   @override
   void dispose() {

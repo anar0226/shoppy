@@ -9,7 +9,6 @@ import '../../features/products/services/product_service.dart';
 import '../../features/products/models/product_model.dart';
 import '../../core/services/image_upload_service.dart';
 import '../auth/auth_service.dart';
-import 'store_payout_settings_page.dart';
 
 class StorefrontPage extends StatefulWidget {
   const StorefrontPage({super.key});
@@ -29,8 +28,6 @@ class _StorefrontPageState extends State<StorefrontPage> {
   bool _isUploadingImage = false;
   bool _isUploadingProfileImage = false;
   bool _isSaving = false;
-  double _storeRating = 0.0;
-  int _reviewCount = 0;
 
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -45,7 +42,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
       final ownerId = AuthService.instance.currentUser?.uid;
       if (ownerId == null) {
         setState(() {
-          _errorMessage = 'User not authenticated';
+          _errorMessage = 'Хэрэглэгч олдсонгүй';
           _isLoading = false;
         });
         return;
@@ -81,51 +78,24 @@ class _StorefrontPageState extends State<StorefrontPage> {
           backgroundImage = data['backgroundImageUrl'];
         }
 
-        // Load real ratings from reviews
-        double storeRating = 0.0;
-        int reviewCount = 0;
-
-        try {
-          final reviewsSnapshot = await FirebaseFirestore.instance
-              .collection('stores')
-              .doc(store.id)
-              .collection('reviews')
-              .where('status', isEqualTo: 'active')
-              .get();
-
-          if (reviewsSnapshot.docs.isNotEmpty) {
-            final reviews = reviewsSnapshot.docs;
-            final totalRating = reviews.fold<double>(0, (sum, doc) {
-              final data = doc.data();
-              return sum + ((data['rating'] as num?)?.toDouble() ?? 0);
-            });
-            storeRating = totalRating / reviews.length;
-            reviewCount = reviews.length;
-          }
-        } catch (reviewError) {
-          debugPrint(
-              '⚠️ Error loading reviews for admin preview: $reviewError');
-        }
-
         setState(() {
           _storeModel = store;
           _allProducts = products;
           _selectedProductIds = selectedProductIds;
           _backgroundImageUrl = backgroundImage;
           _profileImageUrl = store.logo;
-          _storeRating = storeRating;
-          _reviewCount = reviewCount;
+
           _isLoading = false;
         });
       } else {
         setState(() {
-          _errorMessage = 'No store found for this user';
+          _errorMessage = 'Хэрэглэгчийн дэлгүүр олдсонгүй';
           _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error loading store data: $e';
+        _errorMessage = 'Алдаа гарлаа: $e';
         _isLoading = false;
       });
     }
@@ -155,9 +125,10 @@ class _StorefrontPageState extends State<StorefrontPage> {
           _isUploadingImage = false;
         });
 
-        if (context.mounted) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Background image updated!')),
+            const SnackBar(
+                content: Text('Дэвсгэр зургийг амжилттай өөрчилсөн')),
           );
         }
       }
@@ -165,9 +136,9 @@ class _StorefrontPageState extends State<StorefrontPage> {
       setState(() {
         _isUploadingImage = false;
       });
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error uploading image: $e')),
+          SnackBar(content: Text('Алдаа гарлаа: $e')),
         );
       }
     }
@@ -204,9 +175,10 @@ class _StorefrontPageState extends State<StorefrontPage> {
           _isUploadingProfileImage = false;
         });
 
-        if (context.mounted) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile picture updated!')),
+            const SnackBar(
+                content: Text('Профайл зургийг амжилттай өөрчилсөн')),
           );
         }
       }
@@ -214,9 +186,9 @@ class _StorefrontPageState extends State<StorefrontPage> {
       setState(() {
         _isUploadingProfileImage = false;
       });
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error uploading profile picture: $e')),
+          SnackBar(content: Text('Алдаа гарлаа: $e')),
         );
       }
     }
@@ -240,16 +212,15 @@ class _StorefrontPageState extends State<StorefrontPage> {
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Seller card settings saved successfully!')),
+          const SnackBar(content: Text('Тохиргоо амжилттай хадгалагдлаа')),
         );
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving settings: $e')),
+          SnackBar(content: Text('Алдаа гарлаа: $e')),
         );
       }
     } finally {
@@ -266,26 +237,13 @@ class _StorefrontPageState extends State<StorefrontPage> {
       } else if (_selectedProductIds.length < 4) {
         _selectedProductIds.add(productId);
       } else {
-        if (context.mounted) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('You can only select up to 4 products')),
+            const SnackBar(content: Text('Та 4 бараа сонгох боломжтой')),
           );
         }
       }
     });
-  }
-
-  String _getProductCategory(
-      String productId, List<QueryDocumentSnapshot> categoryDocs) {
-    for (final doc in categoryDocs) {
-      final data = doc.data() as Map<String, dynamic>?;
-      final productIds = List<String>.from(data?['productIds'] ?? []);
-      if (productIds.contains(productId)) {
-        return data?['name'] as String? ?? '';
-      }
-    }
-    return ''; // Product not in any category
   }
 
   @override
@@ -298,7 +256,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
           Expanded(
             child: Column(
               children: [
-                const TopNavBar(title: 'Store Settings'),
+                const TopNavBar(title: 'Дэлгүүрээ янзлаx'),
                 Expanded(
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
@@ -325,7 +283,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Store Settings',
+                'Дэлгүүрээ янзлаx',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -339,7 +297,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.save),
-                label: Text(_isSaving ? 'Saving...' : 'Save Changes'),
+                label: Text(_isSaving ? 'Хадгалаж байна...' : 'Хадгалах'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppThemes.primaryColor,
                   foregroundColor: Colors.white,
@@ -368,14 +326,14 @@ class _StorefrontPageState extends State<StorefrontPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Store Profile Picture',
+                  'Дэлгүүрээ янзлаx',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'This picture will be displayed as your store\'s profile picture on the seller cards and throughout the app.',
+                  'Энэ зураг нь таны дэлгүүрийн профайл зураг',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Colors.grey.shade600,
                       ),
@@ -444,8 +402,8 @@ class _StorefrontPageState extends State<StorefrontPage> {
                                     : const Icon(Icons.upload),
                                 label: Text(_profileImageUrl != null &&
                                         _profileImageUrl!.isNotEmpty
-                                    ? 'Change Picture'
-                                    : 'Upload Picture'),
+                                    ? 'Зургийг өөрчлөх'
+                                    : 'Зураг оруулах'),
                               ),
                               if (_profileImageUrl != null &&
                                   _profileImageUrl!.isNotEmpty) ...[
@@ -465,28 +423,28 @@ class _StorefrontPageState extends State<StorefrontPage> {
                                             _storeModel!.copyWith(logo: '');
                                       });
 
-                                      if (context.mounted) {
+                                      if (mounted) {
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(
                                           const SnackBar(
                                               content: Text(
-                                                  'Profile picture removed')),
+                                                  'Профайл зургийг устгалаа')),
                                         );
                                       }
                                     } catch (e) {
-                                      if (context.mounted) {
+                                      if (mounted) {
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(
                                           SnackBar(
-                                              content: Text(
-                                                  'Error removing picture: $e')),
+                                              content:
+                                                  Text('Алдаа гарлаа: $e')),
                                         );
                                       }
                                     }
                                   },
                                   icon: const Icon(Icons.delete,
                                       color: Colors.red),
-                                  label: const Text('Remove',
+                                  label: const Text('Устгах',
                                       style: TextStyle(color: Colors.red)),
                                 ),
                               ],
@@ -494,7 +452,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Recommended: Square image, 400x400px or larger',
+                            '400x400 пиксел буюу түүнээс дээш хэмжээтэй зураг байршуулxийг зөвлөж байна. .',
                             style:
                                 Theme.of(context).textTheme.bodySmall?.copyWith(
                                       color: Colors.grey.shade600,
@@ -527,7 +485,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Background Image',
+                  'Дэвсгэр зургийг янзлаx',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -560,8 +518,8 @@ class _StorefrontPageState extends State<StorefrontPage> {
                             )
                           : const Icon(Icons.upload),
                       label: Text(_backgroundImageUrl != null
-                          ? 'Change Image'
-                          : 'Upload Image'),
+                          ? 'Зургийг өөрчлөх'
+                          : 'Зураг оруулах'),
                     ),
                     if (_backgroundImageUrl != null) ...[
                       const SizedBox(width: 12),
@@ -572,7 +530,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
                           });
                         },
                         icon: const Icon(Icons.delete, color: Colors.red),
-                        label: const Text('Remove',
+                        label: const Text('Устгах',
                             style: TextStyle(color: Colors.red)),
                       ),
                     ],
@@ -596,7 +554,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Featured Products',
+                      'Онцлох бүтээгдэхүүн',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -614,7 +572,7 @@ class _StorefrontPageState extends State<StorefrontPage> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Select up to 4 products to feature on your seller card',
+                  'Та 4-н онцлох бүтээгдэхүүн сонгох боломжтой',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Colors.grey.shade600,
                       ),
@@ -747,102 +705,6 @@ class _StorefrontPageState extends State<StorefrontPage> {
                       },
                     ),
                   ),
-              ],
-            ),
-          ),
-        ),
-
-        // Payout Settings Section
-        const SizedBox(height: 24),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.account_balance_wallet,
-                        color: Colors.green),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Төлбөрийн тохиргоо',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    const Spacer(),
-                    if (_storeModel != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _storeModel!.isPayoutSetupComplete
-                              ? Colors.green.shade100
-                              : Colors.orange.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          _storeModel!.isPayoutSetupComplete
-                              ? 'Бүрэн'
-                              : 'Бүрэн бус',
-                          style: TextStyle(
-                            color: _storeModel!.isPayoutSetupComplete
-                                ? Colors.green.shade700
-                                : Colors.orange.shade700,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Олсон орлогоо хүлээн авахын тулд банкны мэдээлэл, QPay хэтэвч, төлбөрийн тохиргоогоо тохируулна уу.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey.shade600,
-                      ),
-                ),
-                const SizedBox(height: 16),
-                if (_storeModel != null) ...[
-                  // Progress indicator
-                  LinearProgressIndicator(
-                    value: _storeModel!.payoutSetupProgress / 100,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      _storeModel!.payoutSetupProgress == 100
-                          ? Colors.green
-                          : Colors.orange,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${_storeModel!.payoutSetupProgress.toInt()}% Бүрэн',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => StorePayoutSettingsPage(
-                          storeId: _storeModel?.id ?? '',
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.settings),
-                  label: const Text('Төлбөрийн тохиргоог тохируулах'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppThemes.primaryColor,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
               ],
             ),
           ),

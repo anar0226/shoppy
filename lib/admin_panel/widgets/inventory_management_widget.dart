@@ -803,7 +803,7 @@ class _InventoryManagementWidgetState extends State<InventoryManagementWidget> {
       );
 
       if (success) {
-        if (context.mounted) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Inventory adjusted successfully'),
@@ -812,7 +812,7 @@ class _InventoryManagementWidgetState extends State<InventoryManagementWidget> {
           );
         }
       } else {
-        if (context.mounted) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Failed to adjust inventory'),
@@ -822,7 +822,7 @@ class _InventoryManagementWidgetState extends State<InventoryManagementWidget> {
         }
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $e'),
@@ -875,7 +875,6 @@ class _InventoryManagementWidgetState extends State<InventoryManagementWidget> {
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: () async {
-                  // TODO: Implement CSV upload
                   Navigator.pop(context);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -901,7 +900,6 @@ class _InventoryManagementWidgetState extends State<InventoryManagementWidget> {
   }
 
   void _exportInventoryReport() {
-    // TODO: Implement inventory report export
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

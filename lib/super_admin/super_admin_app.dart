@@ -6,14 +6,12 @@ import 'auth/super_admin_auth_service.dart';
 import 'auth/super_admin_login_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/stores_management_page.dart';
-import 'pages/users_management_page.dart';
-import 'pages/analytics_page.dart';
-import 'pages/notifications_page.dart';
-import 'pages/commission_management_page.dart';
-import 'pages/settings_page.dart';
 import 'pages/featured_stores_page.dart';
 import 'pages/featured_products_page.dart';
+import 'pages/featured_brands_page.dart';
+import 'pages/payment_management_page.dart';
 import 'pages/backup_management_page.dart';
+import 'pages/settings_page.dart';
 import 'widgets/side_menu.dart';
 import 'widgets/top_nav_bar.dart';
 import '../core/services/error_handler_service.dart';
@@ -23,28 +21,57 @@ class SuperAdminApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-      ],
-      child: Consumer<ThemeProvider>(
-        builder: (_, themeProvider, __) => MaterialApp(
-          title: 'Avii.mn Super Admin',
-          theme: ThemeData(
-            primarySwatch: Colors.blue,
-            fontFamily: 'Inter',
-            visualDensity: VisualDensity.adaptivePlatformDensity,
-          ),
-          darkTheme: ThemeData.dark().copyWith(
-            primaryColor: Colors.blue,
-          ),
-          themeMode: themeProvider.mode,
-          home: const SuperAdminRoot(),
-          debugShowCheckedModeBanner: false,
+    debugPrint('SuperAdmin: Building SuperAdminApp');
+
+    try {
+      return MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ],
+        child: Consumer<ThemeProvider>(
+          builder: (_, themeProvider, __) {
+            debugPrint('SuperAdmin: Building MaterialApp');
+            return MaterialApp(
+              title: 'Avii.mn Super Admin',
+              theme: ThemeData(
+                primarySwatch: Colors.blue,
+                primaryColor: const Color(0xFF0053A3),
+                fontFamily: 'Inter',
+                visualDensity: VisualDensity.adaptivePlatformDensity,
+              ),
+              darkTheme: ThemeData.dark().copyWith(
+                primaryColor: const Color(0xFF0053A3),
+              ),
+              themeMode: themeProvider.mode,
+              home: const SuperAdminRoot(),
+              debugShowCheckedModeBanner: false,
+            );
+          },
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      debugPrint('SuperAdmin: Error building SuperAdminApp: $e');
+      return MaterialApp(
+        title: 'Avii.mn Super Admin - Error',
+        home: Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  'Error initializing Super Admin: $e',
+                  style: const TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
   }
 }
 
@@ -58,23 +85,30 @@ class SuperAdminRoot extends StatefulWidget {
 class _SuperAdminRootState extends State<SuperAdminRoot> {
   bool _isAuthenticated = false;
   bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
+    debugPrint('SuperAdmin: Initializing...');
     _checkAuthentication();
   }
 
   Future<void> _checkAuthentication() async {
     try {
+      debugPrint('SuperAdmin: Checking authentication...');
       final isAuth = await SuperAdminAuthService.instance.isAuthenticated();
+      debugPrint('SuperAdmin: Authentication result: $isAuth');
+
       if (mounted) {
         setState(() {
           _isAuthenticated = isAuth;
           _isLoading = false;
+          _errorMessage = null;
         });
       }
     } catch (e) {
+      debugPrint('SuperAdmin: Authentication error: $e');
       await ErrorHandlerService.instance.handleError(
         operation: 'super_admin_authentication_check',
         error: e,
@@ -86,6 +120,7 @@ class _SuperAdminRootState extends State<SuperAdminRoot> {
         setState(() {
           _isAuthenticated = false;
           _isLoading = false;
+          _errorMessage = 'Authentication check failed: $e';
         });
       }
     }
@@ -93,17 +128,59 @@ class _SuperAdminRootState extends State<SuperAdminRoot> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint(
+        'SuperAdmin: Building root widget. Loading: $_isLoading, Authenticated: $_isAuthenticated');
+
     if (_isLoading) {
       return const Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading Super Admin...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                'Error: $_errorMessage',
+                style: const TextStyle(fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _isLoading = true;
+                    _errorMessage = null;
+                  });
+                  _checkAuthentication();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     if (!_isAuthenticated) {
+      debugPrint('SuperAdmin: Showing login page');
       return SuperAdminLoginPage(
         onLoginSuccess: () {
+          debugPrint('SuperAdmin: Login successful');
           setState(() {
             _isAuthenticated = true;
           });
@@ -111,6 +188,7 @@ class _SuperAdminRootState extends State<SuperAdminRoot> {
       );
     }
 
+    debugPrint('SuperAdmin: Showing main screen');
     return const SuperAdminMainScreen();
   }
 }
@@ -127,49 +205,76 @@ class _SuperAdminMainScreenState extends State<SuperAdminMainScreen> {
 
   final Map<String, Widget> _pages = {
     'Dashboard': const DashboardPage(),
-    'Analytics': const AnalyticsPage(),
     'Stores': const StoresManagementPage(),
     'FeaturedStores': const FeaturedStoresPage(),
     'FeaturedProducts': const FeaturedProductsPage(),
-    'Users': const UsersManagementPage(),
-    'Notifications': const NotificationsPage(),
-    'Commission': const CommissionManagementPage(),
+    'FeaturedBrands': const FeaturedBrandsPage(),
+    'Payment': const PaymentManagementPage(),
     'Backup Management': const BackupManagementPage(),
     'Settings': const SettingsPage(),
   };
 
   @override
+  void initState() {
+    super.initState();
+    debugPrint('SuperAdmin: Main screen initialized');
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Row(
-        children: [
-          // Side Menu
-          SuperAdminSideMenu(
-            currentPage: _currentPage,
-            onPageSelected: (page) {
-              setState(() {
-                _currentPage = page;
-              });
-            },
-          ),
+    debugPrint('SuperAdmin: Building main screen with page: $_currentPage');
 
-          // Main Content
-          Expanded(
-            child: Column(
-              children: [
-                // Top Navigation
-                SuperAdminTopNavBar(title: _currentPage),
-
-                // Page Content
-                Expanded(
-                  child: _pages[_currentPage] ?? const DashboardPage(),
-                ),
-              ],
+    try {
+      return Scaffold(
+        body: Row(
+          children: [
+            // Side Menu
+            SuperAdminSideMenu(
+              currentPage: _currentPage,
+              onPageSelected: (page) {
+                debugPrint('SuperAdmin: Page selected: $page');
+                setState(() {
+                  _currentPage = page;
+                });
+              },
             ),
+
+            // Main Content
+            Expanded(
+              child: Column(
+                children: [
+                  // Top Navigation
+                  SuperAdminTopNavBar(title: _currentPage),
+
+                  // Page Content
+                  Expanded(
+                    child: _pages[_currentPage] ?? const DashboardPage(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      debugPrint('SuperAdmin: Error building main screen: $e');
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                'Error loading Super Admin: $e',
+                style: const TextStyle(fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        ),
+      );
+    }
   }
 }
 
@@ -187,14 +292,6 @@ class PlatformStats {
   final Map<String, dynamic> topPerformingStores;
   final Map<String, dynamic> recentActivity;
 
-  // New commission-specific fields
-  final double pendingCommissions;
-  final double paidCommissions;
-  final int totalCommissionTransactions;
-  final int pendingCommissionTransactions;
-  final double averageCommissionPerTransaction;
-  final List<Map<String, dynamic>> topEarningStores;
-
   PlatformStats({
     this.totalStores = 0,
     this.activeStores = 0,
@@ -207,13 +304,6 @@ class PlatformStats {
     this.notificationSuccessRate = 0.0,
     this.topPerformingStores = const {},
     this.recentActivity = const {},
-    // Commission fields
-    this.pendingCommissions = 0.0,
-    this.paidCommissions = 0.0,
-    this.totalCommissionTransactions = 0,
-    this.pendingCommissionTransactions = 0,
-    this.averageCommissionPerTransaction = 0.0,
-    this.topEarningStores = const [],
   });
 
   factory PlatformStats.fromMap(Map<String, dynamic> map) {
@@ -230,15 +320,6 @@ class PlatformStats {
       topPerformingStores:
           Map<String, dynamic>.from(map['topPerformingStores'] ?? {}),
       recentActivity: Map<String, dynamic>.from(map['recentActivity'] ?? {}),
-      // Commission fields
-      pendingCommissions: (map['pendingCommissions'] ?? 0).toDouble(),
-      paidCommissions: (map['paidCommissions'] ?? 0).toDouble(),
-      totalCommissionTransactions: map['totalCommissionTransactions'] ?? 0,
-      pendingCommissionTransactions: map['pendingCommissionTransactions'] ?? 0,
-      averageCommissionPerTransaction:
-          (map['averageCommissionPerTransaction'] ?? 0).toDouble(),
-      topEarningStores:
-          List<Map<String, dynamic>>.from(map['topEarningStores'] ?? []),
     );
   }
 
@@ -255,13 +336,6 @@ class PlatformStats {
       'notificationSuccessRate': notificationSuccessRate,
       'topPerformingStores': topPerformingStores,
       'recentActivity': recentActivity,
-      // Commission fields
-      'pendingCommissions': pendingCommissions,
-      'paidCommissions': paidCommissions,
-      'totalCommissionTransactions': totalCommissionTransactions,
-      'pendingCommissionTransactions': pendingCommissionTransactions,
-      'averageCommissionPerTransaction': averageCommissionPerTransaction,
-      'topEarningStores': topEarningStores,
     };
   }
 
@@ -270,23 +344,6 @@ class PlatformStats {
   String get formattedCommission => '₮${platformCommission.toStringAsFixed(2)}';
   String get successRatePercent =>
       '${notificationSuccessRate.toStringAsFixed(1)}%';
-
-  // New commission helper getters
-  String get formattedPendingCommissions =>
-      '₮${pendingCommissions.toStringAsFixed(2)}';
-  String get formattedPaidCommissions =>
-      '₮${paidCommissions.toStringAsFixed(2)}';
-  String get formattedAverageCommission =>
-      '₮${averageCommissionPerTransaction.toStringAsFixed(2)}';
-  double get commissionCollectionRate {
-    if (totalCommissionTransactions == 0) return 0;
-    return ((totalCommissionTransactions - pendingCommissionTransactions) /
-            totalCommissionTransactions) *
-        100;
-  }
-
-  String get collectionRatePercent =>
-      '${commissionCollectionRate.toStringAsFixed(1)}%';
 
   double get storeGrowthRate {
     if (totalStores == 0) return 0;

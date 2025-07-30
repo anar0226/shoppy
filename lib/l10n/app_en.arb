@@ -191,7 +191,7 @@
     "description": "Sign out menu item"
   },
   
-  "newOrderReceived": "New Order Received",
+  "newOrderReceived": "Шинэ захиалга ирлээ!",
   "@newOrderReceived": {
     "description": "New order notification title"
   },

@@ -1,1 +1,1 @@
-const double kStandardShippingFee = 6000.0;
+const double kStandardShippingFee = 10.0;

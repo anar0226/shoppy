@@ -25,7 +25,8 @@ service cloud.firestore {
     function isSuperAdmin() {
       return isAuthenticated() && 
         exists(/databases/$(database)/documents/super_admins/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/super_admins/$(request.auth.uid)).data.isActive == true;
+        (get(/databases/$(database)/documents/super_admins/$(request.auth.uid)).data.isActive == true ||
+         get(/databases/$(database)/documents/super_admins/$(request.auth.uid)).data.isActive == null);
     }
     
     function isValidString(text) {
@@ -398,8 +399,44 @@ service cloud.firestore {
       allow write, create: if isSuperAdmin();
     }
 
+    // Store subscriptions - store owners can manage their own subscriptions, super admins have full access
+    match /store_subscriptions/{subscriptionId} {
+      allow read, write: if isAuthenticated() && 
+        (subscriptionId == request.auth.uid || 
+         (exists(/databases/$(database)/documents/stores/$(subscriptionId)) &&
+          get(/databases/$(database)/documents/stores/$(subscriptionId)).data.ownerId == request.auth.uid) ||
+         isSuperAdmin());
+      allow create: if isAuthenticated() && 
+        (subscriptionId == request.auth.uid ||
+         (request.resource.data.storeId is string &&
+          exists(/databases/$(database)/documents/stores/$(request.resource.data.storeId)) &&
+          get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.ownerId == request.auth.uid)) ||
+        isSuperAdmin();
+      
+      // Payment history subcollection
+      match /payment_history/{paymentId} {
+        allow read, write: if isAuthenticated() && 
+          (subscriptionId == request.auth.uid || 
+           (exists(/databases/$(database)/documents/stores/$(subscriptionId)) &&
+            get(/databases/$(database)/documents/stores/$(subscriptionId)).data.ownerId == request.auth.uid) ||
+           isSuperAdmin());
+        allow create: if isAuthenticated() && 
+          (subscriptionId == request.auth.uid ||
+           (request.resource.data.storeId is string &&
+            exists(/databases/$(database)/documents/stores/$(request.resource.data.storeId)) &&
+            get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.ownerId == request.auth.uid)) ||
+          isSuperAdmin();
+      }
+    }
+
     // Featured products collection - super admin managed, public read access
     match /featured_products/{categoryPath} {
+      allow read, list: if true;
+      allow write, create, delete: if isSuperAdmin() || isAdmin();
+    }
+
+    // Featured brands collection - super admin managed, public read access
+    match /featured_brands/{categoryPath} {
       allow read, list: if true;
       allow write, create, delete: if isSuperAdmin() || isAdmin();
     }

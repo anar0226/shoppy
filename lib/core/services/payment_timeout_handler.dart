@@ -182,7 +182,7 @@ class PaymentTimeoutHandler {
           // Check payment status
           final paymentStatus = await _checkPaymentStatus(qpayInvoiceId);
           if (paymentStatus != null) {
-            if (paymentStatus.isPaid) {
+            if (paymentStatus['is_paid'] == true) {
               await _handlePaymentCompleted(
                 paymentId: paymentId,
                 orderId: orderId,
@@ -191,12 +191,13 @@ class PaymentTimeoutHandler {
               );
               timer.cancel();
               return;
-            } else if (paymentStatus.isFailed || paymentStatus.isCanceled) {
+            } else if (paymentStatus['is_failed'] == true ||
+                paymentStatus['is_canceled'] == true) {
               await _handlePaymentFailed(
                 paymentId: paymentId,
                 orderId: orderId,
                 customerUserId: customerUserId,
-                status: paymentStatus.status ?? 'FAILED',
+                status: paymentStatus['status'] ?? 'FAILED',
                 metadata: metadata,
               );
               timer.cancel();
@@ -331,7 +332,7 @@ class PaymentTimeoutHandler {
 
       // Final payment status check
       final paymentStatus = await _checkPaymentStatus(qpayInvoiceId);
-      if (paymentStatus != null && paymentStatus.isPaid) {
+      if (paymentStatus != null && paymentStatus['is_paid'] == true) {
         // Payment completed at the last moment
         await _handlePaymentCompleted(
           paymentId: paymentId,
@@ -405,7 +406,9 @@ class PaymentTimeoutHandler {
       // Cancel payment through QPay
       final cancelResult = await _qpayService.cancelPayment(qpayInvoiceId);
 
-      if (cancelResult.success) {
+      if (cancelResult['payment_status'] == 'CANCELLED' ||
+          cancelResult['payment_status'] == 'FAILED' ||
+          cancelResult['payment_status'] == 'EXPIRED') {
         log('PaymentTimeoutHandler: Successfully cancelled payment $paymentId');
 
         // Update order status
@@ -418,7 +421,7 @@ class PaymentTimeoutHandler {
         // Clean up temporary order data
         await _cleanupTemporaryOrder(orderId);
       } else {
-        log('PaymentTimeoutHandler: Failed to cancel payment $paymentId: ${cancelResult.error}');
+        log('PaymentTimeoutHandler: Failed to cancel payment $paymentId: ${cancelResult['error'] ?? 'Unknown error'}');
 
         // Still update order status locally
         await _updateOrderStatus(orderId, 'payment_expired', {
@@ -729,10 +732,11 @@ class PaymentTimeoutHandler {
   }
 
   /// Check payment status
-  Future<QPayPaymentStatus?> _checkPaymentStatus(String qpayInvoiceId) async {
+  Future<Map<String, dynamic>?> _checkPaymentStatus(
+      String qpayInvoiceId) async {
     try {
       final status = await _qpayService.checkPaymentStatus(qpayInvoiceId);
-      return status.success ? status : null;
+      return status['payment_status'] != null ? status : null;
     } catch (e) {
       log('PaymentTimeoutHandler: Error checking payment status: $e');
       return null;

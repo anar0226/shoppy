@@ -176,73 +176,6 @@ class _CategoriesPageState extends State<CategoriesPage> {
     );
   }
 
-  void _deleteCategory(String category) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Категорийн устгах'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('"$category" категорийг устгах уу?'),
-            const SizedBox(height: 8),
-            const Text(
-              'Энэ ангиллын бүх бүтээгдэхүүнийг "Ангилалгүй" гэж тохируулна.',
-              style:
-                  TextStyle(color: Colors.orange, fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Цуцалгах'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Устгах'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        // Update all products in this category to "Uncategorized"
-        final batch = FirebaseFirestore.instance.batch();
-        final productsSnapshot = await FirebaseFirestore.instance
-            .collection('products')
-            .where('storeId', isEqualTo: _currentStoreId)
-            .where('category', isEqualTo: category)
-            .get();
-
-        for (final doc in productsSnapshot.docs) {
-          batch.update(doc.reference, {'category': 'Uncategorized'});
-        }
-
-        await batch.commit();
-        await _loadCategories();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('"$category" ангиллыг амжилттай устгалаа')),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Алдаа гарлаа: $e')),
-          );
-        }
-      }
-    }
-  }
-
   List<CategoryModel> _getFilteredCategories() {
     if (_searchQuery.isEmpty) {
       return _categories;
@@ -589,21 +522,6 @@ class _CategoriesPageState extends State<CategoriesPage> {
         ],
       ),
     );
-  }
-
-  Future<int> _getProductCount(String category) async {
-    if (_currentStoreId == null) return 0;
-
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('products')
-          .where('storeId', isEqualTo: _currentStoreId)
-          .where('category', isEqualTo: category)
-          .get();
-      return snapshot.docs.length;
-    } catch (e) {
-      return 0;
-    }
   }
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../firebase_options.dart';
 import 'super_admin_app.dart';
 
@@ -9,6 +10,13 @@ import 'super_admin_app.dart';
 /// Usage: flutter run -t lib/super_admin/super_admin_main.dart
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (e) {
+    // Environment file not found, using default configuration
+  }
 
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);

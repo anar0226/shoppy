@@ -108,13 +108,14 @@ class _ShopUBAppState extends State<ShopUBApp> {
         }
       }
     } catch (e) {
-      await ErrorHandlerService.instance.handleError(
-        operation: 'navigate_to_product',
-        error: e,
-        context: context,
-        showUserMessage: true,
-        fallbackValue: null,
-      );
+      if (mounted) {
+        await ErrorHandlerService.instance.handleError(
+          operation: 'navigate_to_product',
+          error: e,
+          showUserMessage: true,
+          fallbackValue: null,
+        );
+      }
     }
   }
 
@@ -134,10 +135,12 @@ class _ShopUBAppState extends State<ShopUBApp> {
           navigatorKey: _navigatorKey,
           title: 'Avii.mn',
           theme: ThemeData(
-            primarySwatch: Colors.teal,
+            primarySwatch: Colors.blue,
+            primaryColor: const Color(0xFF0053A3),
             fontFamily: 'Roboto',
           ),
-          darkTheme: ThemeData.dark().copyWith(primaryColor: Colors.deepPurple),
+          darkTheme:
+              ThemeData.dark().copyWith(primaryColor: const Color(0xFF0053A3)),
           themeMode: themeProvider.mode,
           home: const SplashRouter(),
           routes: {

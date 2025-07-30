@@ -8,11 +8,13 @@ import 'package:avii/features/discounts/models/discount_model.dart';
 import 'package:avii/features/discounts/services/discount_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../core/utils/order_id_generator.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/utils/popup_utils.dart';
 import '../../../core/services/qpay_service.dart';
 import '../../../core/services/error_handler_service.dart';
+import '../../../core/services/payment_timeout_service.dart';
 import 'payment_waiting_screen.dart';
 
 class CheckoutPage extends StatefulWidget {
@@ -41,6 +43,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final _discountCodeController = TextEditingController();
   final _discountService = DiscountService();
   final _qpayService = QPayService();
+  final _timeoutService = PaymentTimeoutService();
 
   DiscountModel? _appliedDiscount;
   bool _isApplyingDiscount = false;
@@ -84,6 +87,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   void dispose() {
     _discountCodeController.dispose();
+    _timeoutService.dispose();
     super.dispose();
   }
 
@@ -216,50 +220,174 @@ class _CheckoutPageState extends State<CheckoutPage> {
     });
 
     try {
-      // Generate order ID
-      final orderId = DateTime.now().millisecondsSinceEpoch.toString();
+      // Validate inputs
+      if (customerEmail.isEmpty) {
+        throw Exception('Customer email is required');
+      }
+      if (_finalTotal <= 0) {
+        throw Exception('Invalid order amount');
+      }
+      if (widget.items.isEmpty) {
+        throw Exception('No items in cart');
+      }
+
+      // Generate order ID using the new generator
+      final orderId = OrderIdGenerator.generate();
 
       // Create order description
       final itemNames = widget.items.map((item) => item.name).join(', ');
       final description = 'Avii.mn захиалга: $itemNames';
 
-      // Create QPay invoice
-      final result = await _qpayService.createInvoice(
-        orderId: orderId,
-        amount: _finalTotal,
-        description: description,
-        customerEmail: customerEmail,
-      );
+      // Create QPay invoice with comprehensive error handling
+      Map<String, dynamic> result;
+      try {
+        result = await _qpayService.createInvoice(
+          orderId: orderId,
+          amount: _finalTotal,
+          description: description,
+          customerCode: customerEmail, // Use email as customer code
+        );
+      } catch (e) {
+        // Handle specific QPay errors
+        if (e.toString().contains('authentication failed')) {
+          throw Exception('QPay тохиргооны алдаа. Админтай холбогдоно уу.');
+        } else if (e.toString().contains('timeout')) {
+          throw Exception('Сүлжээний холболт удаан байна. Дахин оролдоно уу.');
+        } else if (e.toString().contains('Cannot connect')) {
+          throw Exception(
+              'QPay серверт холбогдох боломжгүй. Интернэт холболтоо шалгана уу.');
+        } else {
+          throw Exception('QPay нэхэмжлэх үүсгэх боломжгүй: $e');
+        }
+      }
 
-      if (result.success && result.invoice != null) {
-        final invoice = result.invoice!;
+      // Check for different possible invoice ID fields
+      final invoiceId = result['qPayInvoiceId'] ??
+          result['invoice_id'] ??
+          result['id'] ??
+          result['qpay_invoice_id'];
 
-        // Get the QPay web payment URL
-        String paymentUrl = invoice.bestPaymentUrl;
+      if (invoiceId != null) {
+        // Get the QPay web payment URL - check different possible URL fields
+        String paymentUrl = '';
 
-        // If no URL is available, generate one from QR code
-        if (paymentUrl.isEmpty && invoice.qrCode.isNotEmpty) {
-          final encodedQR = Uri.encodeComponent(invoice.qrCode);
-          paymentUrl = 'https://qpay.mn/q/?q=$encodedQR';
+        // Safely access urls field
+        final urls = result['urls'];
+        if (urls is Map<String, dynamic>) {
+          paymentUrl = urls['payment'] ?? '';
+        }
+
+        // Fallback to other URL fields
+        if (paymentUrl.isEmpty) {
+          paymentUrl = result['payment_url'] ?? result['url'] ?? '';
+        }
+
+        // If no URL is available, generate one from QR text
+        if (paymentUrl.isEmpty) {
+          final qrText = result['qr_text'] ?? result['qrText'] ?? '';
+          if (qrText.isNotEmpty) {
+            // Generate payment URL from QR text
+            paymentUrl = 'https://qpay.mn/q/?q=${Uri.encodeComponent(qrText)}';
+          }
         }
 
         debugPrint('QPay payment URL: $paymentUrl');
-        debugPrint('QPay QR code: ${invoice.qrCode}');
-        debugPrint('QPay short link: ${invoice.shortLink}');
-        debugPrint('QPay deep link: ${invoice.deepLink}');
+        debugPrint('QPay QR text: ${result['qr_text'] ?? result['qrText']}');
+
+        // Safely access short and deep links
+        String shortLink = '';
+        String deepLink = '';
+        if (urls is Map<String, dynamic>) {
+          shortLink = urls['short'] ?? '';
+          deepLink = urls['deeplink'] ?? '';
+        }
+        debugPrint('QPay short link: $shortLink');
+        debugPrint('QPay deep link: $deepLink');
 
         if (paymentUrl.isNotEmpty) {
-          // Open QPay payment gateway in browser
-          final launched = await launchUrl(
-            Uri.parse(paymentUrl),
-            mode: LaunchMode.externalApplication,
-          );
+          // Validate and sanitize the payment URL
+          Uri? paymentUri;
+          try {
+            paymentUri = Uri.parse(paymentUrl);
+            // Ensure it's a valid HTTP/HTTPS URL
+            if (!paymentUri.hasScheme ||
+                (!paymentUri.scheme.startsWith('http'))) {
+              // If it's not HTTP/HTTPS, try to make it HTTPS
+              if (paymentUrl.startsWith('qpay://') ||
+                  paymentUrl.startsWith('qpay.mn')) {
+                paymentUrl =
+                    'https://qpay.mn/q/?q=${Uri.encodeComponent(paymentUrl)}';
+                paymentUri = Uri.parse(paymentUrl);
+              } else {
+                throw Exception('Invalid payment URL format');
+              }
+            }
+          } catch (e) {
+            debugPrint('Invalid payment URL: $paymentUrl');
+            // If URL is invalid, show payment details dialog
+            if (mounted) {
+              _showPaymentDetailsDialog(paymentUrl, result);
+            }
+            return;
+          }
+
+          // Try to open QPay payment gateway with proper error handling
+          bool launched = false;
+          try {
+            // First try to open with external application
+            launched = await launchUrl(
+              paymentUri,
+              mode: LaunchMode.externalApplication,
+            );
+          } catch (e) {
+            debugPrint('Failed to launch URL with external application: $e');
+
+            // Fallback: try to open in browser
+            try {
+              launched = await launchUrl(
+                paymentUri,
+                mode: LaunchMode.platformDefault,
+              );
+            } catch (e2) {
+              debugPrint('Failed to launch URL in browser: $e2');
+
+              // Last resort: try to open with inAppWebView if it's HTTP/HTTPS
+              if (paymentUri.scheme.startsWith('http')) {
+                try {
+                  launched = await launchUrl(
+                    paymentUri,
+                    mode: LaunchMode.inAppWebView,
+                  );
+                } catch (e3) {
+                  debugPrint('Failed to launch URL in WebView: $e3');
+                  launched = false;
+                }
+              } else {
+                debugPrint(
+                    'Cannot use WebView for non-HTTP URL: ${paymentUri.scheme}');
+                launched = false;
+              }
+            }
+          }
 
           if (launched) {
             // Store order data temporarily for when payment is completed
             // We'll create the order when we receive the webhook notification
             await _storeTemporaryOrder(
                 orderId, orderData, customerEmail, deliveryAddress);
+
+            // Start 10-minute timeout monitoring
+            final currentUser = FirebaseAuth.instance.currentUser;
+            if (currentUser != null) {
+              await _timeoutService.startTimeoutMonitoring(
+                orderId: orderId,
+                qpayInvoiceId: invoiceId,
+                customerUserId: currentUser.uid,
+                orderData: orderData,
+                customerEmail: customerEmail,
+                deliveryAddress: deliveryAddress,
+              );
+            }
 
             // Navigate to payment waiting screen
             if (mounted) {
@@ -268,20 +396,24 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   builder: (context) => PaymentWaitingScreen(
                     orderId: orderId,
                     amount: _finalTotal,
-                    qpayInvoiceId: invoice.qpayInvoiceId,
+                    qpayInvoiceId: invoiceId,
                   ),
                 ),
               );
             }
           } else {
-            throw Exception('QPay төлбөрийн хуудас нээх боломжгүй байна');
+            // If we can't open the URL, show the QR code or payment details
+            if (mounted) {
+              _showPaymentDetailsDialog(paymentUrl, result);
+            }
           }
         } else {
           throw Exception(
-              'QPay төлбөрийн холбоос үүсгэх боломжгүй байна. QR код: ${invoice.qrCode.isEmpty ? "олдсонгүй" : "байна"}');
+              'QPay төлбөрийн холбоос үүсгэх боломжгүй байна. QR код: ${(result['qrCode'] ?? result['qr_code'] ?? result['qr'])?.isEmpty ?? true ? "олдсонгүй" : "байна"}');
         }
       } else {
-        throw Exception(result.error ?? 'QPay нэхэмжлэх үүсгэх боломжгүй');
+        throw Exception(
+            'QPay нэхэмжлэх үүсгэх боломжгүй: ${result['error'] ?? result['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
       if (mounted) {
@@ -320,19 +452,127 @@ class _CheckoutPageState extends State<CheckoutPage> {
         'deliveryAddress': deliveryAddress,
         'createdAt': FieldValue.serverTimestamp(),
         'status': 'pending_payment',
-        'items': widget.items
-            .map((item) => {
-                  'name': item.name,
-                  'variant': item.variant,
-                  'price': item.price,
-                  'imageUrl': item.imageUrl,
-                  'storeId': item.storeId,
-                })
-            .toList(),
       });
     } catch (e) {
       debugPrint('Error storing temporary order: $e');
     }
+  }
+
+  /// Show payment details dialog when URL launching fails
+  void _showPaymentDetailsDialog(
+      String paymentUrl, Map<String, dynamic> result) {
+    final qrText = result['qr_text'] ?? result['qrText'] ?? '';
+    final shortLink = result['short_url'] ?? '';
+    final deepLink = result['deep_link'] ?? '';
+
+    // Validate and format URLs for display
+    String displayUrl = paymentUrl;
+    if (paymentUrl.isNotEmpty && !paymentUrl.startsWith('http')) {
+      displayUrl = 'https://qpay.mn/q/?q=${Uri.encodeComponent(paymentUrl)}';
+    }
+
+    // Generate QR code URL if we have QR text
+    String qrCodeUrl = '';
+    if (qrText.isNotEmpty) {
+      qrCodeUrl = 'https://qpay.mn/q/?q=${Uri.encodeComponent(qrText)}';
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Төлбөрийн мэдээлэл'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                  'QPay төлбөрийн хуудас нээх боломжгүй байна. Дараах аргуудыг ашиглана уу:'),
+              const SizedBox(height: 16),
+              if (qrCodeUrl.isNotEmpty) ...[
+                const Text('1. Төлбөрийн холбоос:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                SelectableText(qrCodeUrl),
+                const SizedBox(height: 8),
+                const Text('• Энэ холбоосыг хуулж браузерт оруулна уу',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 8),
+              ],
+              if (displayUrl.isNotEmpty && displayUrl != qrCodeUrl) ...[
+                const Text('2. Нэмэлт холбоос:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                SelectableText(displayUrl),
+                const SizedBox(height: 8),
+              ],
+              if (shortLink.isNotEmpty) ...[
+                const Text('3. Богино холбоос:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                SelectableText(shortLink),
+                const SizedBox(height: 8),
+              ],
+              if (deepLink.isNotEmpty) ...[
+                const Text('4. Deep Link:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                SelectableText(deepLink),
+                const SizedBox(height: 8),
+                const Text('• QPay апп суулгасан бол энэ холбоосыг ашиглана уу',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 8),
+              ],
+              if (qrText.isNotEmpty) ...[
+                const Text('5. QR код текст:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                SelectableText(qrText),
+                const SizedBox(height: 8),
+                const Text('• QPay апп-аа нээж QR кодыг уншуулна уу',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 8),
+              ],
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  '💡 Зөвлөмж: QPay апп суулгасан бол төлбөр автоматаар нээгдэх болно.',
+                  style: TextStyle(fontSize: 12, color: Colors.blue),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Navigate to payment waiting screen anyway
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => PaymentWaitingScreen(
+                    orderId: DateTime.now().millisecondsSinceEpoch.toString(),
+                    amount: _finalTotal,
+                    qpayInvoiceId: result['qPayInvoiceId'] ??
+                        result['invoice_id'] ??
+                        result['id'] ??
+                        '',
+                  ),
+                ),
+              );
+            },
+            child: const Text('Үргэлжлүүлэх'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Болих'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

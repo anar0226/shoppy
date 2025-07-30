@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/config/environment_config.dart';
 import '../../core/services/qpay_service.dart';
+import '../../core/utils/order_id_generator.dart';
 
 class QPayDebugPage extends StatefulWidget {
   const QPayDebugPage({super.key});
@@ -41,19 +42,18 @@ class _QPayDebugPageState extends State<QPayDebugPage> {
       } else {
         // Test QPay connection
         final testResult = await _qpayService.createInvoice(
-          orderId: 'TEST_${DateTime.now().millisecondsSinceEpoch}',
+          orderId: OrderIdGenerator.generateTest(),
           amount: 100.0,
           description: 'Test invoice for configuration validation',
-          customerEmail: 'test@example.com',
-          metadata: {'type': 'test'},
+          customerCode: 'test@example.com',
         );
 
-        if (testResult.success) {
+        if (testResult['qPayInvoiceId'] != null) {
           qpayStatus = 'Working';
           qpayDetails = 'QPay API is accessible and working correctly';
         } else {
           qpayStatus = 'Error';
-          qpayDetails = testResult.error ?? 'Unknown error occurred';
+          qpayDetails = testResult['error'] ?? 'Unknown error occurred';
         }
       }
     } catch (e) {
@@ -83,20 +83,19 @@ class _QPayDebugPageState extends State<QPayDebugPage> {
 
     try {
       final result = await _qpayService.createInvoice(
-        orderId: 'TEST_${DateTime.now().millisecondsSinceEpoch}',
+        orderId: OrderIdGenerator.generateTest(),
         amount: 100.0,
         description: 'Test connection to QPay API',
-        customerEmail: 'test@shoppy.mn',
-        metadata: {'type': 'subscription', 'test': true},
+        customerCode: 'test@shoppy.mn',
       );
 
       setState(() {
-        if (result.success && result.invoice != null) {
+        if (result['qPayInvoiceId'] != null) {
           _testResult = 'SUCCESS: QPay connection working!\n'
-              'Invoice ID: ${result.invoice!.qpayInvoiceId}\n'
-              'Payment URL: ${result.invoice!.bestPaymentUrl}';
+              'Invoice ID: ${result['qPayInvoiceId']}\n'
+              'Payment URL: ${result['urls']?['payment'] ?? 'N/A'}';
         } else {
-          _testResult = 'ERROR: ${result.error ?? 'Unknown error'}';
+          _testResult = 'ERROR: ${result['error'] ?? 'Unknown error'}';
         }
         _loading = false;
       });

@@ -342,7 +342,7 @@ class PaymentReconciliationService {
   /// Analyze payments for reconciliation
   Future<Map<String, dynamic>> _analyzePayments({
     required List<Map<String, dynamic>> localPayments,
-    required List<QPayPaymentRecord> qpayPayments,
+    required List<Map<String, dynamic>> qpayPayments,
     required DateTime startTime,
     required DateTime endTime,
   }) async {
@@ -355,7 +355,7 @@ class PaymentReconciliationService {
 
     // Create lookup maps for efficient matching
     final localPaymentMap = <String, Map<String, dynamic>>{};
-    final qpayPaymentMap = <String, QPayPaymentRecord>{};
+    final qpayPaymentMap = <String, Map<String, dynamic>>{};
 
     for (final payment in localPayments) {
       final paymentId =
@@ -365,7 +365,7 @@ class PaymentReconciliationService {
     }
 
     for (final payment in qpayPayments) {
-      qpayPaymentMap[payment.paymentId] = payment;
+      qpayPaymentMap[payment['payment_id']] = payment;
     }
 
     // Check for missing payments in QPay
@@ -399,9 +399,10 @@ class PaymentReconciliationService {
       } else {
         // Payment found in both systems, check for discrepancies
         final localAmount = (localPayment['amount'] as num?)?.toDouble() ?? 0;
-        final qpayAmount = qpayPayment.amount;
+        final qpayAmount = qpayPayment['amount'] as double? ?? 0;
         final localStatus = localPayment['status'] as String? ?? 'UNKNOWN';
-        final qpayStatus = qpayPayment.status;
+        final qpayStatus =
+            qpayPayment['payment_status'] as String? ?? 'UNKNOWN';
 
         bool hasDiscrepancy = false;
         final discrepancyReasons = <String>[];
@@ -442,14 +443,7 @@ class PaymentReconciliationService {
             detectedAt: DateTime.now(),
             metadata: {
               'localPayment': localPayment,
-              'qpayPayment': {
-                'paymentId': qpayPayment.paymentId,
-                'amount': qpayPayment.amount,
-                'status': qpayPayment.status,
-                'currency': qpayPayment.currency,
-                'paymentMethod': qpayPayment.paymentMethod,
-                'paymentDate': qpayPayment.paymentDate?.toIso8601String(),
-              },
+              'qpayPayment': qpayPayment,
               'discrepancyReasons': discrepancyReasons,
             },
           ));
@@ -465,34 +459,27 @@ class PaymentReconciliationService {
 
     // Check for extra payments in QPay
     for (final qpayPayment in qpayPayments) {
-      if (!localPaymentMap.containsKey(qpayPayment.paymentId)) {
+      if (!localPaymentMap.containsKey(qpayPayment['payment_id'])) {
         discrepancies.add(PaymentDiscrepancy(
-          id: 'extra_qpay_${qpayPayment.paymentId}',
-          paymentId: qpayPayment.paymentId,
-          orderId: qpayPayment.objectId,
+          id: 'extra_qpay_${qpayPayment['payment_id']}',
+          paymentId: qpayPayment['payment_id'] as String,
+          orderId: qpayPayment['object_id'] as String,
           type: DiscrepancyType.extraPayment,
           severity: DiscrepancySeverity.medium,
           description: 'Payment found in QPay but missing in local database',
           expectedAmount: 0,
-          actualAmount: qpayPayment.amount,
+          actualAmount: qpayPayment['amount'] as double? ?? 0,
           expectedStatus: 'MISSING',
-          actualStatus: qpayPayment.status,
+          actualStatus: qpayPayment['payment_status'] as String? ?? 'UNKNOWN',
           detectedAt: DateTime.now(),
           metadata: {
-            'qpayPayment': {
-              'paymentId': qpayPayment.paymentId,
-              'amount': qpayPayment.amount,
-              'status': qpayPayment.status,
-              'currency': qpayPayment.currency,
-              'paymentMethod': qpayPayment.paymentMethod,
-              'paymentDate': qpayPayment.paymentDate?.toIso8601String(),
-            },
+            'qpayPayment': qpayPayment,
             'reconciliationPeriod':
                 '${startTime.toIso8601String()} - ${endTime.toIso8601String()}',
           },
         ));
 
-        discrepancyAmount += qpayPayment.amount;
+        discrepancyAmount += qpayPayment['amount'] as double? ?? 0;
       }
     }
 
@@ -612,31 +599,31 @@ class PaymentReconciliationService {
   /// Resolve missing payment discrepancy
   Future<void> _resolveMissingPayment(PaymentDiscrepancy discrepancy) async {
     // Check if payment exists in QPay with different identifier
-    final qpayPayments = await _qpayService.getPaymentHistory(
+    final qpayPayments = await _qpayService.listPayments(
       objectType: 'INVOICE',
       objectId: discrepancy.orderId,
       pageLimit: 50,
     );
 
-    if (qpayPayments.success && qpayPayments.payments != null) {
-      final matchingPayment = qpayPayments.payments!.firstWhere(
+    if (qpayPayments['success'] && qpayPayments['payments'] != null) {
+      final matchingPayment = (qpayPayments['payments'] as List).firstWhere(
         (p) =>
-            (p.amount - discrepancy.expectedAmount).abs() <
+            (p['amount'] - discrepancy.expectedAmount).abs() <
             discrepancy.expectedAmount * _config.amountTolerancePercentage,
-        orElse: () => QPayPaymentRecord.empty(),
+        orElse: () => null,
       );
 
-      if (matchingPayment.paymentId.isNotEmpty) {
+      if (matchingPayment != null) {
         // Found matching payment, update local record
         await _updateLocalPaymentRecord(
           discrepancy.paymentId,
-          matchingPayment.paymentId,
+          matchingPayment['payment_id'] as String,
         );
 
         await _updateDiscrepancyStatus(
           discrepancy.id,
           ResolutionStatus.resolved,
-          'Found matching payment in QPay with ID: ${matchingPayment.paymentId}',
+          'Found matching payment in QPay with ID: ${matchingPayment['payment_id']}',
         );
 
         log('PaymentReconciliationService: Resolved missing payment discrepancy ${discrepancy.id}');
@@ -723,18 +710,18 @@ class PaymentReconciliationService {
     final qpayStatus =
         await _qpayService.checkPaymentStatus(discrepancy.paymentId);
 
-    if (qpayStatus.success && qpayStatus.status != null) {
+    if (qpayStatus['success'] && qpayStatus['payment_status'] != null) {
       // Update local payment status
       await _updateLocalPaymentStatus(
         discrepancy.paymentId,
-        qpayStatus.status!,
+        qpayStatus['payment_status'] as String,
         'Updated from QPay status check',
       );
 
       await _updateDiscrepancyStatus(
         discrepancy.id,
         ResolutionStatus.resolved,
-        'Status synchronized with QPay: ${qpayStatus.status}',
+        'Status synchronized with QPay: ${qpayStatus['payment_status']}',
       );
 
       log('PaymentReconciliationService: Resolved status mismatch discrepancy ${discrepancy.id}');
@@ -780,30 +767,29 @@ class PaymentReconciliationService {
   }
 
   /// Get QPay payments
-  Future<List<QPayPaymentRecord>> _getQPayPayments(
+  Future<List<Map<String, dynamic>>> _getQPayPayments(
     DateTime startTime,
     DateTime endTime,
     String? objectType,
     String? objectId,
   ) async {
     try {
-      // For comprehensive reconciliation, get all payments
-      final result = await _qpayService.getPaymentHistory(
+      final result = await _qpayService.listPayments(
         objectType: objectType ?? 'MERCHANT',
         objectId: objectId ?? 'default',
         pageLimit: 1000,
       );
-
-      if (result.success && result.payments != null) {
+      if (result['payments'] != null) {
         // Filter by date range
-        return result.payments!.where((payment) {
-          final paymentDate = payment.paymentDate;
+        return (result['payments'] as List)
+            .whereType<Map<String, dynamic>>()
+            .where((payment) {
+          final paymentDate = DateTime.tryParse(payment['payment_date'] ?? '');
           return paymentDate != null &&
               paymentDate.isAfter(startTime) &&
               paymentDate.isBefore(endTime);
         }).toList();
       }
-
       return [];
     } catch (e) {
       log('PaymentReconciliationService: Error getting QPay payments: $e');
@@ -1050,20 +1036,12 @@ class PaymentReconciliationService {
     }
   }
 
-  Future<QPayPaymentRecord?> _getQPayPaymentDetails(String paymentId) async {
+  /// Get QPay payment details
+  Future<Map<String, dynamic>?> _getQPayPaymentDetails(String paymentId) async {
     try {
       final status = await _qpayService.checkPaymentStatus(paymentId);
-      if (status.success) {
-        return QPayPaymentRecord(
-          paymentId: paymentId,
-          status: status.status ?? 'UNKNOWN',
-          amount: status.paidAmount ?? 0,
-          currency: status.currency ?? 'MNT',
-          paymentMethod: status.paymentMethod ?? 'UNKNOWN',
-          paymentDate: status.paidDate,
-          objectType: 'INVOICE',
-          objectId: paymentId,
-        );
+      if (status['payment_status'] != null) {
+        return status;
       }
       return null;
     } catch (e) {

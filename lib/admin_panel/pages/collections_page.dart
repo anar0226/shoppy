@@ -21,7 +21,6 @@ class CollectionsPage extends StatefulWidget {
 
 class _CollectionsPageState extends State<CollectionsPage> {
   final CollectionService _collectionService = CollectionService();
-  final ProductService _productService = ProductService();
   String? _currentStoreId;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();

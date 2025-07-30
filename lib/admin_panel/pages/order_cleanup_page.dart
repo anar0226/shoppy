@@ -378,12 +378,15 @@ class _OrderCleanupPageState extends State<OrderCleanupPage> {
           result.containsKey('compress') ||
           result.containsKey('delete')) {
         final parts = <String>[];
-        if (result['archive'] != null)
+        if (result['archive'] != null) {
           parts.add('Архив: ${result['archive']['archivedCount'] ?? 0}');
-        if (result['compress'] != null)
+        }
+        if (result['compress'] != null) {
           parts.add('Шахалт: ${result['compress']['compressedCount'] ?? 0}');
-        if (result['delete'] != null)
+        }
+        if (result['delete'] != null) {
           parts.add('Устгалт: ${result['delete']['deletedCount'] ?? 0}');
+        }
         return parts.join(', ');
       }
     }

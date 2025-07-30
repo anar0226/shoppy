@@ -37,13 +37,12 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
   // Form state
   bool _loading = false;
   String? _error;
-  int _currentStep = 0;
 
   // Payout settings
   MongolianBank? _selectedBank;
-  PayoutMethod _preferredPayoutMethod = PayoutMethod.bankTransfer;
-  PayoutFrequency _payoutFrequency = PayoutFrequency.weekly;
-  bool _autoPayoutEnabled = true;
+  final PayoutMethod _preferredPayoutMethod = PayoutMethod.bankTransfer;
+  final PayoutFrequency _payoutFrequency = PayoutFrequency.weekly;
+  final bool _autoPayoutEnabled = true;
 
   // KYC status
   final KYCStatus _kycStatus = KYCStatus.pending;
@@ -95,44 +94,27 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
     return null;
   }
 
-  Future<void> _nextStep() async {
-    if (_currentStep == 0) {
-      // Validate store basic info
-      if (!_formKey.currentState!.validate()) return;
+  Future<void> _handleSave() async {
+    // Validate all required fields
+    if (!_formKey.currentState!.validate()) return;
 
-      final contactError = _validateContactInfo();
-      if (contactError != null) {
-        setState(() => _error = contactError);
-        return;
-      }
-
-      setState(() {
-        _currentStep = 1;
-        _error = null;
-      });
-    } else if (_currentStep == 1) {
-      // Validate payout info
-      final payoutError = _validatePayoutInfo();
-      if (payoutError != null) {
-        setState(() => _error = payoutError);
-        return;
-      }
-
-      // Save everything
-      await _save();
+    final contactError = _validateContactInfo();
+    if (contactError != null) {
+      setState(() => _error = contactError);
+      return;
     }
+
+    final payoutError = _validatePayoutInfo();
+    if (payoutError != null) {
+      setState(() => _error = payoutError);
+      return;
+    }
+
+    // Save everything
+    await _saveData();
   }
 
-  void _previousStep() {
-    if (_currentStep > 0) {
-      setState(() {
-        _currentStep--;
-        _error = null;
-      });
-    }
-  }
-
-  Future<void> _save() async {
+  Future<void> _saveData() async {
     setState(() {
       _loading = true;
       _error = null;
@@ -240,62 +222,43 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       insetPadding: const EdgeInsets.all(24),
+      backgroundColor: Colors.white,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 800),
+        constraints: const BoxConstraints(maxWidth: 800, maxHeight: 900),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header with progress indicator
+            // Header
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: const BorderRadius.only(
+              decoration: const BoxDecoration(
+                color: Color(0xFF0053A3),
+                borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(8),
                   topRight: Radius.circular(8),
                 ),
               ),
-              child: Column(
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Icon(
-                        _currentStep == 0 ? Icons.store : Icons.payment,
-                        color: Colors.blue,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _currentStep == 0
-                              ? 'Дэлгүүрийн үндсэн мэдээлэл'
-                              : 'Төлбөрийн тохиргоо',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
+                  const Icon(
+                    Icons.store,
+                    color: Colors.white,
+                    size: 24,
                   ),
-                  const SizedBox(height: 16),
-                  LinearProgressIndicator(
-                    value: (_currentStep + 1) / 2,
-                    backgroundColor: Colors.grey.shade300,
-                    valueColor:
-                        const AlwaysStoppedAnimation<Color>(Colors.blue),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Алхам ${_currentStep + 1}/2',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Дэлгүүрийн анхны тохиргоо',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close, color: Colors.white),
                   ),
                 ],
               ),
@@ -303,13 +266,14 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
 
             // Content
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Form(
-                  key: _formKey,
-                  child: _currentStep == 0
-                      ? _buildBasicInfoStep()
-                      : _buildPayoutStep(),
+              child: Container(
+                color: Colors.white,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Form(
+                    key: _formKey,
+                    child: _buildSinglePageForm(),
+                  ),
                 ),
               ),
             ),
@@ -317,9 +281,9 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
             // Footer with buttons
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: const BorderRadius.only(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(8),
                   bottomRight: Radius.circular(8),
                 ),
@@ -338,17 +302,16 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      if (_currentStep > 0)
-                        TextButton(
-                          onPressed: _loading ? null : _previousStep,
-                          child: const Text('Өмнөх'),
-                        )
-                      else
-                        const SizedBox.shrink(),
-                      ElevatedButton(
-                        onPressed: _loading ? null : _nextStep,
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Цуцлах'),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _loading ? null : _handleSave,
+                        icon: const Icon(Icons.check),
+                        label: const Text('Дэлгүүр үүсгэх'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
+                          backgroundColor: const Color(0xFF0053A3),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 32,
                             vertical: 14,
@@ -357,16 +320,6 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
-                        child: _loading
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(_currentStep == 0 ? 'Дараах' : 'Дуусгах'),
                       ),
                     ],
                   ),
@@ -379,387 +332,592 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
     );
   }
 
-  Widget _buildBasicInfoStep() {
+  Widget _buildSinglePageForm() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Дэлгүүрийн үндсэн мэдээлэл',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+        // 1. Store Name Section
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
           ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Дэлгүүрийн нэр, лого, холбогдох мэдээлэлээ оруулна уу.',
-          style: TextStyle(fontSize: 14, color: Colors.black54),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(
+                'Дэлгүүрийн нэр',
+                Icons.store,
+                'Дэлгүүрийн албан ёсны нэрийг оруулна уу',
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _storeNameCtrl,
+                decoration: InputDecoration(
+                  hintText: 'Жишээ: Anar Online Store',
+                  hintStyle: const TextStyle(color: Colors.grey),
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF0053A3), width: 2),
+                  ),
+                ),
+                validator: (v) => v != null && v.trim().isNotEmpty
+                    ? null
+                    : 'Дэлгүүрийн нэр заавал оруулна уу',
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 24),
-        _label('Дэлгүүрийн нэр *'),
-        TextFormField(
-          controller: _storeNameCtrl,
-          decoration: const InputDecoration(
-            hintText: 'Дэлгүүрийн нэрээ оруулна уу',
-            border: OutlineInputBorder(),
+
+        // 2. Store Logo Section
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
           ),
-          validator: (v) => v != null && v.trim().isNotEmpty
-              ? null
-              : 'Дэлгүүрийн нэр заавал оруулна уу',
-        ),
-        const SizedBox(height: 16),
-        _label('Дэлгүүрийн лого (заавал биш)'),
-        Row(
-          children: [
-            ElevatedButton.icon(
-              onPressed: () async {
-                final picked = await _picker.pickImage(
-                  source: ImageSource.gallery,
-                  imageQuality: 85,
-                );
-                if (picked != null) {
-                  setState(() => _logoFile = picked);
-                }
-              },
-              icon: const Icon(Icons.photo, size: 18),
-              label: const Text('Лого сонгох'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey.shade200,
-                foregroundColor: Colors.black87,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(
+                'Дэлгүүрийн лого',
+                Icons.image,
+                'Таны дэлгүүрийн логог оруулна уу (сонголттой)',
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                height: 120,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                      color: Colors.grey.shade300, style: BorderStyle.solid),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: InkWell(
+                  onTap: () async {
+                    final picked = await _picker.pickImage(
+                      source: ImageSource.gallery,
+                      imageQuality: 85,
+                    );
+                    if (picked != null) {
+                      setState(() => _logoFile = picked);
+                    }
+                  },
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.cloud_upload,
+                        size: 32,
+                        color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Лого оруулахын тулд дарна уу',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'PNG, JPG, JPEG (5МБ хүртэл)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            if (_logoFile != null)
-              Expanded(
-                child: Text(
-                  _logoFile!.name,
-                  overflow: TextOverflow.ellipsis,
+              if (_logoFile != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Сонгосон файл: ${_logoFile!.name}',
+                    style: const TextStyle(fontSize: 12, color: Colors.green),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // 3. Contact Information Section
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildSectionHeader(
+                      'Холбоо барих мэдээлэл',
+                      Icons.phone,
+                      'Хэрэглэгчид тантай холбогдох боломжтой дор хаяж нэг арга оруулна уу',
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Дор хаяж 1-ийг бөглөнө үү',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.red.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _phoneCtrl,
+                      decoration: InputDecoration(
+                        hintText: '99001234',
+                        hintStyle: const TextStyle(color: Colors.grey),
+                        prefixIcon: const Icon(Icons.phone, color: Colors.grey),
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide:
+                              BorderSide(color: Color(0xFF0053A3), width: 2),
+                        ),
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _instagramCtrl,
+                      decoration: InputDecoration(
+                        hintText: '@mystore',
+                        hintStyle: const TextStyle(color: Colors.grey),
+                        prefixIcon:
+                            const Icon(Icons.camera_alt, color: Colors.grey),
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide:
+                              BorderSide(color: Color(0xFF0053A3), width: 2),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _facebookCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'MyStore',
+                        hintStyle: const TextStyle(color: Colors.grey),
+                        prefixIcon:
+                            const Icon(Icons.facebook, color: Colors.grey),
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide:
+                              BorderSide(color: Color(0xFF0053A3), width: 2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // 4. Bank Information Section
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(
+                'Банкны мэдээлэл',
+                Icons.account_balance,
+                'Төлбөр хүлээж авахад ашиглах банкны дансны мэдээллээ оруулна уу',
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<MongolianBank>(
+                value: _selectedBank,
+                decoration: InputDecoration(
+                  hintText: 'Банкаа сонгоно уу',
+                  hintStyle: const TextStyle(color: Colors.grey),
+                  prefixIcon:
+                      const Icon(Icons.account_balance, color: Colors.grey),
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF0053A3), width: 2),
+                  ),
+                ),
+                items: MongolianBank.values.map((bank) {
+                  return DropdownMenuItem(
+                    value: bank,
+                    child: Text(bank.displayName),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedBank = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _bankAccountNumberCtrl,
+                      decoration: InputDecoration(
+                        hintText: '436022735',
+                        hintStyle: const TextStyle(color: Colors.grey),
+                        prefixIcon: Container(
+                          width: 20,
+                          height: 20,
+                          margin: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide:
+                              BorderSide(color: Color(0xFF0053A3), width: 2),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _bankAccountHolderNameCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'Дансны эзэмшигчийн нэр',
+                        hintStyle: const TextStyle(color: Colors.grey),
+                        prefixIcon: Container(
+                          width: 20,
+                          height: 20,
+                          margin: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.purple,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide:
+                              BorderSide(color: Color(0xFF0053A3), width: 2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // 5. ID Card Images Section
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(
+                'Иргэний үнэмлэхний зураг',
+                Icons.verified_user,
+                'Баталгаажуулалтын зорилгоор иргэний үнэмлэхний урд ба арын талын зургийг оруулна уу',
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 120,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                            color: Colors.grey.shade300,
+                            style: BorderStyle.solid),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: InkWell(
+                        onTap: () async {
+                          final picked = await _picker.pickImage(
+                            source: ImageSource.gallery,
+                            imageQuality: 85,
+                          );
+                          if (picked != null) {
+                            setState(() => _idCardFrontFile = picked);
+                          }
+                        },
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'Урд тал',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Icon(
+                              Icons.cloud_upload,
+                              size: 24,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Урд талын зураг оруулах',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'PNG, JPG (5МБ хүртэл)',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Container(
+                      height: 120,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                            color: Colors.grey.shade300,
+                            style: BorderStyle.solid),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: InkWell(
+                        onTap: () async {
+                          final picked = await _picker.pickImage(
+                            source: ImageSource.gallery,
+                            imageQuality: 85,
+                          );
+                          if (picked != null) {
+                            setState(() => _idCardBackFile = picked);
+                          }
+                        },
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'Ар тал',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Icon(
+                              Icons.cloud_upload,
+                              size: 24,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Арын талын зураг оруулах',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'PNG, JPG (5МБ хүртэл)',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF0053A3)),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.info, color: Color(0xFF0053A3), size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Баталгаажуулалтын заавар',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                        '• Иргэний үнэмлэх тод, бүрэн харагдахаар зургийг авна уу'),
+                    Text(
+                        '• Зургийн чанар сайн, бичвэрүүд уншигдахуйц байх ёстой'),
+                    Text('• Таны хувийн мэдээлэл аюулгүй хадгалагдана'),
+                    Text(
+                        '• Баталгаажуулалт дууссаны дараа зургийг устгах боломжтой'),
+                  ],
                 ),
               ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        const Text(
-          'Холбогдох мэдээлэл',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Дор хаяж нэг холбогдох арга заавал оруулна уу:',
-          style: TextStyle(fontSize: 14, color: Colors.black54),
-        ),
-        const SizedBox(height: 16),
-        _label('Утасны дугаар (заавал биш)'),
-        TextFormField(
-          controller: _phoneCtrl,
-          decoration: const InputDecoration(
-            hintText: 'жишээ: +976 9999 9999',
-            prefixIcon: Icon(Icons.phone),
-            border: OutlineInputBorder(),
-          ),
-          keyboardType: TextInputType.phone,
-        ),
-        const SizedBox(height: 16),
-        _label('Facebook хуудас (заавал биш)'),
-        TextFormField(
-          controller: _facebookCtrl,
-          decoration: const InputDecoration(
-            hintText: 'жишээ: facebook.com/yourstore',
-            prefixIcon: Icon(Icons.facebook),
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _label('Instagram хуудас (заавал биш)'),
-        TextFormField(
-          controller: _instagramCtrl,
-          decoration: const InputDecoration(
-            hintText: 'жишээ: @yourstore',
-            prefixIcon: Icon(Icons.camera_alt),
-            border: OutlineInputBorder(),
+            ],
           ),
         ),
         const SizedBox(height: 24),
-        _label('Буцаалт, Солилт'),
-        TextFormField(
-          controller: _refundPolicyCtrl,
-          maxLines: 4,
-          decoration: const InputDecoration(
-            hintText: 'Та буцаалт, солилтын нөхцөл, шаардлагыг бичнэ үү...',
-            border: OutlineInputBorder(),
+
+        // 6. Return Policy Section
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
           ),
-          validator: (v) =>
-              v != null && v.trim().isNotEmpty ? null : 'заавал оруулна уу',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(
+                'Буцаалтын бодлого',
+                Icons.description,
+                'Таны дэлгүүрийн буцаалт, солилцооны бодлогыг тодорхой бичнэ үү',
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _refundPolicyCtrl,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText:
+                      'Жишээ: 7 хоногийн дотор буцаах боломжтой. Барааны эх байдал хадгалагдсан байх ёстой. Хэрэглэгч тээврийн зардлыг хариуцна...',
+                  hintStyle: const TextStyle(color: Colors.grey),
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF0053A3), width: 2),
+                  ),
+                ),
+                validator: (v) => v != null && v.trim().isNotEmpty
+                    ? null
+                    : 'Буцаалтын бодлого заавал оруулна уу',
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildPayoutStep() {
+  Widget _buildSectionHeader(String title, IconData icon, String description) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Төлбөрийн тохиргоо',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Борлуулалтаас олсон орлогоо хүлээн авахын тулд төлбөрийн мэдээлэлээ тохируулна уу.',
-          style: TextStyle(fontSize: 14, color: Colors.black54),
-        ),
-        const SizedBox(height: 24),
-
-        // Payout method selection
-        _label('Төлбөрийн арга *'),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                RadioListTile<PayoutMethod>(
-                  title: const Text('Банкны данс'),
-                  subtitle: const Text('Шууд банкны данс руу төлбөр'),
-                  value: PayoutMethod.bankTransfer,
-                  groupValue: _preferredPayoutMethod,
-                  onChanged: (value) {
-                    setState(() {
-                      _preferredPayoutMethod = value!;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        // Bank account details
-        _label('Банкны мэдээлэл *'),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _label('Банк *'),
-                DropdownButtonFormField<MongolianBank>(
-                  value: _selectedBank,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    hintText: 'Банк сонгоно уу',
-                  ),
-                  items: MongolianBank.values.map((bank) {
-                    return DropdownMenuItem(
-                      value: bank,
-                      child: Text(bank.displayName),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedBank = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                _label('Дансны дугаар *'),
-                TextFormField(
-                  controller: _bankAccountNumberCtrl,
-                  decoration: const InputDecoration(
-                    hintText: 'Дансны дугаараа оруулна уу',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _label('Дансны эзэмшигчийн нэр *'),
-                TextFormField(
-                  controller: _bankAccountHolderNameCtrl,
-                  decoration: const InputDecoration(
-                    hintText: 'Дансны эзэмшигчийн нэрийг оруулна уу',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 24),
-
-        // Payout preferences
-        _label('Төлбөрийн тохиргоо'),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _label('Төлбөрийн давтамж'),
-                DropdownButtonFormField<PayoutFrequency>(
-                  value: _payoutFrequency,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                  ),
-                  items: PayoutFrequency.values.map((frequency) {
-                    return DropdownMenuItem(
-                      value: frequency,
-                      child: Text(frequency.displayName),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _payoutFrequency = value!;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                _label('Хамгийн бага төлбөрийн хэмжээ (₮)'),
-                TextFormField(
-                  controller: _minimumPayoutAmountCtrl,
-                  decoration: const InputDecoration(
-                    hintText: '50000',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 16),
-                SwitchListTile(
-                  title: const Text('Автомат төлбөр'),
-                  subtitle: const Text('Төлбөрийг автоматаар илгээх'),
-                  value: _autoPayoutEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      _autoPayoutEnabled = value;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 24),
-
-        // KYC documents
-        _label('Иргэний үнэмлэхний зураг *'),
-        const Text(
-          'Иргэний үнэмлэхний тод зургийг (урд болон хойд тал) байршуулна уу.',
-          style: TextStyle(fontSize: 14, color: Colors.black54),
-        ),
-        const SizedBox(height: 16),
-
         Row(
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _label('Урд тал'),
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      final picked = await _picker.pickImage(
-                        source: ImageSource.gallery,
-                        imageQuality: 85,
-                      );
-                      if (picked != null) {
-                        setState(() => _idCardFrontFile = picked);
-                      }
-                    },
-                    icon: const Icon(Icons.upload, size: 18),
-                    label: const Text('Урд талыг байршуулах'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _idCardFrontFile != null
-                          ? Colors.green.shade100
-                          : Colors.grey.shade200,
-                      foregroundColor: _idCardFrontFile != null
-                          ? Colors.green.shade800
-                          : Colors.black87,
-                    ),
-                  ),
-                  if (_idCardFrontFile != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        _idCardFrontFile!.name,
-                        style: const TextStyle(fontSize: 12),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _label('Хойд тал'),
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      final picked = await _picker.pickImage(
-                        source: ImageSource.gallery,
-                        imageQuality: 85,
-                      );
-                      if (picked != null) {
-                        setState(() => _idCardBackFile = picked);
-                      }
-                    },
-                    icon: const Icon(Icons.upload, size: 18),
-                    label: const Text('Хойд талыг байршуулах'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _idCardBackFile != null
-                          ? Colors.green.shade100
-                          : Colors.grey.shade200,
-                      foregroundColor: _idCardBackFile != null
-                          ? Colors.green.shade800
-                          : Colors.black87,
-                    ),
-                  ),
-                  if (_idCardBackFile != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        _idCardBackFile!.name,
-                        style: const TextStyle(fontSize: 12),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ],
+            Icon(icon, color: const Color(0xFF0053A3), size: 20),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
         ),
-
-        const SizedBox(height: 24),
-
-        _label('Нэмэлт тэмдэглэл (заавал биш)'),
-        TextFormField(
-          controller: _notesCtrl,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            hintText: 'Нэмэлт тэмдэглэл оруулна уу...',
-            border: OutlineInputBorder(),
+        const SizedBox(height: 4),
+        Text(
+          description,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.grey,
           ),
         ),
       ],
     );
   }
-
-  Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
-      );
 }

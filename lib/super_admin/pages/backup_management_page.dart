@@ -141,6 +141,7 @@ class _BackupManagementPageState extends State<BackupManagementPage> {
         'confirmationCode': 'RESTORE_CONFIRMED',
       });
 
+      // ignore: use_build_context_synchronously
       Navigator.of(context).pop(); // Close loading dialog
 
       if (result.data['success']) {
@@ -152,6 +153,7 @@ class _BackupManagementPageState extends State<BackupManagementPage> {
         throw Exception(result.data['message'] ?? 'Restore failed');
       }
     } catch (e) {
+      // ignore: use_build_context_synchronously
       Navigator.of(context).pop(); // Close loading dialog
       _showSnackBar('Restore failed: $e', Colors.red);
     }

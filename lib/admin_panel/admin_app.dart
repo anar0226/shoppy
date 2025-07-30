@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'pages/admin_panel_layout.dart';
 import 'auth/auth_service.dart';
-import 'auth/login_page.dart';
+import 'auth/unified_auth_page.dart';
 import 'auth/verify_email_page.dart';
 import 'widgets/store_setup_dialog.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -73,7 +73,7 @@ class _AdminAppState extends State<AdminApp> {
                     return const VerifyEmailPage();
                   }
                 } else {
-                  return const LoginPage();
+                  return const UnifiedAuthPage();
                 }
               },
             ),

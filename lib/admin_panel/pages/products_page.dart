@@ -190,7 +190,8 @@ class _ProductsPageState extends State<ProductsPage> {
       child: DataTable(
         columnSpacing: 24,
         headingRowHeight: 56,
-        dataRowHeight: 64,
+        dataRowMinHeight: 64,
+        dataRowMaxHeight: 64,
         headingTextStyle: TextStyle(
             fontWeight: FontWeight.w600,
             color: AppThemes.getSecondaryTextColor(context)),

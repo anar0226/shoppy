@@ -78,11 +78,6 @@ class SuperAdminSideMenu extends StatelessWidget {
                   'Dashboard',
                 ),
                 _buildMenuItem(
-                  'Analytics',
-                  Icons.analytics,
-                  'Analytics',
-                ),
-                _buildMenuItem(
                   'Stores',
                   Icons.store,
                   'Stores',
@@ -98,19 +93,14 @@ class SuperAdminSideMenu extends StatelessWidget {
                   'FeaturedProducts',
                 ),
                 _buildMenuItem(
-                  'Users',
-                  Icons.people,
-                  'Users',
+                  'Featured Brands',
+                  Icons.business,
+                  'FeaturedBrands',
                 ),
                 _buildMenuItem(
-                  'Notifications',
-                  Icons.notifications,
-                  'Notifications',
-                ),
-                _buildMenuItem(
-                  'Commission',
-                  Icons.account_balance_wallet,
-                  'Commission',
+                  'Payment Management',
+                  Icons.payment,
+                  'Payment',
                 ),
                 _buildMenuItem(
                   'Backup Management',

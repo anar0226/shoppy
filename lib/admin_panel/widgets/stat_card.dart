@@ -106,7 +106,7 @@ class StatCard extends StatelessWidget {
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
-                  comparisonLabel ?? 'өмнөх үе',
+                  comparisonLabel,
                   style: TextStyle(
                     fontSize: 12,
                     color: AppThemes.getSecondaryTextColor(context),

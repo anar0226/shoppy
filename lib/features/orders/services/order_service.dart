@@ -2,7 +2,6 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import '../../products/models/product_model.dart';
 import '../../stores/models/store_model.dart';
 import '../../cart/models/cart_item.dart';
@@ -10,6 +9,7 @@ import '../../cart/models/cart_item.dart';
 import '../../../admin_panel/services/notification_service.dart';
 import '../../../core/services/error_handler_service.dart';
 import '../../../core/services/production_logger.dart';
+import '../../../core/utils/order_id_generator.dart';
 
 class OrderService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -41,8 +41,8 @@ class OrderService {
     String? reservationId,
   }) async {
     try {
-      // Generate order ID
-      final orderId = DateTime.now().millisecondsSinceEpoch.toString();
+      // Generate order ID using the new generator
+      final orderId = OrderIdGenerator.generate();
 
       // Calculate total
       final total = subtotal + shipping + tax - discountAmount;

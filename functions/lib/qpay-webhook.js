@@ -606,8 +606,8 @@ async function sendStoreOwnerNotification(storeId, orderId, customerEmail, total
         const message = {
             token: ownerData.fcmToken,
             notification: {
-                title: 'New Order Received',
-                body: `New order ${orderId} from ${customerEmail} for ₮${total.toFixed(0)}`,
+                title: 'Шинэ захиалга ирлээ!',
+                body: `Шинэ захиалга #${orderId.substring(0, 6)} ${customerEmail}-с ₮${total.toFixed(0)}`,
             },
             data: {
                 type: 'new_order',

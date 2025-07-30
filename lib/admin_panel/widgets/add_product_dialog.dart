@@ -361,7 +361,8 @@ class _AddProductDialogState extends State<AddProductDialog> {
         'variants':
             _hasVariants ? _variants.map((v) => v.toMap()).toList() : null,
         'totalStock': _hasVariants
-            ? _variants.fold<int>(0, (sum, variant) => sum + variant.inventory)
+            ? _variants.fold<int>(
+                0, (total, variant) => total + variant.inventory)
             : inventory,
         'discount': {
           'isDiscounted': _isDiscounted,
@@ -616,8 +617,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
                             hintText: 'Бүтээгдэхүүний үнэ оруулна уу'),
                         validator: (v) {
                           final p = double.tryParse(v ?? '');
-                          if (p == null || p <= 0)
+                          if (p == null || p <= 0) {
                             return 'Бүтээгдэхүүний үнэ оруулна уу';
+                          }
                           return null;
                         },
                       ),
@@ -858,7 +860,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                     }).toList(),
                                     const Divider(),
                                     Text(
-                                      'Нийт нөөц: ${_variants.fold<int>(0, (sum, v) => sum + v.inventory)}',
+                                      'Нийт нөөц: ${_variants.fold<int>(0, (total, v) => total + v.inventory)}',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w600,
                                         color: Colors.green,
@@ -906,8 +908,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         items: _catMap.keys
                             .map<DropdownMenuItem<String>>((c) =>
                                 DropdownMenuItem<String>(
-                                    value: c as String,
-                                    child: Text(c as String)))
+                                    value: c, child: Text(c)))
                             .toList(),
                         onChanged: (v) => setState(() {
                           _category = v;
@@ -927,8 +928,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                 .keys
                                 .map<DropdownMenuItem<String>>((s) =>
                                     DropdownMenuItem<String>(
-                                        value: s as String,
-                                        child: Text(s as String)))
+                                        value: s, child: Text(s)))
                                 .toList()
                             : const [],
                         onChanged: _category == null
@@ -949,8 +949,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                             ? (_catMap[_category]![_subcategory]! as List)
                                 .map<DropdownMenuItem<String>>((leaf) =>
                                     DropdownMenuItem<String>(
-                                        value: leaf as String,
-                                        child: Text(leaf as String)))
+                                        value: leaf, child: Text(leaf)))
                                 .toList()
                             : const [],
                         onChanged: (_category == null || _subcategory == null)

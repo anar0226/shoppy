@@ -28,13 +28,11 @@ class MockServiceProvider {
 }
 
 /// Mock collection reference
-class MockCollectionReference extends Mock implements CollectionReference {
-  @override
+class MockCollectionReference extends Mock {
   DocumentReference<Object?> doc([String? path]) {
-    return MockDocumentReference();
+    return MockDocumentReference() as DocumentReference<Object?>;
   }
 
-  @override
   Query<Object?> where(Object field,
       {Object? isEqualTo,
       Object? isNotEqualTo,
@@ -47,52 +45,44 @@ class MockCollectionReference extends Mock implements CollectionReference {
       Iterable<Object?>? whereIn,
       Iterable<Object?>? whereNotIn,
       bool? isNull}) {
-    return MockQuery();
+    return MockQuery() as Query<Object?>;
   }
 
-  @override
   Query<Object?> orderBy(Object field, {bool descending = false}) {
-    return MockQuery();
+    return MockQuery() as Query<Object?>;
   }
 
-  @override
   Query<Object?> limit(int limit) {
-    return MockQuery();
+    return MockQuery() as Query<Object?>;
   }
 }
 
 /// Mock document reference
-class MockDocumentReference extends Mock implements DocumentReference<Object?> {
-  @override
-  String get id => 'mock_doc_id';
+class MockDocumentReference extends Mock {
+  final String id = 'mock_doc_id';
 
-  @override
-  CollectionReference<Object?> get parent => MockCollectionReference();
+  CollectionReference<Object?> get parent =>
+      MockCollectionReference() as CollectionReference<Object?>;
 
-  @override
   Future<DocumentSnapshot<Object?>> get([GetOptions? options]) async {
-    return MockDocumentSnapshot();
+    return MockDocumentSnapshot() as DocumentSnapshot<Object?>;
   }
 
-  @override
   Future<void> set(Object? data, [SetOptions? options]) async {
     // Mock implementation
   }
 
-  @override
   Future<void> update(Map<Object, Object?> data) async {
     // Mock implementation
   }
 
-  @override
   Future<void> delete() async {
     // Mock implementation
   }
 }
 
 /// Mock query
-class MockQuery extends Mock implements Query<Object?> {
-  @override
+class MockQuery extends Mock {
   Query<Object?> where(Object field,
       {Object? isEqualTo,
       Object? isNotEqualTo,
@@ -105,109 +95,90 @@ class MockQuery extends Mock implements Query<Object?> {
       Iterable<Object?>? whereIn,
       Iterable<Object?>? whereNotIn,
       bool? isNull}) {
-    return this;
+    return this as Query<Object?>;
   }
 
-  @override
   Query<Object?> orderBy(Object field, {bool descending = false}) {
-    return this;
+    return this as Query<Object?>;
   }
 
-  @override
   Query<Object?> limit(int limit) {
-    return this;
+    return this as Query<Object?>;
   }
 
-  @override
   Query<Object?> startAfterDocument(DocumentSnapshot<Object?> document) {
-    return this;
+    return this as Query<Object?>;
   }
 
-  @override
   Future<QuerySnapshot<Object?>> get([GetOptions? options]) async {
-    return MockQuerySnapshot();
+    return MockQuerySnapshot() as QuerySnapshot<Object?>;
   }
 }
 
 /// Mock document snapshot
-class MockDocumentSnapshot extends Mock implements DocumentSnapshot<Object?> {
-  @override
-  String get id => 'mock_doc_id';
+class MockDocumentSnapshot extends Mock {
+  final String id = 'mock_doc_id';
 
-  @override
-  bool get exists => true;
+  final bool exists = true;
 
-  @override
   Object? data() => <String, dynamic>{};
 }
 
 /// Mock query snapshot
-class MockQuerySnapshot extends Mock implements QuerySnapshot<Object?> {
-  @override
-  List<QueryDocumentSnapshot<Object?>> get docs => [];
+class MockQuerySnapshot extends Mock {
+  final List<QueryDocumentSnapshot<Object?>> docs = [];
 
-  @override
-  int get size => 0;
+  final int size = 0;
 }
 
 /// Mock write batch
-class MockWriteBatch extends Mock implements WriteBatch {
-  @override
+class MockWriteBatch extends Mock {
   void set<T>(DocumentReference<T> document, T data, [SetOptions? options]) {
     // Mock implementation
   }
 
-  @override
   void update(DocumentReference<Object?> document, Map<Object, Object?> data) {
     // Mock implementation
   }
 
-  @override
   void delete(DocumentReference<Object?> document) {
     // Mock implementation
   }
 
-  @override
   Future<void> commit() async {
     // Mock implementation
   }
 }
 
 /// Mock reference
-class MockReference extends Mock implements Reference {
-  @override
+class MockReference extends Mock {
   UploadTask putData(Uint8List data, [SettableMetadata? metadata]) {
-    return MockUploadTask();
+    return MockUploadTask() as UploadTask;
   }
 
-  @override
   UploadTask putFile(File file, [SettableMetadata? metadata]) {
-    return MockUploadTask();
+    return MockUploadTask() as UploadTask;
   }
 
-  @override
   Future<String> getDownloadURL() async {
     return 'https://example.com/mock-url';
   }
 
-  @override
   Future<void> delete() async {
     // Mock implementation
   }
 }
 
 /// Mock upload task
-class MockUploadTask extends Mock implements UploadTask {
-  @override
+class MockUploadTask extends Mock {
   Future<TaskSnapshot> get result async {
-    return MockTaskSnapshot();
+    return MockTaskSnapshot() as TaskSnapshot;
   }
 }
 
 /// Mock task snapshot
-class MockTaskSnapshot extends Mock implements TaskSnapshot {
-  @override
-  Reference get ref => MockReference();
+class MockTaskSnapshot extends Mock {
+  Reference get ref => MockReference() as Reference;
 }
 
 /// Mock user
@@ -244,28 +215,24 @@ class MockFirebaseAuth extends Mock implements auth.FirebaseAuth {
 }
 
 /// Mock Firebase Firestore
-class MockFirebaseFirestore extends Mock implements FirebaseFirestore {
-  @override
+class MockFirebaseFirestore extends Mock {
   CollectionReference<Map<String, dynamic>> collection(String collectionPath) {
     return MockCollectionReference()
         as CollectionReference<Map<String, dynamic>>;
   }
 
-  @override
   WriteBatch batch() {
-    return MockWriteBatch();
+    return MockWriteBatch() as WriteBatch;
   }
 }
 
 /// Mock Firebase Storage
-class MockFirebaseStorage extends Mock implements FirebaseStorage {
-  @override
+class MockFirebaseStorage extends Mock {
   Reference ref([String? path]) {
-    return MockReference();
+    return MockReference() as Reference;
   }
 
-  @override
   Reference refFromURL(String url) {
-    return MockReference();
+    return MockReference() as Reference;
   }
 }

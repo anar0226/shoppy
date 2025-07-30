@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'notification_service.dart';
-import '../../core/utils/type_utils.dart';
 import '../../core/services/database_service.dart';
 import '../../core/services/listener_manager.dart';
 
@@ -449,11 +448,10 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage>
       case 'priceDrops':
       case 'newDrops':
         final productId = data['productId'] as String?;
-        final storeId = TypeUtils.extractStoreId(data['storeId']);
         if (productId != null) {
           // Navigator.pushNamed(context, '/product-details', arguments: {
           //   'productId': productId,
-          //   'storeId': storeId,
+          //   'storeId': TypeUtils.extractStoreId(data['storeId']),
           // });
         }
         break;

@@ -8,7 +8,7 @@ import 'orders_page.dart';
 import 'products_page.dart';
 import 'customers_page.dart';
 import 'analytics_page.dart';
-import 'subscription_page.dart';
+
 import 'discounts_page.dart';
 import 'collections_page.dart';
 import 'categorization_page.dart';
@@ -79,8 +79,7 @@ class _AdminPanelLayoutState extends State<AdminPanelLayout> {
         return const CustomersPage();
       case 'Аналитик':
         return const AnalyticsPage();
-      case 'Төлбөр':
-        return const SubscriptionPage();
+
       case 'Хөнгөлөлтийн код':
         return const DiscountsPage();
       case 'Коллекц':
@@ -149,7 +148,6 @@ class _AdminPanelLayoutState extends State<AdminPanelLayout> {
       'Бүтээгдэхүүнүүд',
       'Үйлчлүүлэгчид',
       'Аналитик',
-      'Төлбөр',
       'Хөнгөлөлтийн код',
       'Коллекц',
       'Бүтээгдэхүүний ангилал',

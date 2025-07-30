@@ -100,5 +100,14 @@
 			<string>auth</string>
 		</array>
 	</dict>
+	
+	<!-- Associated Domains for Universal Links -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:shoppy-6d81f.page.link</string>
+		<string>applinks:shoppy-6d81f.web.app</string>
+	</array>
+		</array>
+	</dict>
 </dict>
 </plist>

@@ -39,7 +39,7 @@
   "retry": "[MN] Retry",
   "sold": "[MN] sold",
   "signOut": "[MN] Sign out",
-  "newOrderReceived": "[MN] New Order Received",
+  "newOrderReceived": "Шинэ захиалга ирлээ!",
   "lowStockAlert": "[MN] Low Stock Alert",
   "newCustomer": "[MN] New Customer",
   "systemUpdate": "[MN] System Update",

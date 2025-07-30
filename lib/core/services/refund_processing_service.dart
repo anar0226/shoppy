@@ -435,10 +435,8 @@ class RefundProcessingService {
       _startProcessingTimer(request);
 
       // Process refund through QPay
-      final qpayResult = await _qpayService.processRefund(
-        paymentId: request.paymentId,
-        refundAmount: request.requestedAmount,
-        reason: request.description,
+      final qpayResult = await _qpayService.refundPayment(
+        request.paymentId,
         callbackUrl:
             'https://us-central1-shoppy-6d81f.cloudfunctions.net/refundWebhook',
         note: 'Refund for order ${request.orderId}',
@@ -446,32 +444,33 @@ class RefundProcessingService {
 
       RefundProcessingResult result;
 
-      if (qpayResult.success) {
+      // Check if refund was successful (QPay returns success on 200 status)
+      if (qpayResult.isNotEmpty) {
         // Refund initiated successfully
         result = RefundProcessingResult(
           refundId: request.id,
           status: RefundStatus.processing,
           processedAmount: request.requestedAmount,
-          qpayRefundId: qpayResult.refundId,
-          transactionId: qpayResult.paymentId,
-          message: qpayResult.message ?? 'Refund processing initiated',
+          qpayRefundId: qpayResult['refund_id'] ?? request.paymentId,
+          transactionId: request.paymentId,
+          message: 'Refund processing initiated',
           processedAt: DateTime.now(),
           details: {
-            'qpayStatus': qpayResult.status,
-            'refundDate': qpayResult.refundDate?.toIso8601String(),
+            'qpayStatus': 'PROCESSING',
+            'refundDate': DateTime.now().toIso8601String(),
           },
         );
 
         // Update refund record
         await _updateRefundStatus(request.id, RefundStatus.processing, {
-          'qpayRefundId': qpayResult.refundId,
-          'qpayStatus': qpayResult.status,
+          'qpayRefundId': qpayResult['refund_id'] ?? request.paymentId,
+          'qpayStatus': 'PROCESSING',
           'processingAmount': request.requestedAmount,
           'processingStartedAt': FieldValue.serverTimestamp(),
         });
 
         // Start status monitoring
-        _startStatusMonitoring(request.id, qpayResult.refundId ?? '');
+        _startStatusMonitoring(request.id, request.paymentId);
 
         // Send processing notification
         if (_config.enableCustomerNotifications) {
@@ -483,22 +482,22 @@ class RefundProcessingService {
           refundId: request.id,
           status: RefundStatus.failed,
           processedAmount: 0,
-          message: qpayResult.error ?? 'Refund processing failed',
+          message: 'Refund processing failed',
           processedAt: DateTime.now(),
           errorCode: 'QPAY_REFUND_FAILED',
-          errorMessage: qpayResult.error,
+          errorMessage: 'QPay refund request failed',
         );
 
         // Update refund record
         await _updateRefundStatus(request.id, RefundStatus.failed, {
           'failedAt': FieldValue.serverTimestamp(),
-          'failureReason': qpayResult.error,
+          'failureReason': 'QPay refund request failed',
         });
 
         // Send failure notification
         if (_config.enableCustomerNotifications) {
           await _sendRefundFailureNotification(
-              request, qpayResult.error ?? 'Unknown error');
+              request, 'QPay refund request failed');
         }
       }
 
@@ -579,18 +578,17 @@ class RefundProcessingService {
           final statusResult =
               await _qpayService.checkPaymentStatus(qpayRefundId);
 
-          if (statusResult.success) {
-            if (statusResult.status == 'REFUNDED') {
-              // Refund completed
-              await _handleRefundCompleted(refundId, statusResult);
-              timer.cancel();
-              _statusCheckTimers.remove(refundId);
-            } else if (statusResult.status == 'FAILED') {
-              // Refund failed
-              await _handleRefundFailed(refundId, 'QPay refund failed');
-              timer.cancel();
-              _statusCheckTimers.remove(refundId);
-            }
+          final paymentStatus = statusResult['payment_status'];
+          if (paymentStatus == 'REFUNDED') {
+            // Refund completed
+            await _handleRefundCompleted(refundId, statusResult);
+            timer.cancel();
+            _statusCheckTimers.remove(refundId);
+          } else if (paymentStatus == 'FAILED') {
+            // Refund failed
+            await _handleRefundFailed(refundId, 'QPay refund failed');
+            timer.cancel();
+            _statusCheckTimers.remove(refundId);
           }
         } catch (e) {
           log('RefundProcessingService: Error checking refund status for $refundId: $e');
@@ -601,16 +599,16 @@ class RefundProcessingService {
 
   /// Handle refund completed
   Future<void> _handleRefundCompleted(
-      String refundId, QPayPaymentStatus status) async {
+      String refundId, Map<String, dynamic> status) async {
     try {
       log('RefundProcessingService: Refund $refundId completed');
 
       // Update refund record
       await _updateRefundStatus(refundId, RefundStatus.completed, {
         'completedAt': FieldValue.serverTimestamp(),
-        'completedAmount': status.paidAmount ?? 0,
-        'qpayStatus': status.status,
-        'transactionId': status.paymentId,
+        'completedAmount': status['payment_amount'] ?? 0,
+        'qpayStatus': status['payment_status'],
+        'transactionId': status['payment_id'],
       });
 
       // Get refund request
@@ -618,12 +616,12 @@ class RefundProcessingService {
       if (request != null) {
         // Update order status
         await _updateOrderAfterRefund(
-            request.orderId, request.type, status.paidAmount ?? 0);
+            request.orderId, request.type, status['payment_amount'] ?? 0);
 
         // Send completion notification
         if (_config.enableCustomerNotifications) {
           await _sendRefundCompletionNotification(
-              request, status.paidAmount ?? 0);
+              request, status['payment_amount'] ?? 0);
         }
       }
 
@@ -631,14 +629,14 @@ class RefundProcessingService {
       final result = RefundProcessingResult(
         refundId: refundId,
         status: RefundStatus.completed,
-        processedAmount: status.paidAmount ?? 0,
-        qpayRefundId: status.paymentId,
-        transactionId: status.paymentId,
+        processedAmount: status['payment_amount'] ?? 0,
+        qpayRefundId: status['payment_id'],
+        transactionId: status['payment_id'],
         message: 'Refund completed successfully',
         processedAt: DateTime.now(),
         details: {
-          'completedAmount': status.paidAmount ?? 0,
-          'qpayStatus': status.status,
+          'completedAmount': status['payment_amount'] ?? 0,
+          'qpayStatus': status['payment_status'],
         },
       );
 

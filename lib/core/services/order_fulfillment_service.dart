@@ -1,13 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'qpay_service.dart';
+import '../utils/order_id_generator.dart';
 
 /// QPay Payment Result (for order fulfillment)
 class QPayPaymentResult {
   final bool success;
   final String? error;
-  final QPayInvoice? invoice;
+  final Map<String, dynamic>? invoice;
 
   const QPayPaymentResult({
     required this.success,
@@ -15,7 +15,7 @@ class QPayPaymentResult {
     this.invoice,
   });
 
-  factory QPayPaymentResult.success(QPayInvoice invoice) {
+  factory QPayPaymentResult.success(Map<String, dynamic> invoice) {
     return QPayPaymentResult(success: true, invoice: invoice);
   }
 
@@ -44,7 +44,7 @@ class OrderFulfillmentResult {
   final bool success;
   final String? error;
   final String? orderId;
-  final QPayInvoice? paymentInvoice;
+  final Map<String, dynamic>? paymentInvoice;
 
   const OrderFulfillmentResult({
     required this.success,
@@ -55,7 +55,7 @@ class OrderFulfillmentResult {
 
   factory OrderFulfillmentResult.success({
     required String orderId,
-    QPayInvoice? paymentInvoice,
+    Map<String, dynamic>? paymentInvoice,
   }) {
     return OrderFulfillmentResult(
       success: true,
@@ -97,110 +97,85 @@ class OrderFulfillmentService {
     required Map<String, dynamic> deliveryAddress,
   }) async {
     try {
-      final orderId = DateTime.now().millisecondsSinceEpoch.toString();
+      final orderId = OrderIdGenerator.generate();
 
-      // Step 1: Create initial order record
-      await _createInitialOrder(
-          orderId, orderData, customerEmail, customerPhone, deliveryAddress);
+      // Create order record in Firestore
+      await FirebaseFirestore.instance.collection('orders').doc(orderId).set({
+        'orderId': orderId,
+        'storeId': orderData['storeId'],
+        'customerEmail': customerEmail,
+        'customerPhone': customerPhone,
+        'deliveryAddress': deliveryAddress,
+        'items': orderData['items'],
+        'total': orderData['total'],
+        'fulfillmentStatus': FulfillmentStatus.pending.name,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
-      // Step 2: Process payment with QPay
-      final paymentResult =
-          await _processPayment(orderId, orderData, customerEmail);
-
-      if (!paymentResult.success) {
-        await _updateOrderStatus(orderId, FulfillmentStatus.failed,
-            error: paymentResult.error);
-        return OrderFulfillmentResult.error(
-            'Payment failed: ${paymentResult.error}');
-      }
-
-      // Step 3: Update order status to payment confirmed
-      await _updateOrderStatus(orderId, FulfillmentStatus.paymentConfirmed);
-
-      return OrderFulfillmentResult.success(
+      // Process payment
+      final paymentResult = await _processPayment(
         orderId: orderId,
-        paymentInvoice: paymentResult.invoice!,
+        orderData: orderData,
+        customerEmail: customerEmail,
       );
+
+      if (paymentResult.success) {
+        // Update order status to payment confirmed
+        await _updateOrderStatus(orderId, FulfillmentStatus.paymentConfirmed);
+
+        return OrderFulfillmentResult.success(
+          orderId: orderId,
+          paymentInvoice: paymentResult.invoice,
+        );
+      } else {
+        // Update order status to failed
+        await _updateOrderStatus(
+          orderId,
+          FulfillmentStatus.failed,
+          error: paymentResult.error,
+        );
+
+        return OrderFulfillmentResult.error(
+            paymentResult.error ?? 'Payment processing failed');
+      }
     } catch (e) {
       debugPrint('Order processing error: $e');
       return OrderFulfillmentResult.error('Order processing failed: $e');
     }
   }
 
-  /// Create initial order record in Firestore
-  Future<void> _createInitialOrder(
-    String orderId,
-    Map<String, dynamic> orderData,
-    String customerEmail,
-    String customerPhone,
-    Map<String, dynamic> deliveryAddress,
-  ) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw Exception('User not authenticated');
+  /// Process payment using QPay
+  Future<QPayPaymentResult> _processPayment({
+    required String orderId,
+    required Map<String, dynamic> orderData,
+    required String customerEmail,
+  }) async {
+    try {
+      // Get store information
+      final storeDoc = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(orderData['storeId'])
+          .get();
 
-    final orderRecord = {
-      'orderId': orderId,
-      'userId': user.uid,
-      'customerEmail': customerEmail,
-      'customerPhone': customerPhone,
-      'items': orderData['items'],
-      'storeId': orderData['storeId'],
-      'vendorId': orderData['vendorId'],
-      'subtotal': orderData['subtotal'],
-      'tax': orderData['tax'],
-      'shipping': orderData['shipping'],
-      'total': orderData['total'],
-      'deliveryAddress': deliveryAddress,
-      'fulfillmentStatus': FulfillmentStatus.pending.name,
-      'paymentStatus': 'pending',
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      // Analytics fields
-      'month': DateTime.now().month,
-      'week': ((DateTime.now().day - 1) / 7).floor() + 1,
-      'day': DateTime.now().day,
-    };
+      final storeName =
+          storeDoc.exists ? storeDoc.data()!['name'] ?? 'Store' : 'Store';
+      final itemsCount = (orderData['items'] as List).length;
 
-    await FirebaseFirestore.instance
-        .collection('orders')
-        .doc(orderId)
-        .set(orderRecord);
-  }
+      // Create QPay invoice
+      final description = 'Order #$orderId from $storeName ($itemsCount items)';
 
-  /// Process payment with QPay
-  Future<QPayPaymentResult> _processPayment(
-    String orderId,
-    Map<String, dynamic> orderData,
-    String customerEmail,
-  ) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw Exception('User not authenticated');
+      final qpayResult = await _qpayService.createInvoice(
+        orderId: orderId,
+        amount: (orderData['total'] as num).toDouble(),
+        description: description,
+        customerCode: customerEmail.replaceAll('@', '_').replaceAll('.', '_'),
+      );
 
-    // Get store information for payment description
-    final storeDoc = await FirebaseFirestore.instance
-        .collection('stores')
-        .doc(orderData['storeId'])
-        .get();
-
-    final storeName =
-        storeDoc.exists ? storeDoc.data()!['name'] ?? 'Store' : 'Store';
-    final itemsCount = (orderData['items'] as List).length;
-
-    // Create QPay invoice
-    final description = 'Order #$orderId from $storeName ($itemsCount items)';
-
-    final qpayResult = await _qpayService.createInvoice(
-      orderId: orderId,
-      amount: (orderData['total'] as num).toDouble(),
-      description: description,
-      customerEmail: customerEmail.replaceAll('@', '_').replaceAll('.', '_'),
-    );
-
-    if (qpayResult.success && qpayResult.invoice != null) {
-      return QPayPaymentResult.success(qpayResult.invoice!);
-    } else {
-      return QPayPaymentResult.error(
-          qpayResult.error ?? 'Payment creation failed');
+      return QPayPaymentResult.success(qpayResult);
+    } catch (e) {
+      debugPrint('Payment processing error: $e');
+      return QPayPaymentResult.error('Payment processing failed: $e');
     }
   }
 
@@ -280,12 +255,36 @@ class OrderFulfillmentService {
         .snapshots();
   }
 
-  /// Get orders for a user
-  Stream<QuerySnapshot> getUserOrders(String userId) {
+  /// Get orders for a customer
+  Stream<QuerySnapshot> getCustomerOrders(String customerEmail) {
     return FirebaseFirestore.instance
         .collection('orders')
-        .where('userId', isEqualTo: userId)
+        .where('customerEmail', isEqualTo: customerEmail)
         .orderBy('createdAt', descending: true)
         .snapshots();
+  }
+
+  /// Cancel order
+  Future<bool> cancelOrder(String orderId, {String? reason}) async {
+    try {
+      final updateData = {
+        'fulfillmentStatus': FulfillmentStatus.cancelled.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (reason != null) {
+        updateData['cancellationReason'] = reason;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('orders')
+          .doc(orderId)
+          .update(updateData);
+
+      return true;
+    } catch (e) {
+      debugPrint('Error cancelling order: $e');
+      return false;
+    }
   }
 }

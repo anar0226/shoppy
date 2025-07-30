@@ -30,7 +30,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   AnalyticsMetrics? _metrics;
   List<RevenueTrend> _revenueTrends = [];
   List<TopProduct> _topProducts = [];
-  CustomerAnalytics? _customerAnalytics;
   ConversionFunnel? _conversionFunnel;
   List<Map<String, dynamic>> _orderTrends = [];
 
@@ -92,7 +91,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         _analyticsService.getRevenueTrends(_currentStoreId!,
             period: _getPeriodForAPI()),
         _analyticsService.getTopSellingProducts(_currentStoreId!, limit: 5),
-        _analyticsService.getCustomerAnalytics(_currentStoreId!),
         _analyticsService.getConversionFunnel(_currentStoreId!),
         _orderService.getOrderTrendData(_currentStoreId!,
             period: 'daily', days: 30),
@@ -102,9 +100,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         _metrics = results[0] as AnalyticsMetrics;
         _revenueTrends = results[1] as List<RevenueTrend>;
         _topProducts = results[2] as List<TopProduct>;
-        _customerAnalytics = results[3] as CustomerAnalytics;
-        _conversionFunnel = results[4] as ConversionFunnel;
-        _orderTrends = results[5] as List<Map<String, dynamic>>;
+        _conversionFunnel = results[3] as ConversionFunnel;
+        _orderTrends = results[4] as List<Map<String, dynamic>>;
         _isLoading = false;
       });
     } catch (e) {
@@ -312,49 +309,58 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   Widget _buildStatsCards() {
     if (_metrics == null) return Container();
 
-    return Wrap(
-      spacing: 24,
-      runSpacing: 24,
+    return Row(
       children: [
-        StatCard(
-          title: 'Нийт орлого',
-          value: '₮${_metrics!.totalRevenue.toStringAsFixed(2)}',
-          delta: '${_metrics!.revenueChange.toStringAsFixed(1)}%',
-          deltaUp: _metrics!.revenueIncreased,
-          icon: Icons.attach_money,
-          iconBg: Colors.green,
-          periodLabel: _selectedPeriod,
-          comparisonLabel: 'өмнөх үе',
+        Expanded(
+          child: StatCard(
+            title: 'Нийт орлого',
+            value: '₮${_metrics!.totalRevenue.toStringAsFixed(2)}',
+            delta: '${_metrics!.revenueChange.toStringAsFixed(1)}%',
+            deltaUp: _metrics!.revenueIncreased,
+            icon: Icons.attach_money,
+            iconBg: Colors.green,
+            periodLabel: _selectedPeriod,
+            comparisonLabel: 'өмнөх үе',
+          ),
         ),
-        StatCard(
-          title: 'Захиалгын тоо',
-          value: _metrics!.totalOrders.toString(),
-          delta: '${_metrics!.ordersChange.toStringAsFixed(1)}%',
-          deltaUp: _metrics!.ordersIncreased,
-          icon: Icons.shopping_cart_outlined,
-          iconBg: Colors.blue,
-          periodLabel: _selectedPeriod,
-          comparisonLabel: 'өмнөх үе',
+        const SizedBox(width: 24),
+        Expanded(
+          child: StatCard(
+            title: 'Захиалгын тоо',
+            value: _metrics!.totalOrders.toString(),
+            delta: '${_metrics!.ordersChange.toStringAsFixed(1)}%',
+            deltaUp: _metrics!.ordersIncreased,
+            icon: Icons.shopping_cart_outlined,
+            iconBg: Colors.blue,
+            periodLabel: _selectedPeriod,
+            comparisonLabel: 'өмнөх үе',
+          ),
         ),
-        StatCard(
-          title: 'Хэрэглэгчид',
-          value: _metrics!.totalCustomers.toString(),
-          delta: '${_metrics!.customersChange.toStringAsFixed(1)}%',
-          deltaUp: _metrics!.customersIncreased,
-          icon: Icons.person_outline,
-          iconBg: Colors.purple,
-          periodLabel: _selectedPeriod,
-          comparisonLabel: 'өмнөх үе',
+        const SizedBox(width: 24),
+        Expanded(
+          child: StatCard(
+            title: 'Хэрэглэгчид',
+            value: _metrics!.totalCustomers.toString(),
+            delta: '${_metrics!.customersChange.toStringAsFixed(1)}%',
+            deltaUp: _metrics!.customersIncreased,
+            icon: Icons.person_outline,
+            iconBg: Colors.purple,
+            periodLabel: _selectedPeriod,
+            comparisonLabel: 'өмнөх үе',
+          ),
         ),
-        StatCard(
-          title: 'Дзахиалгын дундаж үнэ',
-          value: '₮${_metrics!.averageOrderValue.toStringAsFixed(2)}',
-          delta: '${_metrics!.averageOrderValueChange.toStringAsFixed(1)}%',
-          deltaUp: _metrics!.averageOrderValueIncreased,
-          icon: Icons.bar_chart,
-          iconBg: Colors.orange,
-          periodLabel: _selectedPeriod,
-          comparisonLabel: 'өмнөх үе',
+        const SizedBox(width: 24),
+        Expanded(
+          child: StatCard(
+            title: 'Дзахиалгын дундаж үнэ',
+            value: '₮${_metrics!.averageOrderValue.toStringAsFixed(2)}',
+            delta: '${_metrics!.averageOrderValueChange.toStringAsFixed(1)}%',
+            deltaUp: _metrics!.averageOrderValueIncreased,
+            icon: Icons.bar_chart,
+            iconBg: Colors.orange,
+            periodLabel: _selectedPeriod,
+            comparisonLabel: 'өмнөх үе',
+          ),
         ),
       ],
     );
@@ -372,7 +378,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         data: _revenueTrends,
         height: 320,
         title: 'орлогын трэнд',
-        lineColor: Colors.green,
+        lineColor: const Color(0xFF0053A3),
       ),
     );
   }
@@ -417,55 +423,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           ),
         ),
         const SizedBox(width: 24),
-        // Customer segments
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppThemes.getCardColor(context),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppThemes.getBorderColor(context)),
-            ),
-            child: _customerAnalytics != null
-                ? CustomerAnalyticsWidget(
-                    analytics: _customerAnalytics!,
-                    height: 280,
-                  )
-                : const SizedBox(
-                    height: 280,
-                    child: Center(
-                      child: Text(
-                        'Хэрэглэгчид бүртгэлгүй байна',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                  ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBottomCharts() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Order trends
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppThemes.getCardColor(context),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppThemes.getBorderColor(context)),
-            ),
-            child: OrderTrendBarChart(
-              data: _orderTrends,
-              height: 280,
-              title: 'Захиалгын трэнд',
-              barColor: Colors.blue,
-            ),
-          ),
-        ),
-        const SizedBox(width: 24),
         // Conversion funnel
         Expanded(
           child: Container(
@@ -492,6 +449,23 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildBottomCharts() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppThemes.getCardColor(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppThemes.getBorderColor(context)),
+      ),
+      child: OrderTrendBarChart(
+        data: _orderTrends,
+        height: 280,
+        title: 'Захиалгын трэнд',
+        barColor: const Color(0xFF0053A3),
+      ),
     );
   }
 
@@ -551,7 +525,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 widthFactor: product.getRelativePerformance(maxUnitsSold),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.green,
+                    color: const Color(0xFF0053A3),
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),

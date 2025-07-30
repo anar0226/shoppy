@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAM_ID.com.avii.marketplace",
+        "paths": [
+          "/__/auth/action*",
+          "/dynamicLinks/*"
+        ]
+      }
+    ]
+  }
+} 

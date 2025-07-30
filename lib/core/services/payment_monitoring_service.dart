@@ -409,60 +409,59 @@ class PaymentMonitoringService {
           await _qpayService.checkPaymentStatus(qpayInvoiceId);
       final responseTime = DateTime.now().difference(startTime);
 
-      if (paymentStatus.success) {
-        final status = paymentStatus.status ?? 'UNKNOWN';
-        final previousStatus = await _getLastPaymentStatus(paymentId);
+      final status = paymentStatus['payment_status'] ?? 'UNKNOWN';
+      final previousStatus = await _getLastPaymentStatus(paymentId);
 
-        // Check if status has changed
-        if (status != previousStatus) {
-          final processingTime = _paymentStartTimes[paymentId] != null
-              ? DateTime.now().difference(_paymentStartTimes[paymentId]!)
-              : null;
+      // Check if status has changed
+      if (status != previousStatus) {
+        final processingTime = _paymentStartTimes[paymentId] != null
+            ? DateTime.now().difference(_paymentStartTimes[paymentId]!)
+            : null;
 
-          final eventType = _mapStatusToEventType(status);
+        final eventType = _mapStatusToEventType(status);
 
-          final event = PaymentEvent(
-            id: 'event_${DateTime.now().millisecondsSinceEpoch}',
-            paymentId: paymentId,
-            orderId: await _getOrderIdForPayment(paymentId),
-            type: eventType,
-            timestamp: DateTime.now(),
-            data: {
-              'qpayInvoiceId': qpayInvoiceId,
-              'previousStatus': previousStatus,
-              'newStatus': status,
-              'responseTime': responseTime.inMilliseconds,
-              'paidAmount': paymentStatus.paidAmount,
-              'paidDate': paymentStatus.paidDate?.toIso8601String(),
-              'paymentMethod': paymentStatus.paymentMethod,
-              'currency': paymentStatus.currency,
-            },
-            amount: paymentStatus.paidAmount,
-            currency: paymentStatus.currency,
-            method: paymentStatus.paymentMethod,
-            status: status,
-            processingTime: processingTime,
-          );
+        final event = PaymentEvent(
+          id: 'event_${DateTime.now().millisecondsSinceEpoch}',
+          paymentId: paymentId,
+          orderId: await _getOrderIdForPayment(paymentId),
+          type: eventType,
+          timestamp: DateTime.now(),
+          data: {
+            'qpayInvoiceId': qpayInvoiceId,
+            'previousStatus': previousStatus,
+            'newStatus': status,
+            'responseTime': responseTime.inMilliseconds,
+            'paidAmount': paymentStatus['payment_amount'] ?? 0,
+            'paidDate': paymentStatus['payment_date']?.toString(),
+            'paymentMethod': paymentStatus['paid_by'] ?? 'UNKNOWN',
+            'currency': paymentStatus['payment_currency'] ?? 'MNT',
+          },
+          amount: paymentStatus['payment_amount'] ?? 0,
+          currency: paymentStatus['payment_currency'] ?? 'MNT',
+          method: paymentStatus['paid_by'] ?? 'UNKNOWN',
+          status: status,
+          processingTime: processingTime,
+        );
 
-          // Update last status
-          await _updateLastPaymentStatus(paymentId, status);
+        // Update last status
+        await _updateLastPaymentStatus(paymentId, status);
 
-          // Handle final states
-          if (_isFinalState(status)) {
-            await stopPaymentMonitoring(paymentId);
-          }
-
-          return event;
+        // Handle final states
+        if (_isFinalState(status)) {
+          await stopPaymentMonitoring(paymentId);
         }
-      } else {
-        // Payment status check failed
-        await _handlePaymentStatusError(
-            paymentId, paymentStatus.error ?? 'Unknown error');
+
+        return event;
       }
 
       return null;
     } catch (e) {
       log('PaymentMonitoringService: Error monitoring payment status: $e');
+
+      // Handle payment status error
+      await _handlePaymentStatusError(
+          paymentId, 'Payment status check failed: $e');
+
       return null;
     }
   }
@@ -651,20 +650,6 @@ class PaymentMonitoringService {
 
   /// Perform system health check
   void _performSystemHealthCheck() {
-    // Check QPay API health
-    _qpayService.debugQPayConnection().then((debug) {
-      final isHealthy = debug['authSuccess'] == true;
-      if (!isHealthy) {
-        _createAlert(
-          type: PaymentAlertType.apiDown,
-          severity: PaymentAlertSeverity.critical,
-          title: 'QPay API Down',
-          message: 'QPay API is not responding or authentication failed',
-          data: debug,
-        );
-      }
-    });
-
     // Check active monitors
     final activeMonitorCount = _activeMonitors.length;
     if (activeMonitorCount > _config.maxConcurrentMonitors * 0.8) {

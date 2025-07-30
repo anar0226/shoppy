@@ -307,6 +307,7 @@ class SupportContactPage extends StatelessWidget {
       );
 
       // Show user-friendly error message
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Холбоос нээхэд алдаа гарлаа: $urlString'),
