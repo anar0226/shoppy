@@ -86,9 +86,11 @@ class ManageAddressesPage extends StatelessWidget {
             itemBuilder: (_, i) {
               final addr = provider.addresses[i];
               return Card(
-                elevation: 2,
+                elevation: 0,
+                color: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: Color(0xFF4285F4), width: 1),
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.all(16),
@@ -97,6 +99,7 @@ class ManageAddressesPage extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
+                      color: Color(0xFF4285F4),
                     ),
                   ),
                   subtitle: Padding(
@@ -113,7 +116,7 @@ class ManageAddressesPage extends StatelessWidget {
                   leading: Radio<String>(
                     value: addr.id,
                     groupValue: provider.defaultAddressId,
-                    activeColor: Colors.blue,
+                    activeColor: const Color(0xFF4285F4),
                     onChanged: (val) {
                       if (val != null) {
                         provider.setDefaultAddress(val);
@@ -165,8 +168,22 @@ class ManageAddressesPage extends StatelessWidget {
         child: ElevatedButton(
           onPressed: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const AddEditAddressPage())),
-          style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16)),
-          child: const Text('Хүргэлтийн хаяг шинээр нэмэх'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: const Color(0xFF4285F4),
+            padding: const EdgeInsets.all(16),
+            side: const BorderSide(color: Color(0xFF4285F4), width: 1),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: const Text(
+            'Хүргэлтийн хаяг шинээр нэмэх',
+            style: TextStyle(
+              color: Color(0xFF4285F4),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ),
     );

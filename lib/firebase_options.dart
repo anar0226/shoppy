@@ -59,7 +59,7 @@ class DefaultFirebaseOptions {
         messagingSenderId: _getEnv('F_SENDER_ID') ?? '110394685689',
         projectId: _getEnv('F_PROJECT_ID') ?? 'shoppy-6d81f',
         authDomain: 'shoppy-6d81f.firebaseapp.com',
-        storageBucket: 'shoppy-6d81f.firebasestorage.app',
+        storageBucket: 'shoppy-6d81f.appspot.com',
         measurementId: 'G-BCGNM9C9ED',
       );
 
@@ -70,7 +70,7 @@ class DefaultFirebaseOptions {
             '1:110394685689:android:8848cbe8fc068acf42ca28',
         messagingSenderId: _getEnv('F_SENDER_ID') ?? '110394685689',
         projectId: _getEnv('F_PROJECT_ID') ?? 'shoppy-6d81f',
-        storageBucket: 'shoppy-6d81f.firebasestorage.app',
+        storageBucket: 'shoppy-6d81f.appspot.com',
       );
 
   static FirebaseOptions get ios => FirebaseOptions(
@@ -80,7 +80,7 @@ class DefaultFirebaseOptions {
             _getEnv('F_APP_ID') ?? '1:110394685689:ios:be2eb9a923aac7e342ca28',
         messagingSenderId: _getEnv('F_SENDER_ID') ?? '110394685689',
         projectId: _getEnv('F_PROJECT_ID') ?? 'shoppy-6d81f',
-        storageBucket: 'shoppy-6d81f.firebasestorage.app',
+        storageBucket: 'shoppy-6d81f.appspot.com',
         iosBundleId: 'com.avii.marketplace',
       );
 
@@ -91,7 +91,7 @@ class DefaultFirebaseOptions {
             _getEnv('F_APP_ID') ?? '1:110394685689:ios:be2eb9a923aac7e342ca28',
         messagingSenderId: _getEnv('F_SENDER_ID') ?? '110394685689',
         projectId: _getEnv('F_PROJECT_ID') ?? 'shoppy-6d81f',
-        storageBucket: 'shoppy-6d81f.firebasestorage.app',
+        storageBucket: 'shoppy-6d81f.appspot.com',
         iosBundleId: 'com.avii.marketplace',
       );
 
@@ -103,7 +103,7 @@ class DefaultFirebaseOptions {
         messagingSenderId: _getEnv('F_SENDER_ID') ?? '110394685689',
         projectId: _getEnv('F_PROJECT_ID') ?? 'shoppy-6d81f',
         authDomain: 'shoppy-6d81f.firebaseapp.com',
-        storageBucket: 'shoppy-6d81f.firebasestorage.app',
+        storageBucket: 'shoppy-6d81f.appspot.com',
         measurementId: 'G-KE94PVC1ZW',
       );
 }

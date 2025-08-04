@@ -378,7 +378,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         data: _revenueTrends,
         height: 320,
         title: 'орлогын трэнд',
-        lineColor: const Color(0xFF0053A3),
+        lineColor: const Color(0xFF4285F4),
       ),
     );
   }
@@ -464,7 +464,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         data: _orderTrends,
         height: 280,
         title: 'Захиалгын трэнд',
-        barColor: const Color(0xFF0053A3),
+        barColor: const Color(0xFF4285F4),
       ),
     );
   }
@@ -525,7 +525,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 widthFactor: product.getRelativePerformance(maxUnitsSold),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0053A3),
+                    color: const Color(0xFF4285F4),
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),

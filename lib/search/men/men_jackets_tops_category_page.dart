@@ -23,7 +23,7 @@ class MenJacketsTopsCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'куртка',
           imageUrl: 'assets/images/categories/Men/Jackets&tops/jackets.jpg',
-          color: const Color(0xFF8B4513),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -34,7 +34,7 @@ class MenJacketsTopsCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Малгайтай цамц',
           imageUrl: 'assets/images/categories/Men/Jackets&tops/hoodie.jpg',
-          color: const Color(0xFF6B9BD1),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -45,7 +45,7 @@ class MenJacketsTopsCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Поло',
           imageUrl: 'assets/images/categories/Men/Jackets&tops/polo.jpg',
-          color: const Color(0xFFD97841),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -56,7 +56,7 @@ class MenJacketsTopsCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Цамц',
           imageUrl: 'assets/images/categories/Men/Jackets&tops/shirts.jpg',
-          color: const Color(0xFFB8A082),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(

@@ -34,6 +34,10 @@ export * from './qpay-webhook';
 export * from './subscription-webhook';
 export * from './subscription-management';
 
+// Export Payment verification functions
+export * from './payment-verification';
+export * from './kyc-document-cleanup';
+
 
 
 // QPay Webhook Handler

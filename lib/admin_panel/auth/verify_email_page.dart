@@ -268,9 +268,9 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
                               ),
                             );
                           },
-                          child: Text(
+                          child: const Text(
                             'Тусламжтай холбогдох',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               color: AppColors.brandBlue,
                               fontWeight: FontWeight.w600,

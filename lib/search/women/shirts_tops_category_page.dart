@@ -133,9 +133,9 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
 
   static const List<_SubCat> _subCats = [
     _SubCat('Футболк', 'assets/images/categories/Women/WomenTshirt.jpg',
-        Color(0xFF2D8A47)),
+        Color(0xFF808080)), // Grey color
     _SubCat('Малгайтай цамц', 'assets/images/categories/Women/shoes/hoodie.jpg',
-        Color(0xFFD97841)),
+        Color(0xFF808080)), // Grey color
   ];
 
   @override
@@ -237,7 +237,7 @@ class _ShirtsTopsCategoryPageState extends State<ShirtsTopsCategoryPage> {
               child: Text(
                 cat.name,
                 style: const TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF4285F4), // Primary blue-ish color
                     fontSize: 16,
                     fontWeight: FontWeight.bold),
               ),

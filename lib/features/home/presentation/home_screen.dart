@@ -578,7 +578,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w900,
-              color: Color.fromARGB(255, 22, 14, 179),
+              color: Color(0xFF4285F4), // Primary blue color
               letterSpacing: 0.5,
             ),
           ),
@@ -648,7 +648,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: const Icon(
                         Icons.notifications_outlined,
                         size: 20,
-                        color: Colors.black87,
+                        color: Color(0xFF4285F4), // Primary blue color
                       ),
                     ),
                     StreamBuilder<QuerySnapshot>(
@@ -745,11 +745,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 20,
-                  color: Colors.black87,
+                  color: Color(0xFF4285F4), // Primary blue color
                 ),
               ),
               SizedBox(width: 4),
-              Icon(Icons.chevron_right, size: 20, color: Colors.black54),
+              Icon(Icons.chevron_right,
+                  size: 20, color: Color(0xFF4285F4)), // Primary blue color
             ],
           ),
         ),
@@ -810,7 +811,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
-                          color: Colors.black87,
+                          color: Color(0xFF4285F4), // Primary blue color
                         ),
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
@@ -841,11 +842,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 20,
-                  color: Colors.black87,
+                  color: Color(0xFF4285F4), // Primary blue color
                 ),
               ),
               SizedBox(width: 4),
-              Icon(Icons.chevron_right, size: 20, color: Colors.black54),
+              Icon(Icons.chevron_right,
+                  size: 20, color: Color(0xFF4285F4)), // Primary blue color
             ],
           ),
         ),

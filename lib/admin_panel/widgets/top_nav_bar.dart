@@ -20,7 +20,7 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
     final theme = Theme.of(context);
     return Material(
       elevation: 0,
-      color: const Color(0xFF0053A3), // Brand blue background
+      color: const Color(0xFF4285F4), // Brand blue background
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         alignment: Alignment.center,

@@ -51,7 +51,8 @@ class _LoginPageState extends State<LoginPage> {
                       children: [
                         // Email field
                         TextFormField(
-                          style: const TextStyle(color: Colors.black),
+                          style: const TextStyle(
+                              color: Color(0xFF4285F4)), // Primary blue color
                           decoration: const InputDecoration(
                             labelText: 'имэйл',
                             labelStyle: TextStyle(color: Colors.grey),
@@ -74,7 +75,8 @@ class _LoginPageState extends State<LoginPage> {
 
                         // Password field
                         TextFormField(
-                          style: const TextStyle(color: Colors.black),
+                          style: const TextStyle(
+                              color: Color(0xFF4285F4)), // Primary blue color
                           decoration: InputDecoration(
                             labelText: 'нууц үг',
                             labelStyle: const TextStyle(color: Colors.grey),

@@ -137,13 +137,13 @@ class _ShoesCategoryPageState extends State<ShoesCategoryPage> {
 
   final List<_SubCat> _subCats = const [
     _SubCat('Өндөр өсгийт', 'assets/images/categories/Women/shoes/Heels.jpg',
-        Color(0xFF8B4513)),
+        Color(0xFF808080)), // Grey color
     _SubCat('Шаахай', 'assets/images/categories/Women/shoes/Slippers.jpg',
-        Color(0xFFD97841)),
+        Color(0xFF808080)), // Grey color
     _SubCat('Пүүз', 'assets/images/categories/Women/shoes/Sneakers.jpg',
-        Color(0xFF6B9BD1)),
+        Color(0xFF808080)), // Grey color
     _SubCat('Бусад', 'assets/images/categories/Women/shoes/Others.jpg',
-        Color(0xFFB8A082)),
+        Color(0xFF808080)), // Grey color
   ];
 
   @override
@@ -247,7 +247,7 @@ class _ShoesCategoryPageState extends State<ShoesCategoryPage> {
               child: Text(
                 cat.name,
                 style: const TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF4285F4), // Primary blue-ish color
                     fontSize: 16,
                     fontWeight: FontWeight.bold),
               ),

@@ -23,7 +23,7 @@ class MenShoesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Пүүз',
           imageUrl: 'assets/images/categories/Men/shoes.jpg',
-          color: const Color(0xFF6B9BD1),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -38,7 +38,7 @@ class MenShoesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Шаахай',
           imageUrl: 'assets/images/categories/Men/shoes/slippers.jpg',
-          color: const Color(0xFFD97841),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -53,7 +53,7 @@ class MenShoesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Гутал',
           imageUrl: 'assets/images/categories/Men/shoes/boots.jpg',
-          color: const Color(0xFF8B4513),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -68,7 +68,7 @@ class MenShoesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Спорт гутал',
           imageUrl: 'assets/images/categories/Men/shoes/athletic.jpg',
-          color: const Color(0xFF2D8A47),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(

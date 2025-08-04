@@ -120,6 +120,8 @@ class _StoreScreenState extends State<StoreScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style:
+                TextButton.styleFrom(foregroundColor: const Color(0xFF4285F4)),
             child: const Text('Цуцлах'),
           ),
           TextButton(
@@ -408,9 +410,6 @@ class _StoreScreenState extends State<StoreScreen>
               ? Colors.white.withValues(alpha: 0.25)
               : Colors.white.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(18),
-          border: _isSearching
-              ? Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1)
-              : null,
         ),
         child: Icon(
           _isSearching ? Icons.search_off : Icons.search,
@@ -458,10 +457,6 @@ class _StoreScreenState extends State<StoreScreen>
                     ? Colors.white.withValues(alpha: 0.25)
                     : Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(18),
-                border: _isFollowing
-                    ? Border.all(
-                        color: Colors.white.withValues(alpha: 0.3), width: 1)
-                    : null,
               ),
               child: _isFollowing
                   ? const Icon(

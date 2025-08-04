@@ -26,7 +26,7 @@ class MenCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Гутал',
           imageUrl: 'assets/images/categories/Men/shoes.jpg',
-          color: const Color(0xFF2D8A47),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const MenShoesCategoryPage()),
@@ -35,7 +35,7 @@ class MenCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Гадуур хувцас',
           imageUrl: 'assets/images/categories/Men/jacket.jpg',
-          color: const Color(0xFFD97841),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -45,7 +45,7 @@ class MenCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Бусад',
           imageUrl: 'assets/images/categories/Men/Others.jpg',
-          color: const Color(0xFF8B4513),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -55,7 +55,7 @@ class MenCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Өмд',
           imageUrl: 'assets/images/categories/Men/pants.jpg',
-          color: const Color(0xFFB8A082),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -65,7 +65,7 @@ class MenCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Футболк',
           imageUrl: 'assets/images/categories/Men/Tshirt.jpg',
-          color: const Color(0xFFE8B5C8),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -75,7 +75,7 @@ class MenCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Спорт хувцас',
           imageUrl: 'assets/images/categories/Men/Activewear.jpg',
-          color: const Color(0xFF6B9BD1),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(

@@ -20,7 +20,7 @@ class ConversionFunnelChart extends StatelessWidget {
         height: height,
         child: const Center(
           child: Text(
-            'No funnel data available',
+            'Хөрвүүлэх хувь олдсонгүй',
             style: TextStyle(color: Colors.grey, fontSize: 16),
           ),
         ),
@@ -42,7 +42,7 @@ class ConversionFunnelChart extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Overall Conversion Rate: ${funnel.formattedOverallConversionRate}',
+            'Хөрвүүлэх хувь: ${funnel.formattedOverallConversionRate}',
             style: const TextStyle(
               fontSize: 14,
               color: Colors.grey,
@@ -228,7 +228,7 @@ class ConversionFunnelChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Biggest Drop-off Points',
+            'Хамгийн том алдагдалууд',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
@@ -250,7 +250,7 @@ class ConversionFunnelChart extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '${dropOff.value.toStringAsFixed(1)}% drop',
+                    '${dropOff.value.toStringAsFixed(1)}% алдагдсан',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,

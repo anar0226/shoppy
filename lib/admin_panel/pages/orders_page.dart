@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../widgets/top_nav_bar.dart';
 import '../widgets/side_menu.dart';
 import '../../features/settings/themes/app_themes.dart';
@@ -233,26 +234,35 @@ class _OrdersPageState extends State<OrdersPage> {
     try {
       await _orderService.updateOrderStatus(orderId, newStatus);
 
-      // Send notification about status change
-      final orderDoc = await FirebaseFirestore.instance
-          .collection('orders')
-          .doc(orderId)
-          .get();
+      // Try to send notification about status change
+      try {
+        if (_storeId != null) {
+          final orderDoc = await FirebaseFirestore.instance
+              .collection('stores')
+              .doc(_storeId)
+              .collection('orders')
+              .doc(orderId)
+              .get();
 
-      if (orderDoc.exists) {
-        final orderData = orderDoc.data()!;
-        final customerUserId = orderData['userId'] as String?;
+          if (orderDoc.exists) {
+            final orderData = orderDoc.data()!;
+            final customerUserId = orderData['userId'] as String?;
 
-        if (customerUserId != null) {
-          final statusText = getStatusText(newStatus);
-          await NotificationService.sendOrderTrackingNotification(
-            userId: customerUserId,
-            orderId: orderId,
-            status: newStatus,
-            title: 'Захиалгын төлөв шинэчлэгдлээ',
-            message: 'Таны захиалгын төлөв: $statusText',
-          );
+            if (customerUserId != null) {
+              final statusText = getStatusText(newStatus);
+              await NotificationService.sendOrderTrackingNotification(
+                userId: customerUserId,
+                orderId: orderId,
+                status: newStatus,
+                title: 'Захиалгын төлөв шинэчлэгдлээ',
+                message: 'Таны захиалгын төлөв: $statusText',
+              );
+            }
+          }
         }
+      } catch (notificationError) {
+        // If notification fails, that's okay - the main status update succeeded
+        debugPrint('Notification failed: $notificationError');
       }
 
       if (mounted) {
@@ -1364,6 +1374,16 @@ class _OrdersPageState extends State<OrdersPage> {
                         Expanded(
                           flex: 1,
                           child: Text(
+                            'Хаяг',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppThemes.getSecondaryTextColor(context),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Text(
                             'Хэрэглэгч',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
@@ -1548,6 +1568,38 @@ class _OrdersPageState extends State<OrdersPage> {
           }).toList(),
         )),
 
+        // Address cell
+        DataCell(Builder(
+          builder: (context) {
+            final deliveryAddress =
+                data['deliveryAddress'] as Map<String, dynamic>? ?? {};
+            final shippingAddress = data['shippingAddress'] as String? ?? '';
+
+            String addressText = '';
+            if (deliveryAddress.isNotEmpty) {
+              final street = deliveryAddress['street'] ?? '';
+              final city = deliveryAddress['city'] ?? '';
+              final state = deliveryAddress['state'] ?? '';
+              addressText =
+                  [street, city, state].where((s) => s.isNotEmpty).join(', ');
+            } else if (shippingAddress.isNotEmpty) {
+              addressText = shippingAddress;
+            } else {
+              addressText = 'Хаяг байхгүй';
+            }
+
+            return Container(
+              constraints: const BoxConstraints(maxWidth: 120),
+              child: Text(
+                addressText,
+                style: const TextStyle(fontSize: 11),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          },
+        )),
+
         // Customer cell
         DataCell(Builder(
           builder: (context) => Column(
@@ -1658,30 +1710,35 @@ class _OrdersPageState extends State<OrdersPage> {
                 ),
               ),
             ),
-            // Customer column
+            // Address column
             Expanded(
               flex: 1,
               child: cells[2].child,
             ),
-            // Date column
+            // Customer column
             Expanded(
               flex: 1,
               child: cells[3].child,
             ),
-            // Total column
+            // Date column
             Expanded(
               flex: 1,
               child: cells[4].child,
             ),
-            // Status column
+            // Total column
             Expanded(
               flex: 1,
               child: cells[5].child,
             ),
-            // Actions column
+            // Status column
             Expanded(
               flex: 1,
               child: cells[6].child,
+            ),
+            // Actions column
+            Expanded(
+              flex: 1,
+              child: cells[7].child,
             ),
           ],
         ),

@@ -71,7 +71,8 @@ class SettingsPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.07),
+                              color: const Color(0xFF4285F4).withValues(
+                                  alpha: 0.07), // Primary blue color
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -82,7 +83,10 @@ class SettingsPage extends StatelessWidget {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Icon(item.icon, size: 28, color: Colors.black),
+                            Icon(item.icon,
+                                size: 28,
+                                color: const Color(
+                                    0xFF4285F4)), // Primary blue color
                             const SizedBox(width: 16),
                             Expanded(
                               child: Text(
@@ -111,17 +115,19 @@ class SettingsPage extends StatelessWidget {
                         );
                       }
                     },
-                    icon: const Icon(Icons.logout, color: Colors.black),
+                    icon: const Icon(Icons.logout,
+                        color: Color(0xFF4285F4)), // Primary blue color
                     label: const Text(
                       "Гарах",
                       style: TextStyle(
-                        color: Colors.black,
+                        color: Color(0xFF4285F4), // Primary blue color
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     style: TextButton.styleFrom(
-                      foregroundColor: Colors.black,
+                      foregroundColor:
+                          const Color(0xFF4285F4), // Primary blue color
                     ),
                   ),
                 ),
@@ -130,7 +136,7 @@ class SettingsPage extends StatelessWidget {
                   child: Text(
                     "1.0.0",
                     style: TextStyle(
-                      color: Colors.black54,
+                      color: Color(0xFF4285F4), // Primary blue color
                       fontSize: 13,
                     ),
                   ),
@@ -152,7 +158,7 @@ class SettingsPage extends StatelessWidget {
                           "Ерөнхий нөхцлүүд",
                           style: TextStyle(
                             decoration: TextDecoration.underline,
-                            color: Colors.black87,
+                            color: Color(0xFF4285F4), // Primary blue color
                           ),
                         ),
                       ),
@@ -162,7 +168,7 @@ class SettingsPage extends StatelessWidget {
                           "Лиценз",
                           style: TextStyle(
                             decoration: TextDecoration.underline,
-                            color: Colors.black87,
+                            color: Color(0xFF4285F4), // Primary blue color
                           ),
                         ),
                       ),
@@ -199,12 +205,14 @@ class SettingsPage extends StatelessWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
+                        color: const Color(0xFF4285F4)
+                            .withValues(alpha: 0.1), // Primary blue color
                         blurRadius: 10,
                       )
                     ],
                   ),
-                  child: const Icon(Icons.arrow_back, color: Colors.black),
+                  child: const Icon(Icons.arrow_back,
+                      color: Color(0xFF4285F4)), // Primary blue color
                 ),
               ),
             ),

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cancelSubscription = exports.manualSubscriptionRenewal = exports.getSubscriptionAnalytics = exports.checkGracePeriodExpirations = exports.checkExpiredSubscriptions = exports.checkSubscriptionRenewals = void 0;
+exports.createSubscriptionPayment = exports.cancelSubscription = exports.manualSubscriptionRenewal = exports.getSubscriptionAnalytics = exports.checkGracePeriodExpirations = exports.checkExpiredSubscriptions = exports.checkSubscriptionRenewals = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 // Initialize Firebase Admin if not already initialized
@@ -373,6 +373,119 @@ exports.cancelSubscription = functions.https.onCall(async (data, context) => {
     catch (error) {
         console.error('Error cancelling subscription:', error);
         throw new functions.https.HttpsError('internal', 'Error cancelling subscription');
+    }
+});
+/**
+ * Create subscription payment invoice through QPay
+ * This function handles the QPay API call server-side to avoid CORS issues
+ */
+exports.createSubscriptionPayment = functions.https.onCall(async (data, context) => {
+    var _a, _b, _c, _d, _e;
+    try {
+        // Verify authentication
+        if (!context.auth) {
+            throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+        }
+        const { storeId, amount = 200, description } = data;
+        if (!storeId) {
+            throw new functions.https.HttpsError('invalid-argument', 'Store ID is required');
+        }
+        // Verify user owns the store
+        const storeDoc = await db.collection('stores').doc(storeId).get();
+        if (!storeDoc.exists) {
+            throw new functions.https.HttpsError('not-found', 'Store not found');
+        }
+        const storeData = storeDoc.data();
+        if ((storeData === null || storeData === void 0 ? void 0 : storeData.ownerId) !== context.auth.uid) {
+            throw new functions.https.HttpsError('permission-denied', 'You do not have permission to access this store');
+        }
+        // Generate simple 6-digit transaction reference
+        const randomNumber = Math.floor(100000 + Math.random() * 900000);
+        const orderId = `SUB_${randomNumber}`;
+        // Get QPay credentials from environment
+        const qpayUsername = (_a = functions.config().qpay) === null || _a === void 0 ? void 0 : _a.username;
+        const qpayPassword = (_b = functions.config().qpay) === null || _b === void 0 ? void 0 : _b.password;
+        // Get invoice code from Firebase config
+        const qpayInvoiceCode = (_c = functions.config().qpay) === null || _c === void 0 ? void 0 : _c.invoice_code;
+        const qpayBaseUrl = ((_d = functions.config().qpay) === null || _d === void 0 ? void 0 : _d.base_url) || 'https://merchant.qpay.mn/v2';
+        if (!qpayUsername || !qpayPassword || !qpayInvoiceCode) {
+            throw new functions.https.HttpsError('internal', 'QPay credentials not configured');
+        }
+        // Get QPay access token
+        const authResponse = await fetch(`${qpayBaseUrl}/auth/token`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Basic ${Buffer.from(`${qpayUsername}:${qpayPassword}`).toString('base64')}`,
+            },
+            body: JSON.stringify({ grant_type: 'client_credentials' }),
+        });
+        if (!authResponse.ok) {
+            throw new functions.https.HttpsError('internal', 'Failed to authenticate with QPay');
+        }
+        const authData = await authResponse.json();
+        const accessToken = authData.access_token;
+        // Create QPay invoice
+        const invoiceResponse = await fetch(`${qpayBaseUrl}/invoice`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+                invoice_code: qpayInvoiceCode,
+                sender_invoice_no: orderId,
+                invoice_receiver_code: storeId,
+                invoice_description: description || `Сарын эрхийн төлбөр - ${(storeData === null || storeData === void 0 ? void 0 : storeData.name) || 'Дэлгүүр'}`,
+                amount: amount,
+                callback_url: `${((_e = functions.config().app) === null || _e === void 0 ? void 0 : _e.webhook_url) || 'https://shoppy-6d81f.web.app'}/api/qpay-webhook`,
+            }),
+        });
+        if (!invoiceResponse.ok) {
+            const errorText = await invoiceResponse.text();
+            console.error('QPay invoice creation failed:', errorText);
+            throw new functions.https.HttpsError('internal', 'Failed to create QPay invoice');
+        }
+        const invoiceData = await invoiceResponse.json();
+        const invoiceId = invoiceData.qPayInvoiceId || invoiceData.invoice_id;
+        if (!invoiceId) {
+            throw new functions.https.HttpsError('internal', 'QPay invoice ID not found in response');
+        }
+        // Generate QPay payment URL - use the proper QPay web gateway URL
+        const paymentUrl = `${qpayBaseUrl}/invoice/${invoiceId}`;
+        const qpayUrl = `https://qpay.mn/q/?q=${encodeURIComponent(paymentUrl)}`;
+        // Save payment record to Firestore
+        await db
+            .collection('store_subscriptions')
+            .doc(storeId)
+            .collection('payments')
+            .doc(orderId)
+            .set({
+            orderId: orderId,
+            invoiceId: invoiceId,
+            amount: amount,
+            description: description || 'Сарын эрхийн төлбөр',
+            status: 'pending',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            qpayUrl: qpayUrl,
+            userId: context.auth.uid,
+        });
+        return {
+            success: true,
+            orderId: orderId,
+            invoiceId: invoiceId,
+            qpayUrl: qpayUrl,
+            amount: amount,
+        };
+    }
+    catch (error) {
+        console.error('Error creating subscription payment:', error);
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        }
+        throw new functions.https.HttpsError('internal', 'Failed to create subscription payment');
     }
 });
 // Notification functions

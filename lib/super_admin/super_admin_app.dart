@@ -5,13 +5,13 @@ import '../features/theme/theme_provider.dart';
 import 'auth/super_admin_auth_service.dart';
 import 'auth/super_admin_login_page.dart';
 import 'pages/dashboard_page.dart';
-import 'pages/stores_management_page.dart';
-import 'pages/featured_stores_page.dart';
-import 'pages/featured_products_page.dart';
-import 'pages/featured_brands_page.dart';
+import 'pages/featured_management_page.dart';
 import 'pages/payment_management_page.dart';
+import 'pages/subscription_management_page.dart';
+import 'pages/kyc_verification_page.dart';
 import 'pages/backup_management_page.dart';
 import 'pages/settings_page.dart';
+import 'pages/orders_page.dart';
 import 'widgets/side_menu.dart';
 import 'widgets/top_nav_bar.dart';
 import '../core/services/error_handler_service.dart';
@@ -36,12 +36,12 @@ class SuperAdminApp extends StatelessWidget {
               title: 'Avii.mn Super Admin',
               theme: ThemeData(
                 primarySwatch: Colors.blue,
-                primaryColor: const Color(0xFF0053A3),
+                primaryColor: const Color(0xFF4285F4),
                 fontFamily: 'Inter',
                 visualDensity: VisualDensity.adaptivePlatformDensity,
               ),
               darkTheme: ThemeData.dark().copyWith(
-                primaryColor: const Color(0xFF0053A3),
+                primaryColor: const Color(0xFF4285F4),
               ),
               themeMode: themeProvider.mode,
               home: const SuperAdminRoot(),
@@ -137,7 +137,10 @@ class _SuperAdminRootState extends State<SuperAdminRoot> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(),
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                    Color(0xFF4285F4)), // Primary blue color
+              ),
               SizedBox(height: 16),
               Text('Loading Super Admin...'),
             ],
@@ -205,10 +208,10 @@ class _SuperAdminMainScreenState extends State<SuperAdminMainScreen> {
 
   final Map<String, Widget> _pages = {
     'Dashboard': const DashboardPage(),
-    'Stores': const StoresManagementPage(),
-    'FeaturedStores': const FeaturedStoresPage(),
-    'FeaturedProducts': const FeaturedProductsPage(),
-    'FeaturedBrands': const FeaturedBrandsPage(),
+    'Orders': const OrdersPage(),
+    'Featured': const FeaturedManagementPage(),
+    'Subscriptions': const SubscriptionManagementPage(),
+    'KYC Verification': const KYCVerificationPage(),
     'Payment': const PaymentManagementPage(),
     'Backup Management': const BackupManagementPage(),
     'Settings': const SettingsPage(),

@@ -400,7 +400,7 @@ class _CategoryPageState extends State<CategoryPage> {
               child: Text(
                 cat.name,
                 style: const TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF4285F4), // Primary blue-ish color
                     fontSize: 16,
                     fontWeight: FontWeight.bold),
               ),

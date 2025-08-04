@@ -78,24 +78,24 @@ class SuperAdminSideMenu extends StatelessWidget {
                   'Dashboard',
                 ),
                 _buildMenuItem(
-                  'Stores',
-                  Icons.store,
-                  'Stores',
+                  'Orders',
+                  Icons.receipt_long,
+                  'Orders',
                 ),
                 _buildMenuItem(
-                  'Featured Stores',
-                  Icons.featured_play_list,
-                  'FeaturedStores',
-                ),
-                _buildMenuItem(
-                  'Featured Products',
+                  'Featured',
                   Icons.star,
-                  'FeaturedProducts',
+                  'Featured',
                 ),
                 _buildMenuItem(
-                  'Featured Brands',
-                  Icons.business,
-                  'FeaturedBrands',
+                  'Subscriptions',
+                  Icons.subscriptions,
+                  'Subscriptions',
+                ),
+                _buildMenuItem(
+                  'KYC Verification',
+                  Icons.verified_user,
+                  'KYC Verification',
                 ),
                 _buildMenuItem(
                   'Payment Management',

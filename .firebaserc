@@ -3,6 +3,10 @@
     "alias": "shoppy-6d81f",
     "default": "shoppy-6d81f"
   },
-  "targets": {},
+  "targets": {
+    "shoppy-6d81f": {
+      "hosting": {}
+    }
+  },
   "etags": {}
 }

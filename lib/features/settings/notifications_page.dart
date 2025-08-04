@@ -95,16 +95,17 @@ class _NotificationsPageState extends State<NotificationsPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        foregroundColor: Colors.black,
+        foregroundColor: const Color(0xFF4285F4),
         title: const Text(
           'Мэдэгдэл',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
+            color: Color(0xFF4285F4),
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF4285F4)),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -121,90 +122,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Push Notification Status
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.smartphone, color: Colors.blue.shade700),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Push мэдэгдэл',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const Spacer(),
-                          const NotificationStatusIndicator(),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Push мэдэгдэл',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      FutureBuilder<bool>(
-                        future: FCMService().isNotificationPermissionGranted(),
-                        builder: (context, snapshot) {
-                          final isGranted = snapshot.data ?? false;
-                          if (!isGranted) {
-                            return const NotificationPermissionWidget(
-                              showAsCard: false,
-                              customTitle: 'Push мэдэгдэл',
-                              customDescription: 'Push мэдэгдэл',
-                            );
-                          }
-                          return Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.green.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.check_circle,
-                                    color: Colors.green.shade600, size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Push мэдэгдэл',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.green.shade700,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
                 const Text(
                   'Мэдэгдэл төрөл',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
+                    color: Color(0xFF4285F4),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -271,6 +194,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
+                          color: Color(0xFF4285F4),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -316,7 +240,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
           children: [
             Icon(
               icon,
-              color: Colors.black,
+              color: const Color(0xFF4285F4),
               size: 24,
             ),
             const SizedBox(width: 12),
@@ -325,6 +249,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
+                color: Color(0xFF4285F4),
               ),
             ),
           ],
@@ -339,7 +264,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
             ),
           ),
         ),
-        activeColor: Colors.black,
+        activeColor: const Color(0xFF4285F4),
+        activeTrackColor: Colors.grey.shade300,
+        inactiveThumbColor: Colors.grey.shade400,
+        inactiveTrackColor: Colors.grey.shade200,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
     );

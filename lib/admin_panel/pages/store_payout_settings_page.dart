@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:math';
 import 'package:url_launcher/url_launcher.dart';
 import '../../features/stores/models/store_model.dart';
 import '../../core/services/error_handler_service.dart';
@@ -12,6 +14,7 @@ import '../../core/utils/order_id_generator.dart';
 import '../../features/settings/themes/app_themes.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/top_nav_bar.dart';
+import 'custom_payment_page.dart';
 
 class StorePayoutSettingsPage extends StatefulWidget {
   final String storeId;
@@ -318,7 +321,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                           _buildKYCSection(),
                           const SizedBox(height: 24),
 
-                          // 3. Сарын эрхийн төлбөр
+                          // 3. Сарын хураамж
                           _buildSubscriptionSection(),
                           const SizedBox(height: 32),
 
@@ -328,7 +331,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                             child: ElevatedButton(
                               onPressed: _isSaving ? null : _savePayoutSettings,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0053A3),
+                                backgroundColor: const Color(0xFF4285F4),
                                 foregroundColor: Colors.white,
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 16),
@@ -383,8 +386,8 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
           // Header with status
           Row(
             children: [
-              Icon(Icons.account_balance,
-                  color: const Color(0xFF0053A3), size: 24),
+              const Icon(Icons.account_balance,
+                  color: Color(0xFF4285F4), size: 24),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
@@ -453,7 +456,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: const Color(0xFF0053A3)),
+                    borderSide: const BorderSide(color: Color(0xFF4285F4)),
                   ),
                   suffixIcon: Icon(Icons.keyboard_arrow_down,
                       color: AppThemes.getSecondaryTextColor(context)),
@@ -511,7 +514,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                   ),
                   focusedBorder: const OutlineInputBorder(
                     borderRadius: BorderRadius.all(Radius.circular(8)),
-                    borderSide: BorderSide(color: Color(0xFF0053A3)),
+                    borderSide: BorderSide(color: Color(0xFF4285F4)),
                   ),
                   fillColor: AppThemes.getSurfaceColor(context),
                   filled: true,
@@ -560,7 +563,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: const Color(0xFF0053A3)),
+                    borderSide: const BorderSide(color: Color(0xFF4285F4)),
                   ),
                   fillColor: AppThemes.getSurfaceColor(context),
                   filled: true,
@@ -594,8 +597,8 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
           // Header with status
           Row(
             children: [
-              Icon(Icons.verified_user,
-                  color: const Color(0xFF0053A3), size: 24),
+              const Icon(Icons.verified_user,
+                  color: Color(0xFF4285F4), size: 24),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -692,7 +695,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                                         _storeModel?.kycStatus ==
                                             KYCStatus.approved)
                                 ? Colors.grey
-                                : const Color(0xFF0053A3),
+                                : const Color(0xFF4285F4),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
@@ -782,7 +785,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                                         _storeModel?.kycStatus ==
                                             KYCStatus.approved)
                                 ? Colors.grey
-                                : const Color(0xFF0053A3),
+                                : const Color(0xFF4285F4),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
@@ -825,17 +828,17 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Theme.of(context).brightness == Brightness.dark
-                  ? const Color(0xFF0053A3).withValues(alpha: 0.1)
+                  ? const Color(0xFF4285F4).withValues(alpha: 0.1)
                   : Colors.blue.shade50,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF0053A3)),
+              border: Border.all(color: const Color(0xFF4285F4)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.info, color: const Color(0xFF0053A3), size: 20),
+                    const Icon(Icons.info, color: Color(0xFF4285F4), size: 20),
                     const SizedBox(width: 8),
                     Text(
                       'КҮС шаардлага',
@@ -882,81 +885,28 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
 
   Future<void> _handleQPayPayment() async {
     try {
-      // Show loading indicator
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('QPay төлбөр бэлтгэж байна...'),
-            backgroundColor: Colors.blue,
-          ),
-        );
-      }
-
       // Generate unique order ID for subscription payment
       final orderId =
-          OrderIdGenerator.generateSubscription(storeId: widget.storeId);
+          'SUB_${widget.storeId}_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999999)}';
 
-      // Create QPay invoice
-      final invoiceResult = await _qpayService.createInvoice(
-        orderId: orderId,
-        amount: 25000.0, // 25,000 MNT
-        description: 'Сарын эрхийн төлбөр - ${_storeModel?.name ?? 'Дэлгүүр'}',
-        customerCode: widget.storeId,
-      );
-
-      // Extract invoice ID from response
-      final invoiceId = invoiceResult['qPayInvoiceId'] ??
-          invoiceResult['invoice_id'] ??
-          invoiceResult['id'] ??
-          invoiceResult['qpay_invoice_id'];
-
-      if (invoiceId == null) {
-        throw Exception('QPay invoice ID not found in response');
-      }
-
-      // Generate QPay payment URL
-      final qpayUrl =
-          'https://merchant.qpay.mn/v2/invoice/${invoiceId.toString()}';
-
-      // Save payment record to Firestore
-      await FirebaseFirestore.instance
-          .collection('store_subscriptions')
-          .doc(widget.storeId)
-          .collection('payments')
-          .doc(orderId)
-          .set({
-        'orderId': orderId,
-        'invoiceId': invoiceId.toString(),
-        'amount': 25000,
-        'description': 'Сарын эрхийн төлбөр',
-        'status': 'pending',
-        'createdAt': FieldValue.serverTimestamp(),
-        'qpayUrl': qpayUrl,
-      });
-
-      // Launch QPay URL
-      final uri = Uri.parse(qpayUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                  'QPay төлбөрийн хуудас нээгдлээ. Төлбөрөө гүйцэтгэнэ үү.'),
-              backgroundColor: Colors.green,
+      // Navigate to custom payment page
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => CustomPaymentPage(
+              storeId: widget.storeId,
+              amount: 200.0, // 200 MNT
+              description: 'Сарын хураамж - ${_storeModel?.name ?? 'Дэлгүүр'}',
+              orderId: orderId,
             ),
-          );
-        }
-      } else {
-        throw Exception('Could not launch QPay URL');
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text('QPay төлбөр эхлүүлэхэд алдаа гарлаа: ${e.toString()}'),
+            content: Text('Төлбөр эхлүүлэхэд алдаа гарлаа: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -979,12 +929,12 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
           // Header with status
           Row(
             children: [
-              Icon(Icons.calendar_today,
-                  color: const Color(0xFF0053A3), size: 24),
+              const Icon(Icons.calendar_today,
+                  color: Color(0xFF4285F4), size: 24),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Сарын эрхийн төлбөр',
+                  'Сарын хураамж',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -1026,7 +976,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Сарын төлбөрийн дүн',
+                      'Сарын хураамж төлбөрийн дүн',
                       style: TextStyle(
                         fontSize: 14,
                         color: AppThemes.getSecondaryTextColor(context),
@@ -1038,7 +988,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF0053A3),
+                        color: Color(0xFF4285F4),
                       ),
                     ),
                   ],
@@ -1077,12 +1027,12 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               border: Border.all(
-                  color: const Color(0xFF0053A3),
+                  color: const Color(0xFF4285F4),
                   style: BorderStyle.solid,
                   width: 2),
               borderRadius: BorderRadius.circular(12),
               color: Theme.of(context).brightness == Brightness.dark
-                  ? const Color(0xFF0053A3).withValues(alpha: 0.1)
+                  ? const Color(0xFF4285F4).withValues(alpha: 0.1)
                   : Colors.blue.shade50,
             ),
             child: Column(
@@ -1092,7 +1042,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0053A3),
+                    color: const Color(0xFF4285F4),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Center(
@@ -1108,7 +1058,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'QPay-ээр төлбөр төлөх',
+                  'Сарын хураамжаа төлөх',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -1117,7 +1067,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Хурдан, найдвартай, аюулгүй төлбөрийн шийдэл',
+                  'Сарын хураамжаа дансанд шилжүүлэх',
                   style: TextStyle(
                     fontSize: 14,
                     color: AppThemes.getSecondaryTextColor(context),
@@ -1140,7 +1090,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                         child: Text(
                           'Q',
                           style: TextStyle(
-                            color: Color(0xFF0053A3),
+                            color: Color(0xFF4285F4),
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -1148,14 +1098,14 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                       ),
                     ),
                     label: const Text(
-                      'QPay-ээр төлбөрөө хийх',
+                      'Сарын хураамжаа төлөх',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0053A3),
+                      backgroundColor: const Color(0xFF4285F4),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -1166,7 +1116,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Үйлчилгээний сарын эрхийн төлбөр: 25,000 ₮',
+                  'Сарын хураамж төлбөр: 25,000 ₮',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppThemes.getSecondaryTextColor(context),
@@ -1182,17 +1132,17 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Theme.of(context).brightness == Brightness.dark
-                  ? const Color(0xFF0053A3).withValues(alpha: 0.1)
+                  ? const Color(0xFF4285F4).withValues(alpha: 0.1)
                   : Colors.blue.shade50,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF0053A3)),
+              border: Border.all(color: const Color(0xFF4285F4)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.info, color: const Color(0xFF0053A3), size: 20),
+                    const Icon(Icons.info, color: Color(0xFF4285F4), size: 20),
                     const SizedBox(width: 8),
                     Text(
                       'Төлбөрийн заавар',
@@ -1209,7 +1159,7 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '• Сарын төлбөрийг сар бүрийн эхээр төлнө үү',
+                      '•Та сар бүрийн эхээр төлнө үү',
                       style: TextStyle(color: AppThemes.getTextColor(context)),
                     ),
                     const SizedBox(height: 4),

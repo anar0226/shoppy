@@ -274,7 +274,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFF0053A3), // Brand blue
+            Color(0xFF4285F4), // Brand blue
             Color(0xFF4FC3F7), // Light blue
           ],
         ),
@@ -483,7 +483,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                                   ),
                                   focusedBorder: const OutlineInputBorder(
                                     borderSide: BorderSide(
-                                        color: Color(0xFF0053A3), width: 2),
+                                        color: Color(0xFF4285F4), width: 2),
                                   ),
                                 ),
                                 validator: (value) {
@@ -512,7 +512,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                                   ),
                                   focusedBorder: const OutlineInputBorder(
                                     borderSide: BorderSide(
-                                        color: Color(0xFF0053A3), width: 2),
+                                        color: Color(0xFF4285F4), width: 2),
                                   ),
                                 ),
                                 validator: (value) {
@@ -542,7 +542,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                           ),
                           focusedBorder: const OutlineInputBorder(
                             borderSide:
-                                BorderSide(color: Color(0xFF0053A3), width: 2),
+                                BorderSide(color: Color(0xFF4285F4), width: 2),
                           ),
                         ),
                         keyboardType: TextInputType.emailAddress,
@@ -573,7 +573,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                           ),
                           focusedBorder: const OutlineInputBorder(
                             borderSide:
-                                BorderSide(color: Color(0xFF0053A3), width: 2),
+                                BorderSide(color: Color(0xFF4285F4), width: 2),
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -619,7 +619,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                             ),
                             focusedBorder: const OutlineInputBorder(
                               borderSide: BorderSide(
-                                  color: Color(0xFF0053A3), width: 2),
+                                  color: Color(0xFF4285F4), width: 2),
                             ),
                             suffixIcon: IconButton(
                               icon: Icon(
@@ -668,7 +668,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                               onPressed: _handleForgotPassword,
                               child: const Text(
                                 'Нууц үгээ мартсан уу?',
-                                style: TextStyle(color: Color(0xFF0053A3)),
+                                style: TextStyle(color: Color(0xFF4285F4)),
                               ),
                             ),
                           ],
@@ -748,7 +748,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _handleSubmit,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0053A3),
+                            backgroundColor: const Color(0xFF4285F4),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
@@ -761,7 +761,8 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white),
+                                        Color(
+                                            0xFF4285F4)), // Primary blue color
                                   ),
                                 )
                               : Text(

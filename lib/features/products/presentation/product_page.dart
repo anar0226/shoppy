@@ -363,7 +363,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                       : Container(
                           width: 32,
                           height: 32,
-                          color: Colors.black,
+                          color: Color(0xFF4285F4), // Primary blue color
                           alignment: Alignment.center,
                           child: Text(
                             _storeName.isNotEmpty ? _storeName[0] : '?',
@@ -388,7 +388,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
-                        color: Colors.black,
+                        color: Color(0xFF4285F4), // Primary blue color
                       ),
                     ),
                     Row(
@@ -401,17 +401,19 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 12,
-                            color: Colors.black,
+                            color: Color(0xFF4285F4), // Primary blue color
                           ),
                         ),
                         const SizedBox(width: 2),
-                        const Icon(Icons.star, size: 12, color: Colors.black),
+                        const Icon(Icons.star,
+                            size: 12,
+                            color: Color(0xFF4285F4)), // Primary blue color
                         const SizedBox(width: 4),
                         Text(
                           '(${_formatCount(_storeReviewCount)})',
                           style: const TextStyle(
                             fontSize: 12,
-                            color: Colors.black54,
+                            color: Color(0xFF4285F4), // Primary blue color
                           ),
                         ),
                       ],
@@ -435,7 +437,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
               ),
               child: const Icon(
                 Icons.send,
-                color: Colors.black,
+                color: Color(0xFF4285F4), // Primary blue color
                 size: 20,
               ),
             ),
@@ -485,7 +487,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: Color(0xFF4285F4),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -497,7 +499,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                       '$_reviewCount Үнэлгээ',
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Colors.black54,
+                        color: Color(0xFF4285F4),
                       ),
                     ),
                   ],
@@ -544,7 +546,9 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                   ),
                   child: Icon(
                     _isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: _isFavorite ? Colors.red : Colors.black,
+                    color: _isFavorite
+                        ? const Color(0xFF4285F4)
+                        : const Color(0xFF4285F4),
                     size: 24,
                   ),
                 ),
@@ -575,7 +579,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                   ),
                   child: const Icon(
                     Icons.share_outlined,
-                    color: Colors.black,
+                    color: Color(0xFF4285F4), // Primary blue color
                     size: 24,
                   ),
                 ),
@@ -592,7 +596,8 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
       return Row(
         children: List.generate(
           5,
-          (_) => const Icon(Icons.star_border, size: 16, color: Colors.black),
+          (_) =>
+              const Icon(Icons.star_border, size: 16, color: Color(0xFF4285F4)),
         ),
       );
     }
@@ -600,9 +605,10 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
     return Row(
       children: List.generate(5, (i) {
         if (i < roundedStars) {
-          return const Icon(Icons.star, size: 16, color: Colors.black);
+          return const Icon(Icons.star, size: 16, color: Color(0xFF4285F4));
         }
-        return const Icon(Icons.star_border, size: 16, color: Colors.black);
+        return const Icon(Icons.star_border,
+            size: 16, color: Color(0xFF4285F4));
       }),
     );
   }
@@ -717,8 +723,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color:
-                          defaultAddress != null ? Colors.black : Colors.blue,
+                      color: const Color(0xFF4285F4),
                     ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -763,7 +768,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 18,
-              color: Colors.black,
+              color: Color(0xFF4285F4),
             ),
           ),
           const SizedBox(height: 12),
@@ -835,12 +840,12 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Тоо',
-            style: TextStyle(
+            style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 18,
-              color: Colors.black,
+              color: Color(0xFF4285F4),
             ),
           ),
           const SizedBox(height: 12),
@@ -899,10 +904,13 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
             height: 52,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 22, 14, 179),
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF4285F4),
+                side: const BorderSide(color: Color(0xFF4285F4), width: 1),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+                elevation: 0,
               ),
               onPressed:
                   _addingToCart || !_isProductAvailable() ? null : _addToCart,
@@ -911,7 +919,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Color(0xFF4285F4),
                 ),
               ),
             ),
@@ -922,10 +930,13 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
             height: 52,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF4285F4),
+                side: const BorderSide(color: Color(0xFF4285F4), width: 1),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+                elevation: 0,
               ),
               onPressed:
                   _addingToCart || !_isProductAvailable() ? null : _buyNow,
@@ -934,7 +945,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Color(0xFF4285F4),
                 ),
               ),
             ),
@@ -992,14 +1003,16 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
             if (bulletDescription.length == 1) {
               return Text(
                 entry.value,
-                style: const TextStyle(fontSize: 14, height: 1.5),
+                style: const TextStyle(
+                    fontSize: 14, height: 1.5, color: Colors.black54),
               );
             }
             return Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Text(
                 '— ${entry.value}',
-                style: const TextStyle(fontSize: 14, height: 1.5),
+                style: const TextStyle(
+                    fontSize: 14, height: 1.5, color: Colors.black54),
               ),
             );
           }),
@@ -1808,19 +1821,19 @@ class VariantOptionChip extends StatelessWidget {
 
   Color _getBackgroundColor() {
     if (!isInStock) return Colors.grey.shade100;
-    if (isSelected) return Colors.blue.shade50;
+    if (isSelected) return const Color(0xFF4285F4).withValues(alpha: 0.1);
     return Colors.white;
   }
 
   Color _getBorderColor() {
     if (!isInStock) return Colors.grey.shade300;
-    if (isSelected) return Colors.blue.shade400;
+    if (isSelected) return const Color(0xFF4285F4);
     return Colors.grey.shade300;
   }
 
   Color _getTextColor() {
     if (!isInStock) return Colors.grey.shade400;
-    if (isSelected) return Colors.blue.shade700;
+    if (isSelected) return const Color(0xFF4285F4);
     return Colors.black87;
   }
 }

@@ -14,6 +14,7 @@ void showEditProfilePopup(
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    backgroundColor: Colors.white, // White background
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -62,17 +63,22 @@ void showEditProfilePopup(
                   controller: controller,
                   decoration: InputDecoration(
                     labelText: 'Display name',
+                    labelStyle: const TextStyle(
+                        color: Color(0xFF4285F4)), // Primary blue color
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.purple),
+                      borderSide: const BorderSide(
+                          color: Color(0xFF4285F4)), // Primary blue color
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: Colors.purple, width: 2),
+                      borderSide: const BorderSide(
+                          color: Color(0xFF4285F4),
+                          width: 2), // Primary blue color
                     ),
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.clear),
+                      icon: const Icon(Icons.clear,
+                          color: Color(0xFF4285F4)), // Primary blue color
                       onPressed: () => controller.clear(),
                     ),
                   ),
@@ -82,7 +88,8 @@ void showEditProfilePopup(
                 const Text(
                   "Профайл зургаа эсвэл нэрээ өөрчлөх үү?",
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.black54),
+                  style:
+                      TextStyle(color: Color(0xFF4285F4)), // Primary blue color
                 ),
                 const SizedBox(height: 24),
                 // Done button
@@ -90,24 +97,49 @@ void showEditProfilePopup(
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
+                      backgroundColor:
+                          Colors.grey.shade50, // Light grey background
+                      foregroundColor:
+                          const Color(0xFF4285F4), // Primary blue color
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(
+                            color: Color(0xFF4285F4), width: 1), // Blue outline
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     onPressed: () async {
-                      final newName = controller.text.trim();
-                      final auth = context.read<AuthProvider>();
-                      await auth.updateProfile(
-                        displayName: newName.isNotEmpty ? newName : null,
-                        photo: pickedImage,
-                      );
-                      if (context.mounted) Navigator.pop(context);
+                      try {
+                        final newName = controller.text.trim();
+                        final auth = context.read<AuthProvider>();
+
+                        // Only update if there are actual changes
+                        if (newName.isNotEmpty || pickedImage != null) {
+                          await auth.updateProfile(
+                            displayName: newName.isNotEmpty ? newName : null,
+                            photo: pickedImage,
+                          );
+                        }
+
+                        if (context.mounted) Navigator.pop(context);
+                      } catch (e) {
+                        // Show error message if update fails
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content:
+                                  Text('Профайл шинэчлэхэд алдаа гарлаа: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
                     },
                     child: const Text(
-                      'Done',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
+                      'Хадгалах',
+                      style: TextStyle(
+                          color: Color(0xFF4285F4),
+                          fontSize: 16), // Primary blue color
                     ),
                   ),
                 ),

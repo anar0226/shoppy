@@ -606,7 +606,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                 // Shipping method
                 _sectionHeader('Хүргэлтийн арга'),
-                _expandableTile(context, 'UBCab · Үнэгүй'),
+                _expandableTile(context, 'UBCab · 6000₮'),
                 const SizedBox(height: 24),
 
                 // Payment section
@@ -615,7 +615,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 const Text(
-                    'Таны төлбөрийн мэдээлэлийг бид хэзээ ч хадгалахгүй.'),
+                    'Таны төлбөрийн мэдээлэлийг бид хэзээ ч хадгалахгүй.',
+                    style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 16),
 
                 _paymentOptionTile(
@@ -664,7 +665,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     width: double.infinity,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(255, 22, 14, 179),
+                        backgroundColor: const Color(0xFF4285F4),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -760,12 +761,26 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : Text(
-                              'Төлөх дүн: ₮${_finalTotal.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                          : RichText(
+                              text: TextSpan(
+                                children: [
+                                  const TextSpan(
+                                    text: 'Төлөх дүн: ',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: '₮${_finalTotal.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                     ),
@@ -780,8 +795,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  Widget _sectionHeader(String title) =>
-      Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey));
+  Widget _sectionHeader(String title) => Text(title,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF4285F4)));
 
   Widget _expandableTile(BuildContext context, String text) {
     return InkWell(
@@ -807,14 +822,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
       VoidCallback? onTap}) {
     return Container(
       decoration: BoxDecoration(
-        color: selected ? Colors.grey.shade100 : Colors.white,
+        color: Colors.white,
         border: Border.all(
-            color: selected ? Colors.deepPurple : Colors.grey.shade300),
+            color: selected ? const Color(0xFF4285F4) : Colors.grey.shade300),
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
-        leading:
-            Radio<bool>(value: true, groupValue: selected, onChanged: (_) {}),
+        leading: Radio<bool>(
+          value: true,
+          groupValue: selected,
+          onChanged: (_) {},
+          activeColor: const Color(0xFF4285F4),
+        ),
         title: Text(title),
         subtitle: Text(subtitle),
         onTap: onTap,
@@ -855,7 +874,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     ),
                     const SizedBox(width: 8),
                     Text('₮${item.price.toStringAsFixed(2)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, color: Colors.grey)),
                   ],
                 ),
               ))
@@ -893,12 +913,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
             const SizedBox(width: 8),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: _isApplyingDiscount
-                    ? Colors.grey.shade400
-                    : (_appliedDiscount != null
-                        ? Colors.green.shade300
-                        : Colors.grey.shade300),
-                foregroundColor: Colors.black,
+                backgroundColor: Colors.white,
+                foregroundColor: _appliedDiscount != null
+                    ? Colors.white
+                    : const Color(0xFF4285F4),
+                side: BorderSide(color: const Color(0xFF4285F4), width: 1),
               ),
               onPressed: (_isApplyingDiscount || _appliedDiscount != null)
                   ? null
@@ -973,7 +992,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 : '₮${value.toStringAsFixed(2)}',
             style: TextStyle(
                 fontSize: isTotal ? 18 : 16,
-                fontWeight: isTotal ? FontWeight.bold : FontWeight.normal),
+                fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+                color: Colors.grey),
           ),
         ],
       ),

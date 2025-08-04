@@ -232,7 +232,7 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: const BoxDecoration(
-                color: Color(0xFF0053A3),
+                color: Color(0xFF4285F4),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(8),
                   topRight: Radius.circular(8),
@@ -256,10 +256,7 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                       ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close, color: Colors.white),
-                  ),
+                  const SizedBox(width: 24),
                 ],
               ),
             ),
@@ -302,16 +299,17 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Цуцлах'),
-                      ),
+                      const SizedBox(),
                       ElevatedButton.icon(
                         onPressed: _loading ? null : _handleSave,
-                        icon: const Icon(Icons.check),
-                        label: const Text('Дэлгүүр үүсгэх'),
+                        icon: const Icon(Icons.check, color: Colors.white),
+                        label: const Text(
+                          'Дэлгүүр үүсгэх',
+                          style: TextStyle(color: Colors.white),
+                        ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0053A3),
+                          backgroundColor: const Color(0xFF4285F4),
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 32,
                             vertical: 14,
@@ -364,7 +362,7 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                     borderSide: BorderSide(color: Colors.grey.shade400),
                   ),
                   focusedBorder: const OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF0053A3), width: 2),
+                    borderSide: BorderSide(color: Color(0xFF4285F4), width: 2),
                   ),
                 ),
                 validator: (v) => v != null && v.trim().isNotEmpty
@@ -506,10 +504,19 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                         ),
                         focusedBorder: const OutlineInputBorder(
                           borderSide:
-                              BorderSide(color: Color(0xFF0053A3), width: 2),
+                              BorderSide(color: Color(0xFF4285F4), width: 2),
                         ),
                       ),
                       keyboardType: TextInputType.phone,
+                      validator: (value) {
+                        if (value != null && value.trim().isNotEmpty) {
+                          final phoneRegex = RegExp(r'^\d{8}$');
+                          if (!phoneRegex.hasMatch(value.trim())) {
+                            return 'Утасны дугаар 8 оронтой байх ёстой';
+                          }
+                        }
+                        return null;
+                      },
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -519,8 +526,28 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                       decoration: InputDecoration(
                         hintText: '@mystore',
                         hintStyle: const TextStyle(color: Colors.grey),
-                        prefixIcon:
-                            const Icon(Icons.camera_alt, color: Colors.grey),
+                        prefixIcon: Container(
+                          width: 20,
+                          height: 20,
+                          margin: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFF833AB4),
+                                Color(0xFFFD1D1D),
+                                Color(0xFFF77737),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
                         border: OutlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey.shade400),
                         ),
@@ -529,7 +556,7 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                         ),
                         focusedBorder: const OutlineInputBorder(
                           borderSide:
-                              BorderSide(color: Color(0xFF0053A3), width: 2),
+                              BorderSide(color: Color(0xFF4285F4), width: 2),
                         ),
                       ),
                     ),
@@ -551,7 +578,7 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                         ),
                         focusedBorder: const OutlineInputBorder(
                           borderSide:
-                              BorderSide(color: Color(0xFF0053A3), width: 2),
+                              BorderSide(color: Color(0xFF4285F4), width: 2),
                         ),
                       ),
                     ),
@@ -593,7 +620,7 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                     borderSide: BorderSide(color: Colors.grey.shade400),
                   ),
                   focusedBorder: const OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF0053A3), width: 2),
+                    borderSide: BorderSide(color: Color(0xFF4285F4), width: 2),
                   ),
                 ),
                 items: MongolianBank.values.map((bank) {
@@ -634,7 +661,7 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                         ),
                         focusedBorder: const OutlineInputBorder(
                           borderSide:
-                              BorderSide(color: Color(0xFF0053A3), width: 2),
+                              BorderSide(color: Color(0xFF4285F4), width: 2),
                         ),
                       ),
                     ),
@@ -663,7 +690,7 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                         ),
                         focusedBorder: const OutlineInputBorder(
                           borderSide:
-                              BorderSide(color: Color(0xFF0053A3), width: 2),
+                              BorderSide(color: Color(0xFF4285F4), width: 2),
                         ),
                       ),
                     ),
@@ -698,8 +725,11 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                       height: 120,
                       decoration: BoxDecoration(
                         border: Border.all(
-                            color: Colors.grey.shade300,
-                            style: BorderStyle.solid),
+                            color: _idCardFrontFile != null
+                                ? Colors.green.shade400
+                                : Colors.grey.shade300,
+                            style: BorderStyle.solid,
+                            width: _idCardFrontFile != null ? 2 : 1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: InkWell(
@@ -712,40 +742,97 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                             setState(() => _idCardFrontFile = picked);
                           }
                         },
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
-                              'Урд тал',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                        child: _idCardFrontFile != null
+                            ? Stack(
+                                children: [
+                                  Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.check_circle,
+                                          color: Colors.green.shade600,
+                                          size: 32,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'Урд тал',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _idCardFrontFile!.name,
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        TextButton(
+                                          onPressed: () {
+                                            setState(
+                                                () => _idCardFrontFile = null);
+                                          },
+                                          style: TextButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
+                                            minimumSize: Size.zero,
+                                          ),
+                                          child: const Text(
+                                            'Сонголтыг цуцлах',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.red,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    'Урд тал',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Icon(
+                                    Icons.cloud_upload,
+                                    size: 24,
+                                    color: Colors.grey.shade400,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Урд талын зураг оруулах',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    'PNG, JPG (5МБ хүртэл)',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Icon(
-                              Icons.cloud_upload,
-                              size: 24,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Урд талын зураг оруулах',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'PNG, JPG (5МБ хүртэл)',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),
@@ -755,8 +842,11 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                       height: 120,
                       decoration: BoxDecoration(
                         border: Border.all(
-                            color: Colors.grey.shade300,
-                            style: BorderStyle.solid),
+                            color: _idCardBackFile != null
+                                ? Colors.green.shade400
+                                : Colors.grey.shade300,
+                            style: BorderStyle.solid,
+                            width: _idCardBackFile != null ? 2 : 1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: InkWell(
@@ -769,40 +859,97 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                             setState(() => _idCardBackFile = picked);
                           }
                         },
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
-                              'Ар тал',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                        child: _idCardBackFile != null
+                            ? Stack(
+                                children: [
+                                  Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.check_circle,
+                                          color: Colors.green.shade600,
+                                          size: 32,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'Ар тал',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _idCardBackFile!.name,
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        TextButton(
+                                          onPressed: () {
+                                            setState(
+                                                () => _idCardBackFile = null);
+                                          },
+                                          style: TextButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
+                                            minimumSize: Size.zero,
+                                          ),
+                                          child: const Text(
+                                            'Сонголтыг цуцлах',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.red,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    'Ар тал',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Icon(
+                                    Icons.cloud_upload,
+                                    size: 24,
+                                    color: Colors.grey.shade400,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Арын талын зураг оруулах',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    'PNG, JPG (5МБ хүртэл)',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Icon(
-                              Icons.cloud_upload,
-                              size: 24,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Арын талын зураг оруулах',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'PNG, JPG (5МБ хүртэл)',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),
@@ -814,14 +961,14 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                 decoration: BoxDecoration(
                   color: Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF0053A3)),
+                  border: Border.all(color: const Color(0xFF4285F4)),
                 ),
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.info, color: Color(0xFF0053A3), size: 20),
+                        Icon(Icons.info, color: Color(0xFF4285F4), size: 20),
                         SizedBox(width: 8),
                         Text(
                           'Баталгаажуулалтын заавар',
@@ -878,7 +1025,7 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                     borderSide: BorderSide(color: Colors.grey.shade400),
                   ),
                   focusedBorder: const OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF0053A3), width: 2),
+                    borderSide: BorderSide(color: Color(0xFF4285F4), width: 2),
                   ),
                 ),
                 validator: (v) => v != null && v.trim().isNotEmpty
@@ -898,7 +1045,7 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
       children: [
         Row(
           children: [
-            Icon(icon, color: const Color(0xFF0053A3), size: 20),
+            Icon(icon, color: const Color(0xFF4285F4), size: 20),
             const SizedBox(width: 8),
             Text(
               title,

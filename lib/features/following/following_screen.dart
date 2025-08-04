@@ -33,6 +33,8 @@ class _FollowingScreenState extends State<FollowingScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style:
+                TextButton.styleFrom(foregroundColor: const Color(0xFF4285F4)),
             child: const Text('Цуцлах'),
           ),
           TextButton(
@@ -168,7 +170,7 @@ class _EmptyFollowing extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pushReplacementNamed(context, '/home'),
             child: const Text('нүүр хуудаслуу буцах',
-                style: TextStyle(color: Color(0xFF6A5AE0))),
+                style: TextStyle(color: Color(0xFF4285F4))),
           )
         ],
       ),

@@ -40,6 +40,11 @@ __exportStar(require("./qpay-webhook"), exports);
 // Export Subscription management functions
 __exportStar(require("./subscription-webhook"), exports);
 __exportStar(require("./subscription-management"), exports);
+// Export Payment verification functions
+__exportStar(require("./payment-verification"), exports);
+__exportStar(require("./kyc-document-cleanup"), exports);
+// Custom authentication actions
+__exportStar(require("./custom-auth-actions"), exports);
 // QPay Webhook Handler
 exports.handleQPayWebhook = functions.https.onRequest(async (req, res) => {
     try {

@@ -175,6 +175,7 @@ flutter:
     
     # Beauty
     - assets/images/categories/Beauty/
+    - assets/images/categories/Beauty/beauty.jpg
     - assets/images/categories/Beauty/haircare.jpg
     - assets/images/categories/Beauty/makeup.jpg
     - assets/images/categories/Beauty/nailcare.jpg
@@ -185,6 +186,22 @@ flutter:
     # Electronics
     - assets/images/categories/electronics/
     - assets/images/categories/electronics/electronics.jpg
+    
+    # Foods & Drinks
+    - assets/images/categories/Foods&drinks/
+    - assets/images/categories/Foods&drinks/foods.jpg
+    
+    # Fitness
+    - assets/images/categories/Fitness/
+    - assets/images/categories/Fitness/fitness.jpg
+    
+    # Home
+    - assets/images/categories/Home/
+    - assets/images/categories/Home/home.jpg
+    
+    # Pet
+    - assets/images/categories/Pet/
+    - assets/images/categories/Pet/animal.jpg
     
     # Toys & Games
     - assets/images/categories/Toys&games/

@@ -11,6 +11,7 @@ import 'core/config/environment_config.dart';
 import 'features/notifications/fcm_service.dart';
 import 'main.dart' show ShopUBApp;
 import 'dart:async';
+import 'firebase_options.dart';
 
 /// Initialise services & run the Flutter app.
 Future<void> bootstrap() async {
@@ -91,12 +92,7 @@ Future<void> _internalBootstrap() async {
     // 3. Firebase initialization with error handling
     try {
       await Firebase.initializeApp(
-        options: FirebaseOptions(
-          apiKey: EnvironmentConfig.firebaseApiKey,
-          appId: EnvironmentConfig.firebaseAppId,
-          projectId: EnvironmentConfig.firebaseProjectId,
-          messagingSenderId: EnvironmentConfig.firebaseSenderId,
-        ),
+        options: DefaultFirebaseOptions.currentPlatform,
       );
     } catch (e) {
       // If Firebase is already initialized, continue

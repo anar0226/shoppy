@@ -17,7 +17,7 @@ class IntimatesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Лифчик',
           imageUrl: 'assets/images/categories/Women/intimates/bra.jpg',
-          color: const Color.fromARGB(255, 49, 47, 48),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -27,7 +27,7 @@ class IntimatesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Ланжери',
           imageUrl: 'assets/images/categories/Women/intimates/lingerie.jpg',
-          color: const Color.fromARGB(55, 230, 68, 154),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -37,7 +37,7 @@ class IntimatesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Биеийн даруулга',
           imageUrl: 'assets/images/categories/Women/intimates/shapewear.jpg',
-          color: const Color(0xFF8B4513),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -48,7 +48,7 @@ class IntimatesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Дотоож',
           imageUrl: 'assets/images/categories/Women/intimates/underwear.jpg',
-          color: const Color(0xFFB8A082),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(

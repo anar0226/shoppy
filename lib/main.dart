@@ -136,11 +136,79 @@ class _ShopUBAppState extends State<ShopUBApp> {
           title: 'Avii.mn',
           theme: ThemeData(
             primarySwatch: Colors.blue,
-            primaryColor: const Color(0xFF0053A3),
+            primaryColor: const Color(0xFF4285F4),
             fontFamily: 'Roboto',
+            scaffoldBackgroundColor: Colors.white,
+            textTheme: const TextTheme(
+              // Set default text color to blue for all text styles
+              displayLarge: TextStyle(color: Color(0xFF4285F4)),
+              displayMedium: TextStyle(color: Color(0xFF4285F4)),
+              displaySmall: TextStyle(color: Color(0xFF4285F4)),
+              headlineLarge: TextStyle(color: Color(0xFF4285F4)),
+              headlineMedium: TextStyle(color: Color(0xFF4285F4)),
+              headlineSmall: TextStyle(color: Color(0xFF4285F4)),
+              titleLarge: TextStyle(color: Color(0xFF4285F4)),
+              titleMedium: TextStyle(color: Color(0xFF4285F4)),
+              titleSmall: TextStyle(color: Color(0xFF4285F4)),
+              bodyLarge: TextStyle(color: Color(0xFF4285F4)),
+              bodyMedium: TextStyle(color: Color(0xFF4285F4)),
+              bodySmall: TextStyle(color: Color(0xFF4285F4)),
+              labelLarge: TextStyle(color: Color(0xFF4285F4)),
+              labelMedium: TextStyle(color: Color(0xFF4285F4)),
+              labelSmall: TextStyle(color: Color(0xFF4285F4)),
+            ),
+            // Also set icon theme to blue
+            iconTheme: const IconThemeData(
+              color: Color(0xFF4285F4),
+            ),
+            // Set AppBar theme to use blue text
+            appBarTheme: const AppBarTheme(
+              titleTextStyle: TextStyle(
+                color: Color(0xFF4285F4),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              iconTheme: IconThemeData(
+                color: Color(0xFF4285F4),
+              ),
+            ),
           ),
-          darkTheme:
-              ThemeData.dark().copyWith(primaryColor: const Color(0xFF0053A3)),
+          darkTheme: ThemeData.dark().copyWith(
+            primaryColor: const Color(0xFF4285F4),
+            textTheme: const TextTheme(
+              // Set default text color to blue for all text styles in dark mode
+              displayLarge: TextStyle(color: Color(0xFF4285F4)),
+              displayMedium: TextStyle(color: Color(0xFF4285F4)),
+              displaySmall: TextStyle(color: Color(0xFF4285F4)),
+              headlineLarge: TextStyle(color: Color(0xFF4285F4)),
+              headlineMedium: TextStyle(color: Color(0xFF4285F4)),
+              headlineSmall: TextStyle(color: Color(0xFF4285F4)),
+              titleLarge: TextStyle(color: Color(0xFF4285F4)),
+              titleMedium: TextStyle(color: Color(0xFF4285F4)),
+              titleSmall: TextStyle(color: Color(0xFF4285F4)),
+              bodyLarge: TextStyle(color: Color(0xFF4285F4)),
+              bodyMedium: TextStyle(color: Color(0xFF4285F4)),
+              bodySmall: TextStyle(color: Color(0xFF4285F4)),
+              labelLarge: TextStyle(color: Color(0xFF4285F4)),
+              labelMedium: TextStyle(color: Color(0xFF4285F4)),
+              labelSmall: TextStyle(color: Color(0xFF4285F4)),
+            ),
+            // Also set icon theme to blue in dark mode
+            iconTheme: const IconThemeData(
+              color: Color(0xFF4285F4),
+            ),
+            // Set AppBar theme to use blue text in dark mode
+            appBarTheme: const AppBarTheme(
+              titleTextStyle: TextStyle(
+                color: Color(0xFF4285F4),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              iconTheme: IconThemeData(
+                color: Color(0xFF4285F4),
+              ),
+            ),
+          ),
           themeMode: themeProvider.mode,
           home: const SplashRouter(),
           routes: {
@@ -220,7 +288,8 @@ class _ProductRouteHandler extends StatelessWidget {
                   SizedBox(height: 8),
                   Text(
                     'Таньд хайж байгаа бүтээгдэхүүн олдсонгүй.',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(
+                        color: Color(0xFF4285F4)), // Primary blue color
                   ),
                 ],
               ),
@@ -253,7 +322,8 @@ class _ProductRouteHandler extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     'Алдаа: ${e.toString()}',
-                    style: const TextStyle(color: Colors.grey),
+                    style: const TextStyle(
+                        color: Color(0xFF4285F4)), // Primary blue color
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -286,56 +356,52 @@ class _SearchScreenState extends State<SearchScreen> {
     CategoryItem(
       name: 'Эмэгтэй',
       imageUrl: 'assets/images/categories/Women/women.jpg',
-      color: const Color(0xFF2D8A47),
+      color: const Color(0xFF808080), // Grey color
     ),
     CategoryItem(
       name: 'Эрэгтэй',
       imageUrl: 'assets/images/categories/Men/men.jpg',
-      color: const Color(0xFFD97841),
+      color: const Color(0xFF808080), // Grey color
     ),
     CategoryItem(
       name: 'Гоо сайхан',
-      imageUrl: 'assets/images/categories/Beauty/makeup.jpg',
-      color: const Color(0xFFFF69B4),
+      imageUrl: 'assets/images/categories/Beauty/beauty.jpg',
+      color: const Color(0xFF808080), // Grey color
     ),
     CategoryItem(
       name: 'Хоол хүнс, ундаа',
-      imageUrl:
-          'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400',
-      color: const Color(0xFFB8A082),
+      imageUrl: 'assets/images/categories/Foods&drinks/foods.jpg',
+      color: const Color(0xFF808080), // Grey color
     ),
     CategoryItem(
       name: 'Гэр аxуй',
-      imageUrl:
-          'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400',
-      color: const Color(0xFF8B9B8A),
+      imageUrl: 'assets/images/categories/Home/home.jpg',
+      color: const Color(0xFF808080), // Grey color
     ),
     CategoryItem(
       name: 'Фитнесс',
-      imageUrl:
-          'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400',
-      color: const Color(0xFF6B9BD1),
+      imageUrl: 'assets/images/categories/Fitness/fitness.jpg',
+      color: const Color(0xFF808080), // Grey color
     ),
     CategoryItem(
       name: 'Аксессуары',
       imageUrl: 'assets/images/categories/Accessories/accessories.jpg',
-      color: const Color.fromARGB(255, 0, 255, 81),
+      color: const Color(0xFF808080), // Grey color
     ),
     CategoryItem(
       name: 'Амьтдын бүтээгдэхүүн',
-      imageUrl:
-          'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=400',
-      color: const Color(0xFFD2B48C),
+      imageUrl: 'assets/images/categories/Pet/animal.jpg',
+      color: const Color(0xFF808080), // Grey color
     ),
     CategoryItem(
       name: 'Тоглоомнууд',
       imageUrl: 'assets/images/categories/Toys&games/toys and games.jpg',
-      color: const Color(0xFF6A5ACD),
+      color: const Color(0xFF808080), // Grey color
     ),
     CategoryItem(
       name: 'Цахилгаан бараа',
       imageUrl: 'assets/images/categories/electronics/electronics.jpg',
-      color: const Color(0xFF2F2F2F),
+      color: const Color(0xFF808080), // Grey color
     ),
   ];
 
@@ -372,7 +438,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return MainScaffold(
       currentIndex: 1,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
+        backgroundColor: Colors.white,
         body: SafeArea(
           child: Column(
             children: [
@@ -414,17 +480,17 @@ class _SearchScreenState extends State<SearchScreen> {
         decoration: InputDecoration(
           hintText: 'Бүтээгдэхүүн, дэлгүүр хайх...',
           hintStyle: const TextStyle(
-            color: Colors.grey,
+            color: Color(0xFF4285F4),
             fontSize: 16,
           ),
           prefixIcon: const Icon(
             Icons.search,
-            color: Colors.grey,
+            color: Color(0xFF4285F4),
             size: 20,
           ),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear, color: Colors.grey),
+                  icon: const Icon(Icons.clear, color: Color(0xFF4285F4)),
                   onPressed: () {
                     _searchController.clear();
                     _performSearch('');
@@ -467,17 +533,19 @@ class _SearchScreenState extends State<SearchScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected ? Colors.black : Colors.white,
+                color: isSelected ? const Color(0xFF4285F4) : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isSelected ? Colors.black : Colors.grey.shade300,
+                  color: isSelected
+                      ? const Color(0xFF4285F4)
+                      : Colors.grey.shade300,
                 ),
               ),
               child: Center(
                 child: Text(
                   filter,
                   style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.black,
+                    color: isSelected ? Colors.white : const Color(0xFF4285F4),
                     fontWeight:
                         isSelected ? FontWeight.w600 : FontWeight.normal,
                   ),
@@ -504,7 +572,7 @@ class _SearchScreenState extends State<SearchScreen> {
         query: FirebaseFirestore.instance
             .collection('stores')
             .where('status', isEqualTo: 'active')
-            .orderBy('createdAt', descending: true),
+            .limit(50),
         pageSize: 20,
         fromDoc: (doc) => doc,
         emptyBuilder: (_) => empty(),
@@ -533,7 +601,7 @@ class _SearchScreenState extends State<SearchScreen> {
       query: FirebaseFirestore.instance
           .collection('products')
           .where('isActive', isEqualTo: true)
-          .orderBy('createdAt', descending: true),
+          .limit(50),
       pageSize: 20,
       fromDoc: (doc) => doc,
       emptyBuilder: (_) => empty(),
@@ -849,7 +917,7 @@ class _SearchScreenState extends State<SearchScreen> {
               child: Text(
                 category.name,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: Color(0xFF4285F4), // Primary blue-ish color
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -939,7 +1007,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     return MainScaffold(
       currentIndex: 2,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
+        backgroundColor: Colors.white,
         body: SafeArea(
           child: Column(
             children: [
@@ -991,7 +1059,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Color(0xFF4285F4),
             ),
           ),
           Row(
@@ -1022,7 +1090,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   child: Icon(
                     _isSearching ? Icons.close : Icons.search,
                     size: 20,
-                    color: _isSearching ? Colors.blue.shade700 : Colors.black87,
+                    color: _isSearching
+                        ? Colors.blue.shade700
+                        : const Color(0xFF4285F4),
                   ),
                 ),
               ),
@@ -1050,7 +1120,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   child: const Icon(
                     Icons.more_horiz,
                     size: 20,
-                    color: Colors.black87,
+                    color: Color(0xFF4285F4),
                   ),
                 ),
               ),
@@ -1140,7 +1210,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.grey,
+              color: Color(0xFF4285F4),
             ),
           ),
           SizedBox(height: 8),
@@ -1244,7 +1314,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black,
+                              color: Color(0xFF4285F4),
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -1349,7 +1419,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                    color: Color(0xFF4285F4),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -1364,7 +1434,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                        color: Color(0xFF4285F4),
                       ),
                     ),
                     if (variant.isNotEmpty) ...[
@@ -1450,7 +1520,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: Color(0xFF4285F4),
                           ),
                         ),
                       ),
@@ -1492,8 +1562,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
             // Refund policy option
             ListTile(
-              leading: const Icon(Icons.policy, color: Colors.black87),
-              title: const Text('Буцаалт, Солилт'),
+              leading: const Icon(Icons.policy, color: Color(0xFF4285F4)),
+              title: const Text('Буцаалт, Солилт',
+                  style: TextStyle(color: Color(0xFF4285F4))),
               onTap: () {
                 Navigator.pop(context);
                 _showRefundPolicy(context, order);
@@ -1869,7 +1940,7 @@ class ShopUBBottomNavBar extends StatelessWidget {
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        selectedItemColor: Colors.black,
+        selectedItemColor: const Color(0xFF4285F4), // Primary blue color
         unselectedItemColor: Colors.grey.shade600,
         selectedFontSize: 12,
         unselectedFontSize: 12,

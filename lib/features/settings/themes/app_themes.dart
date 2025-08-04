@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppThemes {
   // Color constants
-  static const Color primaryColor = Color(0xFF0053A3); // Updated brand blue
+  static const Color primaryColor = Color(0xFF4285F4); // Updated brand blue
   static const Color secondaryColor = Color(0xFF10B981); // Green
   static const Color errorColor = Color(0xFFEF4444); // Red
   static const Color warningColor = Color(0xFFF59E0B); // Amber

@@ -620,7 +620,7 @@ class _DashboardPageState extends State<DashboardPage> {
               data: _revenueTrends,
               height: 320,
               title: 'Орлого ба захиалгууд',
-              lineColor: const Color(0xFF0053A3),
+              lineColor: const Color(0xFF4285F4),
             ),
           ),
         ),
@@ -654,7 +654,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       child: const Text(
                         'Бүгдийг харах',
                         style: TextStyle(
-                          color: Color(0xFF0053A3),
+                          color: Color(0xFF4285F4),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -798,7 +798,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         // Navigate to orders page
                       },
                       style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF0053A3),
+                        foregroundColor: const Color(0xFF4285F4),
                         padding: EdgeInsets.zero,
                         minimumSize: Size.zero,
                       ),
@@ -847,7 +847,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         // Navigate to full activity log
                       },
                       style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF0053A3),
+                        foregroundColor: const Color(0xFF4285F4),
                         padding: EdgeInsets.zero,
                         minimumSize: Size.zero,
                       ),

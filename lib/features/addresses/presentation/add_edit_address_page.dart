@@ -56,7 +56,16 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Хүргэлтийн хаягууд'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: const Color(0xFF4285F4),
+        title: const Text(
+          'Хүргэлтийн хаягууд',
+          style: TextStyle(
+            color: Color(0xFF4285F4),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         centerTitle: true,
       ),
       body: Padding(
@@ -65,7 +74,14 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
           key: _formKey,
           child: ListView(
             children: [
-              const Text('Хүргэлтийн хаяг оруулна уу'),
+              const Text(
+                'Хүргэлтийн хаяг оруулна уу',
+                style: TextStyle(
+                  color: Color(0xFF4285F4),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 16),
               _field('Овог', initial: firstName, onSaved: (v) => firstName = v),
               const SizedBox(height: 12),
@@ -75,13 +91,14 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
                 value: district,
                 decoration: const InputDecoration(
                   labelText: 'Дүүрэг',
-                  labelStyle: TextStyle(color: kPrimaryBlue),
+                  labelStyle: TextStyle(color: Color(0xFF4285F4)),
                   border: OutlineInputBorder(
-                      borderSide: BorderSide(color: kPrimaryBlue)),
+                      borderSide: BorderSide(color: Color(0xFF4285F4))),
                   enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: kPrimaryBlue)),
+                      borderSide: BorderSide(color: Color(0xFF4285F4))),
                   focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: kPrimaryBlue, width: 2)),
+                      borderSide:
+                          BorderSide(color: Color(0xFF4285F4), width: 2)),
                 ),
                 items: kUbDistricts
                     .map((d) => DropdownMenuItem(value: d, child: Text(d)))
@@ -104,13 +121,14 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
                 value: khoroo,
                 decoration: const InputDecoration(
                   labelText: 'Хороо',
-                  labelStyle: TextStyle(color: kPrimaryBlue),
+                  labelStyle: TextStyle(color: Color(0xFF4285F4)),
                   border: OutlineInputBorder(
-                      borderSide: BorderSide(color: kPrimaryBlue)),
+                      borderSide: BorderSide(color: Color(0xFF4285F4))),
                   enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: kPrimaryBlue)),
+                      borderSide: BorderSide(color: Color(0xFF4285F4))),
                   focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: kPrimaryBlue, width: 2)),
+                      borderSide:
+                          BorderSide(color: Color(0xFF4285F4), width: 2)),
                 ),
                 items: kUbDistrictKhoroos[district]!
                     .map((k) =>
@@ -132,8 +150,21 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
               ElevatedButton(
                 onPressed: _save,
                 style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16)),
-                child: const Text('Хүргэлтийн хаяг хадаглаx'),
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF4285F4),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: const BorderSide(color: Color(0xFF4285F4), width: 1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'Хүргэлтийн хаяг хадаглаx',
+                  style: TextStyle(
+                    color: Color(0xFF4285F4),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
@@ -151,12 +182,12 @@ class _AddEditAddressPageState extends State<AddEditAddressPage> {
       initialValue: initial,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: kPrimaryBlue),
+        labelStyle: const TextStyle(color: Color(0xFF4285F4)),
         enabledBorder: const OutlineInputBorder(
-          borderSide: BorderSide(color: kPrimaryBlue),
+          borderSide: BorderSide(color: Color(0xFF4285F4)),
         ),
         focusedBorder: const OutlineInputBorder(
-          borderSide: BorderSide(color: kPrimaryBlue, width: 2),
+          borderSide: BorderSide(color: Color(0xFF4285F4), width: 2),
         ),
       ),
       validator: required

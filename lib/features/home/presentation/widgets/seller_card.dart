@@ -28,6 +28,30 @@ class SellerCard extends StatelessWidget {
     this.isRecommended = false, // Default to false
   });
 
+  // Debounce mechanism to prevent spam tapping
+  static DateTime? _lastTapTime;
+  static const Duration _debounceDuration = Duration(milliseconds: 500);
+
+  void _handleStoreNavigation(BuildContext context) {
+    final now = DateTime.now();
+    if (_lastTapTime != null &&
+        now.difference(_lastTapTime!) < _debounceDuration) {
+      return; // Ignore rapid taps
+    }
+    _lastTapTime = now;
+
+    if (onShopAllTap != null) {
+      onShopAllTap!();
+    } else {
+      Navigator.pushNamed(context, '/store/${sellerName.toLowerCase()}');
+    }
+  }
+
+  // Create a closure that captures the context for GestureDetector
+  VoidCallback _createNavigationCallback(BuildContext context) {
+    return () => _handleStoreNavigation(context);
+  }
+
   void _showOptionsMenu(BuildContext context) {
     if (storeId == null) return;
 
@@ -135,201 +159,215 @@ class SellerCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(32),
         child: Stack(
           children: [
-            // Background image
+            // Background image with tap navigation
             if (backgroundImageUrl != null && backgroundImageUrl!.isNotEmpty)
               Positioned.fill(
-                child: Image.network(
-                  backgroundImageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(color: Colors.white);
-                  },
+                child: GestureDetector(
+                  onTap: _createNavigationCallback(context),
+                  child: Image.network(
+                    backgroundImageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(color: Colors.white);
+                    },
+                  ),
                 ),
               ),
 
-            // Fallback background color
+            // Fallback background color with tap navigation
             if (backgroundImageUrl == null || backgroundImageUrl!.isEmpty)
               Positioned.fill(
-                child: Container(color: Colors.white),
+                child: GestureDetector(
+                  onTap: _createNavigationCallback(context),
+                  child: Container(color: Colors.white),
+                ),
               ),
 
             // Content overlay - reduced opacity to show background
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.white
-                        .withValues(alpha: 0.3), // Reduced from 0.95 to 0.3
-                    Colors.white
-                        .withValues(alpha: 0.7), // Reduced from 0.98 to 0.7
-                  ],
+            GestureDetector(
+              onTap: _createNavigationCallback(context),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white
+                          .withValues(alpha: 0.3), // Reduced from 0.95 to 0.3
+                      Colors.white
+                          .withValues(alpha: 0.7), // Reduced from 0.98 to 0.7
+                    ],
+                  ),
                 ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Seller Row
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Square store profile picture
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: const Color(0xFF444444),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: storeLogoUrl != null &&
-                                    storeLogoUrl!.isNotEmpty
-                                ? Image.network(
-                                    storeLogoUrl!,
-                                    width: 48,
-                                    height: 48,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        width: 48,
-                                        height: 48,
-                                        color: const Color(0xFF444444),
-                                        child: Center(
-                                          child: Text(
-                                            profileLetter,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 22,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Seller Row
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Square store profile picture
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              color: const Color(0xFF444444),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: storeLogoUrl != null &&
+                                      storeLogoUrl!.isNotEmpty
+                                  ? Image.network(
+                                      storeLogoUrl!,
+                                      width: 48,
+                                      height: 48,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                        return Container(
+                                          width: 48,
+                                          height: 48,
+                                          color: const Color(0xFF444444),
+                                          child: Center(
+                                            child: Text(
+                                              profileLetter,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 22,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      );
-                                    },
-                                  )
-                                : Container(
-                                    width: 48,
-                                    height: 48,
-                                    color: const Color(0xFF444444),
-                                    child: Center(
-                                      child: Text(
-                                        profileLetter,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 22,
+                                        );
+                                      },
+                                    )
+                                  : Container(
+                                      width: 48,
+                                      height: 48,
+                                      color: const Color(0xFF444444),
+                                      child: Center(
+                                        child: Text(
+                                          profileLetter,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 22,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                sellerName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 17,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Row(
-                                children: [
-                                  Text(
-                                    rating.toString(),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 2),
-                                  const Icon(Icons.star,
-                                      color: Colors.black, size: 16),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '($reviews)',
-                                    style: const TextStyle(
-                                      color: Colors.black54,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => _showOptionsMenu(context),
-                          child: const Icon(Icons.more_horiz,
-                              color: Colors.black54, size: 28),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    // Product Grid
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: products.length,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 18,
-                        crossAxisSpacing: 18,
-                        childAspectRatio: 1,
-                      ),
-                      itemBuilder: (context, i) {
-                        final p = products[i];
-                        return SellerProductCard(
-                          imageUrl: p.imageUrl,
-                          price: p.price,
-                          productId: p.id,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 18),
-                    // Shop all row
-                    Row(
-                      children: [
-                        const Text(
-                          'Дэлгүүрээр зочилоx',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 24,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: onShopAllTap ??
-                              () {
-                                Navigator.pushNamed(context,
-                                    '/store/${sellerName.toLowerCase()}');
-                              },
-                          child: Container(
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFF0F0F0),
-                              shape: BoxShape.circle,
                             ),
-                            padding: const EdgeInsets.all(14),
-                            child: const Icon(Icons.arrow_forward,
-                                size: 24, color: Colors.black),
                           ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  sellerName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 17,
+                                    color: Color(0xFF4285F4),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    Text(
+                                      rating.toString(),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: Color(0xFF4285F4),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Icon(Icons.star,
+                                        color: Color(0xFF4285F4), size: 16),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '($reviews)',
+                                      style: const TextStyle(
+                                        color: Color(0xFF4285F4),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => _showOptionsMenu(context),
+                            child: const Icon(Icons.more_horiz,
+                                color: Colors.black54, size: 28),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      // Product Grid
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: products.length,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 18,
+                          crossAxisSpacing: 18,
+                          childAspectRatio: 1,
                         ),
-                      ],
-                    ),
-                  ],
+                        itemBuilder: (context, i) {
+                          final p = products[i];
+                          return SellerProductCard(
+                            imageUrl: p.imageUrl,
+                            price: p.price,
+                            productId: p.id,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 18),
+                      // Shop all row
+                      Row(
+                        children: [
+                          const Text(
+                            'Дэлгүүрээр зочилоx',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 24,
+                              color: Color(0xFF4285F4),
+                            ),
+                          ),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: onShopAllTap ??
+                                () {
+                                  Navigator.pushNamed(context,
+                                      '/store/${sellerName.toLowerCase()}');
+                                },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade700.withValues(
+                                    alpha: 0.8), // Dark grey with opacity
+                                shape: BoxShape.circle,
+                              ),
+                              padding: const EdgeInsets.all(
+                                  9), // Reduced from 14 to 9 (2/3 size)
+                              child: const Icon(Icons.arrow_forward,
+                                  size: 20,
+                                  color: Colors
+                                      .white), // Reduced size from 24 to 20 and changed color to white
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -546,7 +584,7 @@ class _SellerProductCardState extends State<SellerProductCard> {
                 },
                 child: Icon(
                   isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: isFavorite ? Colors.red : Colors.white,
+                  color: isFavorite ? Color(0xFF4285F4) : Color(0xFF4285F4),
                   size: 28,
                   shadows: [
                     Shadow(

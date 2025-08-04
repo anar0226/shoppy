@@ -989,7 +989,8 @@ class _AddProductDialogState extends State<AddProductDialog> {
                                   height: 16,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: Colors.white,
+                                    color: const Color(
+                                        0xFF4285F4), // Primary blue color
                                     value: _uploadProgress > 0
                                         ? _uploadProgress
                                         : null,

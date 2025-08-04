@@ -27,7 +27,7 @@ class WomenCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Гадуур хувцас & Футболк',
           imageUrl: 'assets/images/categories/Women/WomenTshirt.jpg',
-          color: const Color(0xFF2D8A47),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const ShirtsTopsCategoryPage()),
@@ -36,7 +36,7 @@ class WomenCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Эмэгтэй гутал',
           imageUrl: 'assets/images/categories/Women/WomenShoe.jpg',
-          color: const Color(0xFFD97841),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const ShoesCategoryPage()),
@@ -45,7 +45,7 @@ class WomenCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Даашинз',
           imageUrl: 'assets/images/categories/Women/WomenDress.jpg',
-          color: const Color(0xFF8B4513),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -55,7 +55,7 @@ class WomenCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Өмд',
           imageUrl: 'assets/images/categories/Women/WomenPants.jpg',
-          color: const Color(0xFFB8A082),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -65,7 +65,7 @@ class WomenCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Дотуур хувцас',
           imageUrl: 'assets/images/categories/Women/WomenLingerie.jpg',
-          color: const Color(0xFFE8B5C8),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const IntimatesCategoryPage()),
@@ -74,7 +74,7 @@ class WomenCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Актив хувцас',
           imageUrl: 'assets/images/categories/Women/WomenActivewear.jpg',
-          color: const Color(0xFF6B9BD1),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(

@@ -11,6 +11,7 @@ import '../pages/settings_page.dart';
 import '../pages/storefront_page.dart';
 import '../pages/categorization_page.dart';
 import '../pages/order_cleanup_page.dart';
+import '../pages/payment_verification_page.dart';
 
 import '../pages/store_payout_settings_page.dart';
 import '../../features/settings/themes/app_themes.dart';
@@ -92,7 +93,7 @@ class _SideMenuState extends State<SideMenu> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 240,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -100,7 +101,7 @@ class _SideMenuState extends State<SideMenu> {
           // Top section with brand blue background - match top nav bar height
           Container(
             height: 64, // Match top nav bar height
-            color: const Color(0xFF0053A3),
+            color: const Color(0xFF4285F4),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
@@ -326,6 +327,21 @@ class _SideMenuState extends State<SideMenu> {
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(
                               builder: (_) => const OrderCleanupPage()),
+                        );
+                      }
+                    }
+                  }),
+                  _navItem(
+                      context, Icons.verified_user, 'Төлбөр баталгаажуулалт',
+                      selected: widget.selected == 'Төлбөр баталгаажуулалт',
+                      onTap: () {
+                    if (widget.selected != 'Төлбөр баталгаажуулалт') {
+                      if (widget.onPageSelected != null) {
+                        widget.onPageSelected!('Төлбөр баталгаажуулалт');
+                      } else {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                              builder: (_) => const PaymentVerificationPage()),
                         );
                       }
                     }

@@ -61,7 +61,11 @@ class SafeImage extends StatelessWidget {
               borderRadius: borderRadius,
             ),
             child: const Center(
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                    Color(0xFF4285F4)), // Primary blue color
+              ),
             ),
           ),
       errorWidget: (context, url, error) => errorWidget ?? defaultFallback,

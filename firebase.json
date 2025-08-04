@@ -6,37 +6,18 @@
   "storage": {
     "rules": "storage.rules"
   },
-  "flutter": {
-    "platforms": {
-      "android": {
-        "default": {
-          "projectId": "shoppy-6d81f",
-          "appId": "1:110394685689:android:8848cbe8fc068acf42ca28",
-          "fileOutput": "android/app/google-services.json"
-        }
-      },
-      "dart": {
-        "lib/firebase_options.dart": {
-          "projectId": "shoppy-6d81f",
-          "configurations": {
-            "android": "1:110394685689:android:8848cbe8fc068acf42ca28",
-            "ios": "1:110394685689:ios:be2eb9a923aac7e342ca28",
-            "macos": "1:110394685689:ios:be2eb9a923aac7e342ca28",
-            "web": "1:110394685689:web:a5d998cdc2fc3b0842ca28",
-            "windows": "1:110394685689:web:6fc9e10197b847ab42ca28"
-          }
-        }
-      }
-    }
-  },
-      "hosting": {
-      "public": "build/web",
+  "hosting": {
+    "public": "build/web",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
     "rewrites": [
+      {
+        "source": "/_/auth/action",
+        "destination": "/auth-action.html"
+      },
       {
         "source": "**",
         "destination": "/index.html"

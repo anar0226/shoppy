@@ -10,7 +10,7 @@ class AppColors {
 
   /// Primary brand color - Avii.mn blue
   /// Used for: Primary buttons, links, brand elements, focus states
-  static const Color brandBlue = Color(0xFF0053A3);
+  static const Color brandBlue = Color(0xFF4285F4);
 
   /// Secondary brand color - Light blue variant
   /// Used for: Secondary buttons, highlights, backgrounds
@@ -97,35 +97,38 @@ class AppColors {
 
   // ===== CATEGORY COLORS =====
 
+  /// All categories now use grey color
+  static const Color categoryGrey = Color(0xFF808080);
+
   /// Women's category color
-  static const Color categoryWomen = Color(0xFF2D8A47);
+  static const Color categoryWomen = categoryGrey;
 
   /// Men's category color
-  static const Color categoryMen = Color(0xFFD97841);
+  static const Color categoryMen = categoryGrey;
 
   /// Beauty category color
-  static const Color categoryBeauty = Color(0xFFFF69B4);
+  static const Color categoryBeauty = categoryGrey;
 
   /// Food & Drinks category color
-  static const Color categoryFood = Color(0xFFB8A082);
+  static const Color categoryFood = categoryGrey;
 
   /// Home category color
-  static const Color categoryHome = Color(0xFF8B9B8A);
+  static const Color categoryHome = categoryGrey;
 
   /// Fitness category color
-  static const Color categoryFitness = Color(0xFF6B9BD1);
+  static const Color categoryFitness = categoryGrey;
 
   /// Accessories category color
-  static const Color categoryAccessories = Color(0xFF00FF51);
+  static const Color categoryAccessories = categoryGrey;
 
   /// Pet category color
-  static const Color categoryPet = Color(0xFFD2B48C);
+  static const Color categoryPet = categoryGrey;
 
   /// Toys & Games category color
-  static const Color categoryToys = Color(0xFF6A5ACD);
+  static const Color categoryToys = categoryGrey;
 
   /// Electronics category color
-  static const Color categoryElectronics = Color(0xFF2F2F2F);
+  static const Color categoryElectronics = categoryGrey;
 
   // ===== PAYMENT COLORS =====
 

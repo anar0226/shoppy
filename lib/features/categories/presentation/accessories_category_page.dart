@@ -24,7 +24,7 @@ class AccessoriesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Бүс',
           imageUrl: 'assets/images/categories/Accessories/belts.jpg',
-          color: const Color(0xFF654321),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -39,7 +39,7 @@ class AccessoriesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Малгай',
           imageUrl: 'assets/images/categories/Accessories/hats.jpg',
-          color: const Color.fromARGB(255, 182, 214, 196),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -54,7 +54,7 @@ class AccessoriesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Гоёл чимэглэл',
           imageUrl: 'assets/images/categories/Accessories/jewelry.jpg',
-          color: const Color.fromARGB(255, 215, 213, 202),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -69,7 +69,7 @@ class AccessoriesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Нарны шил',
           imageUrl: 'assets/images/categories/Accessories/sunglasses.jpg',
-          color: const Color(0xFF1F1F1F),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -84,7 +84,7 @@ class AccessoriesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Түрийвч',
           imageUrl: 'assets/images/categories/Accessories/wallets.jpg',
-          color: const Color.fromARGB(255, 196, 194, 193),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -99,7 +99,7 @@ class AccessoriesCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Бусад',
           imageUrl: 'assets/images/categories/Accessories/others.jpg',
-          color: const Color(0xFF708090),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(

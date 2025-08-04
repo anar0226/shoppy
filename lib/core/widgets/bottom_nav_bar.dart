@@ -38,7 +38,7 @@ class ShopUBBottomNavBar extends StatelessWidget {
         elevation: floating ? 0 : 8,
         currentIndex: currentIndex,
         onTap: (i) => _onTap(context, i),
-        selectedItemColor: const Color(0xFF7B61FF),
+        selectedItemColor: const Color(0xFF4285F4), // Primary blue color
         unselectedItemColor: Colors.grey,
         showSelectedLabels: false,
         showUnselectedLabels: false,

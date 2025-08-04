@@ -70,6 +70,8 @@ class AppImage extends StatelessWidget {
       child: const Center(
         child: CircularProgressIndicator(
           strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(
+              Color(0xFF4285F4)), // Primary blue color
         ),
       ),
     );

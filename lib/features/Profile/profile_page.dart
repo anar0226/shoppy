@@ -107,7 +107,7 @@ class _ProfilePageState extends State<ProfilePage> {
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
-          foregroundColor: Colors.black,
+          foregroundColor: Color(0xFF4285F4), // Primary blue color
           title: const Text('Профайл'),
         ),
         body: ListView(
@@ -141,15 +141,21 @@ class _ProfilePageState extends State<ProfilePage> {
                             );
                           },
                           icon: Icon(Icons.settings,
-                              color: Colors.black, size: 14),
+                              color: Color(0xFF4285F4),
+                              size: 14), // Primary blue color
                           label: Text('Тохиргоо',
-                              style:
-                                  TextStyle(color: Colors.black, fontSize: 10)),
+                              style: TextStyle(
+                                  color: Color(0xFF4285F4),
+                                  fontSize: 10)), // Primary blue color
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey[200],
+                            backgroundColor:
+                                Colors.grey.shade50, // Light grey background
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
+                                borderRadius: BorderRadius.circular(8),
+                                side: BorderSide(
+                                    color: Color(0xFF4285F4),
+                                    width: 1)), // Blue outline
                             fixedSize: Size(90, 30),
                             padding: EdgeInsets.symmetric(horizontal: 12),
                           ),
@@ -160,16 +166,22 @@ class _ProfilePageState extends State<ProfilePage> {
                             showEditProfilePopup(
                                 context, userName, userAvatarUrl ?? '');
                           },
-                          icon:
-                              Icon(Icons.person, color: Colors.black, size: 14),
+                          icon: Icon(Icons.person,
+                              color: Color(0xFF4285F4),
+                              size: 14), // Primary blue color
                           label: Text('Профайл',
-                              style:
-                                  TextStyle(color: Colors.black, fontSize: 10)),
+                              style: TextStyle(
+                                  color: Color(0xFF4285F4),
+                                  fontSize: 10)), // Primary blue color
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey[200],
+                            backgroundColor:
+                                Colors.grey.shade50, // Light grey background
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4)),
+                                borderRadius: BorderRadius.circular(4),
+                                side: BorderSide(
+                                    color: Color(0xFF4285F4),
+                                    width: 1)), // Blue outline
                             fixedSize: Size(90, 30),
                             padding: EdgeInsets.symmetric(horizontal: 12),
                           ),
@@ -248,7 +260,8 @@ class _ProfilePageState extends State<ProfilePage> {
             Consumer<RecentlyViewedProvider>(
               builder: (_, recent, __) {
                 if (recent.items.isEmpty) {
-                  return const Text('Үзсэн бараа байхгүй байна');
+                  return Text('Үзсэн бараа байхгүй байна',
+                      style: TextStyle(color: Colors.grey[600]));
                 }
                 return SizedBox(
                   height: 119,
@@ -293,8 +306,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: _paymentMethodCard(
                     title: 'QPay',
                     subtitle: 'Цахим төлбөр',
-                    backgroundColor: Colors.orange.shade50,
-                    iconColor: Colors.orange,
+                    backgroundColor:
+                        Colors.grey.shade50, // Light grey background
+                    iconColor: const Color(0xFF4285F4),
                     iconWidget: Container(
                       width: 50,
                       height: 50,
@@ -313,7 +327,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               width: 50,
                               height: 50,
                               decoration: BoxDecoration(
-                                color: Colors.orange,
+                                color: const Color(0xFF4285F4),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Center(
@@ -338,8 +352,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: _paymentMethodCard(
                     title: 'StorePay',
                     subtitle: 'Тун удахгүй',
-                    backgroundColor: Colors.blue.shade50,
-                    iconColor: Colors.blue,
+                    backgroundColor:
+                        Colors.grey.shade50, // Light grey background
+                    iconColor: const Color(0xFF4285F4),
                     iconWidget: Container(
                       width: 50,
                       height: 50,
@@ -358,7 +373,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               width: 50,
                               height: 50,
                               decoration: BoxDecoration(
-                                color: Colors.blue.shade600,
+                                color: const Color(0xFF4285F4),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Center(
@@ -404,13 +419,17 @@ class _ProfilePageState extends State<ProfilePage> {
                       icon: const Icon(Icons.support_agent, size: 20),
                       label: const Text('Холбоо барих'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.shade50,
-                        foregroundColor: Colors.blue.shade700,
+                        backgroundColor:
+                            Colors.grey.shade50, // Light grey background
+                        foregroundColor:
+                            Color(0xFF4285F4), // Primary blue color
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: Colors.blue.shade200),
+                          side: BorderSide(
+                              color: Color(0xFF4285F4),
+                              width: 1), // Blue outline
                         ),
                       ),
                     ),
@@ -444,7 +463,11 @@ class _ProfilePageState extends State<ProfilePage> {
       width: cardWidth,
       height: 108,
       child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        color: Colors.grey.shade50, // Light grey background
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: Color(0xFF4285F4), width: 1), // Blue outline
+        ),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -581,7 +604,7 @@ class _ProfilePageState extends State<ProfilePage> {
         color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: iconColor.withValues(alpha: 0.2),
+          color: Color(0xFF4285F4), // Blue outline
           width: 1,
         ),
       ),
@@ -606,7 +629,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 subtitle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: iconColor.withValues(alpha: 0.7),
+                  color: Colors.grey[600],
                 ),
               ),
             ],

@@ -24,7 +24,7 @@ class BeautyCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Үс арчилгаа',
           imageUrl: 'assets/images/categories/Beauty/haircare.jpg',
-          color: const Color(0xFFDC143C),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -39,7 +39,7 @@ class BeautyCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Нүүр будалт',
           imageUrl: 'assets/images/categories/Beauty/makeup.jpg',
-          color: const Color(0xFFFF69B4),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -54,7 +54,7 @@ class BeautyCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Хумс арчилгаа',
           imageUrl: 'assets/images/categories/Beauty/nailcare.jpg',
-          color: const Color(0xFFFF1493),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -69,7 +69,7 @@ class BeautyCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Үнэртэй ус',
           imageUrl: 'assets/images/categories/Beauty/perfume.jpg',
-          color: const Color(0xFF9370DB),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -84,7 +84,7 @@ class BeautyCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Арьс арчилгаа',
           imageUrl: 'assets/images/categories/Beauty/skincare.jpg',
-          color: const Color(0xFF20B2AA),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -99,7 +99,7 @@ class BeautyCategoryPage extends StatelessWidget {
         SubCategory(
           name: 'Бусад',
           imageUrl: 'assets/images/categories/Beauty/others.jpg',
-          color: const Color(0xFF9932CC),
+          color: const Color(0xFF808080), // Grey color
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(

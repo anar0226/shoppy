@@ -162,56 +162,72 @@ class _SavedCard extends StatelessWidget {
           ),
         );
       },
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: product.images.isNotEmpty
-                      ? Image.network(product.images.first,
-                          width: double.infinity, fit: BoxFit.cover)
-                      : Container(color: Colors.grey[300]),
-                ),
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: product.isDiscounted && product.discountPercent > 0
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.black,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                              '${product.discountPercent.toStringAsFixed(0)}% off',
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 12)),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-                Positioned(
-                  bottom: 8,
-                  right: 8,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                        color: Color(0xFF6A5AE0), shape: BoxShape.circle),
-                    padding: const EdgeInsets.all(6),
-                    child: const Icon(Icons.favorite,
-                        color: Colors.white, size: 18),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF4285F4), width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: product.images.isNotEmpty
+                        ? Image.network(product.images.first,
+                            width: double.infinity, fit: BoxFit.cover)
+                        : Container(color: Colors.grey[300]),
                   ),
-                )
-              ],
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: product.isDiscounted && product.discountPercent > 0
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                                '${product.discountPercent.toStringAsFixed(0)}% off',
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 12)),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: Container(
+                      decoration: const BoxDecoration(
+                          color: Color(0xFF4285F4), shape: BoxShape.circle),
+                      padding: const EdgeInsets.all(6),
+                      child: const Icon(Icons.favorite,
+                          color: Colors.white, size: 18),
+                    ),
+                  )
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-          Text('₮${product.price.toStringAsFixed(2)}',
-              style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(product.name,
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text('₮${product.price.toStringAsFixed(2)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }

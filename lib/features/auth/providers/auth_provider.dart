@@ -389,7 +389,17 @@ class AuthProvider extends ChangeNotifier with RateLimitedService {
       await _setLoading(true);
       final user = _auth.currentUser;
       if (user != null && !user.emailVerified) {
-        await user.sendEmailVerification();
+        // Use custom action URL for web
+        if (kIsWeb) {
+          await user.sendEmailVerification(
+            ActionCodeSettings(
+              url: 'https://avii.mn/_/auth/action',
+              handleCodeInApp: true,
+            ),
+          );
+        } else {
+          await user.sendEmailVerification();
+        }
       }
     } catch (e) {
       if (e is RateLimitExceededException) {
@@ -407,7 +417,18 @@ class AuthProvider extends ChangeNotifier with RateLimitedService {
     checkRateLimit('password_reset');
     try {
       await _setLoading(true);
-      await _auth.sendPasswordResetEmail(email: email);
+      // Use custom action URL for web
+      if (kIsWeb) {
+        await _auth.sendPasswordResetEmail(
+          email: email,
+          actionCodeSettings: ActionCodeSettings(
+            url: 'https://avii.mn/_/auth/action',
+            handleCodeInApp: true,
+          ),
+        );
+      } else {
+        await _auth.sendPasswordResetEmail(email: email);
+      }
     } catch (e) {
       if (e is RateLimitExceededException) {
         throw 'Хэт олон хүсэлт илгээлээ. ${e.retryAfterSeconds} секундын дараа дахин оролдоно уу.';
