@@ -168,6 +168,11 @@
           setTimeout(() => {
             window.location.href = continueUrl;
           }, 2000);
+        } else {
+          // Default redirect to Avii.mn after successful verification
+          setTimeout(() => {
+            window.location.href = 'https://avii.mn';
+          }, 2000);
         }
 
       } catch (error) {

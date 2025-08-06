@@ -52,28 +52,62 @@ class _CustomPaymentPageState extends State<CustomPaymentPage> {
 
   Future<void> _savePaymentRecord() async {
     try {
-      await FirebaseFirestore.instance
+      debugPrint('=== Saving payment record ===');
+      debugPrint('Store ID: ${widget.storeId}');
+      debugPrint('Order ID: ${widget.orderId}');
+      debugPrint('Amount: ${widget.amount}');
+
+      // Check if payment record already exists
+      final existingDoc = await FirebaseFirestore.instance
           .collection('store_subscriptions')
           .doc(widget.storeId)
           .collection('payments')
           .doc(widget.orderId)
-          .set({
-        'orderId': widget.orderId,
-        'amount': widget.amount,
-        'description': widget.description,
-        'status': 'pending',
-        'paymentMethod': 'bank_transfer',
-        'bankAccount': _bankAccounts[_selectedBank]!['account'],
-        'recipient': _bankAccounts[_selectedBank]!['recipient'],
-        'createdAt': FieldValue.serverTimestamp(),
-        'userId': 'web_user', // You might want to get actual user ID
-      });
-    } catch (e) {
+          .get();
+
+      if (existingDoc.exists) {
+        debugPrint('Payment record already exists, updating timestamp');
+        await FirebaseFirestore.instance
+            .collection('store_subscriptions')
+            .doc(widget.storeId)
+            .collection('payments')
+            .doc(widget.orderId)
+            .update({
+          'lastAccessed': FieldValue.serverTimestamp(),
+        });
+      } else {
+        debugPrint('Creating new payment record');
+        await FirebaseFirestore.instance
+            .collection('store_subscriptions')
+            .doc(widget.storeId)
+            .collection('payments')
+            .doc(widget.orderId)
+            .set({
+          'orderId': widget.orderId,
+          'amount': widget.amount,
+          'description': widget.description,
+          'status': 'pending',
+          'paymentMethod': 'bank_transfer',
+          'bankAccount': _bankAccounts[_selectedBank]!['account'],
+          'recipient': _bankAccounts[_selectedBank]!['recipient'],
+          'createdAt': FieldValue.serverTimestamp(),
+          'userId': 'web_user', // You might want to get actual user ID
+          'storeId': widget.storeId, // Add store ID for easier querying
+        });
+      }
+
+      debugPrint('Payment record saved successfully');
+    } catch (e, stackTrace) {
+      debugPrint('=== Error saving payment record ===');
+      debugPrint('Error: $e');
+      debugPrint('Stack trace: $stackTrace');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to save payment record: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }

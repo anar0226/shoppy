@@ -16,10 +16,60 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
   bool _sent = false;
 
   Future<void> _send() async {
-    await AuthService.instance.sendEmailVerification();
     setState(() {
-      _sent = true;
+      _sent = false;
     });
+
+    try {
+      debugPrint('=== Starting email verification process ===');
+
+      await AuthService.instance.sendEmailVerification();
+
+      setState(() {
+        _sent = true;
+      });
+
+      debugPrint('=== Email verification sent successfully ===');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Баталгаажуулах имэйл амжилттай илгээгдлээ'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('=== Error sending verification email ===');
+      debugPrint('Error: $e');
+
+      setState(() {
+        _sent = false;
+      });
+
+      if (mounted) {
+        String errorMessage = e.toString();
+
+        // Clean up error message for user display
+        if (errorMessage.contains('Exception:')) {
+          errorMessage = errorMessage.split('Exception:').last.trim();
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 8),
+            action: SnackBarAction(
+              label: 'Дахин оролдох',
+              textColor: Colors.white,
+              onPressed: () => _send(),
+            ),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -112,7 +162,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
 
                       // Instructional Text
                       const Text(
-                        'Бид баталгаажуулах холбоосыг таны имэйлд илгээсэн',
+                        'Бид баталгаажуулах холбоосыг таны имэйл-лүү илгээх болно.',
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.black87,
@@ -194,7 +244,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
                           child: Text(
                             _sent
                                 ? 'Илгээгдсэн'
-                                : 'Баталгаажуулах имэйл дахин илгээх',
+                                : 'Баталгаажуулах имэйл илгээх',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,

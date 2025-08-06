@@ -114,6 +114,7 @@ class _StoreSetupWrapper extends StatefulWidget {
 }
 
 class _StoreSetupWrapperState extends State<_StoreSetupWrapper> {
+  bool _setupCompleted = false;
   @override
   void initState() {
     super.initState();
@@ -136,18 +137,23 @@ class _StoreSetupWrapperState extends State<_StoreSetupWrapper> {
       );
 
       if (result == true && mounted) {
-        // Setup completed, rebuild to show dashboard
-        setState(() {});
+        // Mark setup as completed so that build shows dashboard immediately
+        setState(() {
+          _setupCompleted = true;
+        });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_setupCompleted) {
+      return const AdminPanelLayout();
+    }
+
+    // Still waiting for setup completion
     return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
-      ),
+      body: Center(child: CircularProgressIndicator()),
     );
   }
 }

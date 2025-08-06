@@ -2,46 +2,21 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
-    function isValidImageSize() {
-      return request.resource.size < 10 * 1024 * 1024; // 10MB limit
-    }
-    
-    function isValidImageType() {
-      return request.resource.contentType.matches('image/.*');
-    }
-    
-    function isStoreOwner(storeId) {
-      return isAuthenticated() && 
-        exists(/databases/(default)/documents/stores/$(storeId)) &&
-        get(/databases/(default)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
-    }
-    
-    // User profile images - users can only manage their own
-    match /users/{userId}/profile.jpg {
-      allow read: if true; // Public read access
-      allow write: if isAuthenticated() && 
-        request.auth.uid == userId &&
-        isValidImageSize() &&
-        isValidImageType();
-    }
-    
-    // Store-related files - only store owners can upload
+    // Allow authenticated users to upload to store directories
     match /stores/{storeId}/{allPaths=**} {
-      allow read: if true; // Public read access for store content
-      allow write: if isStoreOwner(storeId) &&
-        isValidImageSize() &&
-        isValidImageType();
+      allow read: if true; // Public read access for store content (logos, product images)
+      allow write: if request.auth != null; // Any authenticated user can upload to store directories
     }
     
-    // Test files - temporary, should be cleaned up
-    match /test/{allPaths=**} {
-      allow read, write: if isAuthenticated() &&
-        isValidImageSize();
+    // Allow authenticated users to upload to general upload directories
+    match /uploads/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow authenticated users to upload to admin directories
+    match /admin/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
     
     // Deny all other access
@@ -49,4 +24,4 @@ service firebase.storage {
       allow read, write: if false;
     }
   }
-} 
+}

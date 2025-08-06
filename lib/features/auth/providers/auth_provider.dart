@@ -61,6 +61,23 @@ class AuthProvider extends ChangeNotifier with RateLimitedService {
       // Create user document (fixed: only call once)
       if (cred.user != null) {
         await _createUserDocIfNeeded(cred.user!);
+
+        // Automatically send email verification
+        try {
+          if (kIsWeb) {
+            await cred.user!.sendEmailVerification(
+              ActionCodeSettings(
+                url: 'https://avii.mn/_/auth/action',
+                handleCodeInApp: true,
+              ),
+            );
+          } else {
+            await cred.user!.sendEmailVerification();
+          }
+        } catch (e) {
+          // Don't fail signup if email verification fails
+          debugPrint('Failed to send email verification: $e');
+        }
       }
 
       return cred.user;

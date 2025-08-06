@@ -6,7 +6,6 @@ import 'auth/super_admin_auth_service.dart';
 import 'auth/super_admin_login_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/featured_management_page.dart';
-import 'pages/payment_management_page.dart';
 import 'pages/subscription_management_page.dart';
 import 'pages/kyc_verification_page.dart';
 import 'pages/backup_management_page.dart';
@@ -212,7 +211,6 @@ class _SuperAdminMainScreenState extends State<SuperAdminMainScreen> {
     'Featured': const FeaturedManagementPage(),
     'Subscriptions': const SubscriptionManagementPage(),
     'KYC Verification': const KYCVerificationPage(),
-    'Payment': const PaymentManagementPage(),
     'Backup Management': const BackupManagementPage(),
     'Settings': const SettingsPage(),
   };

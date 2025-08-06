@@ -885,13 +885,61 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
 
   Future<void> _handleQPayPayment() async {
     try {
-      // Generate unique order ID for subscription payment
-      final orderId =
-          'SUB_${widget.storeId}_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999999)}';
+      debugPrint('=== Starting payment process ===');
+      debugPrint('Store ID: ${widget.storeId}');
+      debugPrint('Store Model: ${_storeModel?.name}');
+      debugPrint('Mounted: $mounted');
+
+      // Validate required data
+      if (widget.storeId.isEmpty) {
+        throw Exception('Store ID is empty');
+      }
+
+      // Check if there's already a pending payment for this store
+      final existingPaymentsSnapshot = await FirebaseFirestore.instance
+          .collection('store_subscriptions')
+          .doc(widget.storeId)
+          .collection('payments')
+          .where('status', isEqualTo: 'pending')
+          .limit(1)
+          .get();
+
+      String orderId;
+
+      if (existingPaymentsSnapshot.docs.isNotEmpty) {
+        // Use existing pending payment
+        final existingPayment = existingPaymentsSnapshot.docs.first;
+        orderId = existingPayment.data()['orderId'];
+        debugPrint('Found existing pending payment: $orderId');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Хүлээгдэж буй төлбөр байна. Үргэлжлүүлж байна...'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        // Generate new unique order ID for subscription payment
+        orderId =
+            'SUB_${widget.storeId}_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999999)}';
+        debugPrint('Generated new Order ID: $orderId');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Шинэ төлбөр үүсгэж байна...'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
 
       // Navigate to custom payment page
       if (mounted) {
-        Navigator.of(context).push(
+        debugPrint('Navigating to CustomPaymentPage...');
+        final result = await Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => CustomPaymentPage(
               storeId: widget.storeId,
@@ -901,13 +949,24 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
             ),
           ),
         );
+        debugPrint('Navigation result: $result');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('=== Payment Error ===');
+      debugPrint('Error: $e');
+      debugPrint('Stack trace: $stackTrace');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Төлбөр эхлүүлэхэд алдаа гарлаа: ${e.toString()}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Дахин оролдох',
+              textColor: Colors.white,
+              onPressed: () => _handleQPayPayment(),
+            ),
           ),
         );
       }

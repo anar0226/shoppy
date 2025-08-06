@@ -98,11 +98,6 @@ class SuperAdminSideMenu extends StatelessWidget {
                   'KYC Verification',
                 ),
                 _buildMenuItem(
-                  'Payment Management',
-                  Icons.payment,
-                  'Payment',
-                ),
-                _buildMenuItem(
                   'Backup Management',
                   Icons.backup,
                   'Backup Management',

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../features/stores/models/store_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class StoreSetupDialog extends StatefulWidget {
   final String storeId;
@@ -121,6 +122,15 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
     });
 
     try {
+      // Verify user authentication first
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated. Please sign in again.');
+      }
+
+      // Force token refresh to ensure valid authentication
+      await user.getIdToken(true);
+
       String logoUrl = '';
       String idCardFrontUrl = '';
       String idCardBackUrl = '';
@@ -256,7 +266,10 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 24),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
                 ],
               ),
             ),
@@ -299,7 +312,10 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const SizedBox(),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Цуцлах'),
+                      ),
                       ElevatedButton.icon(
                         onPressed: _loading ? null : _handleSave,
                         icon: const Icon(Icons.check, color: Colors.white),

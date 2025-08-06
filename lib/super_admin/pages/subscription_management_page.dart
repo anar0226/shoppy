@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class SubscriptionManagementPage extends StatefulWidget {
   const SubscriptionManagementPage({super.key});
@@ -13,66 +14,68 @@ class SubscriptionManagementPage extends StatefulWidget {
 class _SubscriptionManagementPageState
     extends State<SubscriptionManagementPage> {
   bool _isLoading = true;
-  List<Map<String, dynamic>> _subscriptions = [];
+  List<Map<String, dynamic>> _subscriptionPayments = [];
   String _filterStatus = 'all';
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _loadSubscriptions();
+    _loadSubscriptionPayments();
   }
 
-  Future<void> _loadSubscriptions() async {
+  Future<void> _loadSubscriptionPayments() async {
     try {
       setState(() {
         _isLoading = true;
       });
 
-      // Get all stores with subscription information
-      final storesSnapshot = await FirebaseFirestore.instance
-          .collection('stores')
-          .where('subscriptionStatus', isNotEqualTo: null)
-          .get();
+      List<Map<String, dynamic>> payments = [];
 
-      List<Map<String, dynamic>> subscriptions = [];
+      // Get all stores to build a lookup map
+      final storesSnapshot =
+          await FirebaseFirestore.instance.collection('stores').get();
 
+      Map<String, Map<String, dynamic>> storesMap = {};
       for (final storeDoc in storesSnapshot.docs) {
-        final storeData = storeDoc.data();
-        final subscriptionStatus = storeData['subscriptionStatus'];
-        final kycStatus = storeData['kycStatus'] ?? 'pending';
-        final subscriptionPayment = storeData['subscriptionPayment'];
+        storesMap[storeDoc.id] = {
+          'id': storeDoc.id,
+          ...storeDoc.data(),
+        };
+      }
 
-        // Get payment records if they exist
-        List<Map<String, dynamic>> paymentRecords = [];
-        if (subscriptionPayment != null) {
+      // Get all subscription payments from all stores
+      for (final storeEntry in storesMap.entries) {
+        final storeId = storeEntry.key;
+        final storeData = storeEntry.value;
+
+        try {
           final paymentsSnapshot = await FirebaseFirestore.instance
-              .collection('subscription_payments')
-              .where('storeId', isEqualTo: storeDoc.id)
+              .collection('store_subscriptions')
+              .doc(storeId)
+              .collection('payments')
               .orderBy('createdAt', descending: true)
               .get();
 
           for (final paymentDoc in paymentsSnapshot.docs) {
-            paymentRecords.add({
-              'id': paymentDoc.id,
-              ...paymentDoc.data(),
+            final paymentData = paymentDoc.data();
+            payments.add({
+              'paymentId': paymentDoc.id,
+              'storeId': storeId,
+              'storeData': storeData,
+              'paymentData': paymentData,
             });
           }
+        } catch (e) {
+          debugPrint('Error loading payments for store $storeId: $e');
+          // Continue with other stores even if one fails
         }
-
-        subscriptions.add({
-          'storeId': storeDoc.id,
-          'storeData': storeData,
-          'subscriptionStatus': subscriptionStatus,
-          'kycStatus': kycStatus,
-          'paymentRecords': paymentRecords,
-        });
       }
 
-      // Sort by creation date (newest first)
-      subscriptions.sort((a, b) {
-        final aDate = a['storeData']['createdAt'] as Timestamp?;
-        final bDate = b['storeData']['createdAt'] as Timestamp?;
+      // Sort by payment creation date (newest first)
+      payments.sort((a, b) {
+        final aDate = a['paymentData']['createdAt'] as Timestamp?;
+        final bDate = b['paymentData']['createdAt'] as Timestamp?;
         if (aDate == null && bDate == null) return 0;
         if (aDate == null) return 1;
         if (bDate == null) return -1;
@@ -80,601 +83,657 @@ class _SubscriptionManagementPageState
       });
 
       setState(() {
-        _subscriptions = subscriptions;
+        _subscriptionPayments = payments;
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error loading subscriptions: $e');
+      debugPrint('Error loading subscription payments: $e');
       setState(() {
         _isLoading = false;
       });
     }
   }
 
-  Future<void> _verifyKYC(String storeId) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('stores')
-          .doc(storeId)
-          .update({
-        'kycStatus': 'verified',
-        'kycVerifiedAt': FieldValue.serverTimestamp(),
-        'kycVerifiedBy': 'super_admin',
-      });
+  List<Map<String, dynamic>> get _filteredPayments {
+    return _subscriptionPayments.where((payment) {
+      final storeData = payment['storeData'] as Map<String, dynamic>;
+      final paymentData = payment['paymentData'] as Map<String, dynamic>;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('KYC verification successful'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      // Filter by status
+      if (_filterStatus != 'all') {
+        final status = paymentData['status'] ?? 'pending';
+        if (status != _filterStatus) return false;
+      }
 
-      _loadSubscriptions();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error verifying KYC: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _activateStore(String storeId) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('stores')
-          .doc(storeId)
-          .update({
-        'subscriptionStatus': 'active',
-        'activatedAt': FieldValue.serverTimestamp(),
-        'activatedBy': 'super_admin',
-        'isActive': true,
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Store activated successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      _loadSubscriptions();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error activating store: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _rejectKYC(String storeId) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('stores')
-          .doc(storeId)
-          .update({
-        'kycStatus': 'rejected',
-        'kycRejectedAt': FieldValue.serverTimestamp(),
-        'kycRejectedBy': 'super_admin',
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('KYC rejected'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-
-      _loadSubscriptions();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error rejecting KYC: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  List<Map<String, dynamic>> get _filteredSubscriptions {
-    List<Map<String, dynamic>> filtered = _subscriptions;
-
-    // Apply status filter
-    if (_filterStatus != 'all') {
-      filtered = filtered.where((sub) {
-        if (_filterStatus == 'pending_payment') {
-          return sub['subscriptionStatus'] == 'pending_payment';
-        } else if (_filterStatus == 'pending_kyc') {
-          return sub['kycStatus'] == 'pending';
-        } else if (_filterStatus == 'active') {
-          return sub['subscriptionStatus'] == 'active';
-        }
-        return true;
-      }).toList();
-    }
-
-    // Apply search filter
-    if (_searchQuery.isNotEmpty) {
-      filtered = filtered.where((sub) {
-        final storeData = sub['storeData'];
-        final storeName = storeData['name']?.toString().toLowerCase() ?? '';
-        final ownerName =
-            storeData['ownerName']?.toString().toLowerCase() ?? '';
-        final phone = storeData['phone']?.toString().toLowerCase() ?? '';
+      // Filter by search query
+      if (_searchQuery.isNotEmpty) {
+        final storeName = (storeData['name'] ?? '').toString().toLowerCase();
+        final orderId = (paymentData['orderId'] ?? '').toString().toLowerCase();
         final query = _searchQuery.toLowerCase();
 
-        return storeName.contains(query) ||
-            ownerName.contains(query) ||
-            phone.contains(query);
-      }).toList();
-    }
+        if (!storeName.contains(query) && !orderId.contains(query)) {
+          return false;
+        }
+      }
 
-    return filtered;
+      return true;
+    }).toList();
+  }
+
+  Future<void> _updatePaymentStatus(
+      String storeId, String paymentId, String newStatus) async {
+    try {
+      // Update payment status
+      await FirebaseFirestore.instance
+          .collection('store_subscriptions')
+          .doc(storeId)
+          .collection('payments')
+          .doc(paymentId)
+          .update({
+        'status': newStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'verifiedBy': 'super_admin', // Track who verified
+      });
+
+      // Update store KYC and bank verification status based on payment verification
+      String kycStatus;
+      String bankVerificationStatus;
+
+      if (newStatus == 'verified') {
+        kycStatus = 'verified';
+        bankVerificationStatus = 'verified';
+      } else if (newStatus == 'rejected') {
+        kycStatus = 'rejected';
+        bankVerificationStatus = 'rejected';
+      } else {
+        kycStatus = 'pending';
+        bankVerificationStatus = 'pending';
+      }
+
+      // Update store document with new verification statuses
+      await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(storeId)
+          .update({
+        'kycStatus': kycStatus,
+        'bankVerificationStatus': bankVerificationStatus,
+        'subscriptionPaymentStatus': newStatus,
+        'lastVerificationUpdate': FieldValue.serverTimestamp(),
+      });
+
+      // Refresh the data
+      await _loadSubscriptionPayments();
+
+      if (mounted) {
+        String statusText = newStatus == 'verified'
+            ? 'баталгаажуулалт амжилттай'
+            : newStatus == 'rejected'
+                ? 'баталгаажуулалт амжилтгүй'
+                : newStatus;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('Төлбөр болон KYC статус "$statusText" болж өөрчлөгдлөө'),
+            backgroundColor:
+                newStatus == 'verified' ? Colors.green : Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Статус өөрчлөхөд алдаа гарлаа: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showKycPhotos(Map<String, dynamic> storeData) {
+    final idCardFrontImage = storeData['idCardFrontImage'] as String?;
+    final idCardBackImage = storeData['idCardBackImage'] as String?;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Container(
+          width: 600,
+          height: 500,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'KYC Баримт бичгүүд - ${storeData['name']}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: Row(
+                  children: [
+                    // Front ID Card
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Иргэний үнэмлэх (Нүүр тал)',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Expanded(
+                            child: Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: idCardFrontImage != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: CachedNetworkImage(
+                                        imageUrl: idCardFrontImage,
+                                        fit: BoxFit.contain,
+                                        placeholder: (context, url) =>
+                                            const Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                        errorWidget: (context, url, error) =>
+                                            const Center(
+                                          child: Icon(Icons.error,
+                                              color: Colors.red),
+                                        ),
+                                      ),
+                                    )
+                                  : const Center(
+                                      child: Text(
+                                        'Зураг байхгүй',
+                                        style: TextStyle(color: Colors.grey),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    // Back ID Card
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Иргэний үнэмлэх (Ар тал)',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Expanded(
+                            child: Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: idCardBackImage != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: CachedNetworkImage(
+                                        imageUrl: idCardBackImage,
+                                        fit: BoxFit.contain,
+                                        placeholder: (context, url) =>
+                                            const Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                        errorWidget: (context, url, error) =>
+                                            const Center(
+                                          child: Icon(Icons.error,
+                                              color: Colors.red),
+                                        ),
+                                      ),
+                                    )
+                                  : const Center(
+                                      child: Text(
+                                        'Зураг байхгүй',
+                                        style: TextStyle(color: Colors.grey),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Additional store info
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Банкны мэдээлэл:',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text('Банк: ${storeData['selectedBank'] ?? 'Тодорхойгүй'}'),
+                    Text(
+                        'Данс: ${storeData['bankAccountNumber'] ?? 'Тодорхойгүй'}'),
+                    Text(
+                        'Эзэмшигч: ${storeData['bankAccountHolderName'] ?? 'Тодорхойгүй'}'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Subscription Management',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Manage store subscriptions, KYC verification, and activation',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-                ElevatedButton.icon(
-                  onPressed: _loadSubscriptions,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Refresh'),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 32),
-
-            // Filters and Search
-            Row(
-              children: [
-                // Status Filter
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: DropdownButton<String>(
-                    value: _filterStatus,
-                    underline: const SizedBox(),
-                    items: const [
-                      DropdownMenuItem(value: 'all', child: Text('All Status')),
-                      DropdownMenuItem(
-                          value: 'pending_payment',
-                          child: Text('Pending Payment')),
-                      DropdownMenuItem(
-                          value: 'pending_kyc', child: Text('Pending KYC')),
-                      DropdownMenuItem(value: 'active', child: Text('Active')),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _filterStatus = value!;
-                      });
-                    },
-                  ),
-                ),
-
-                const SizedBox(width: 16),
-
-                // Search
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Search stores...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Statistics Cards
-            Row(
-              children: [
-                _buildStatCard(
-                  'Total Subscriptions',
-                  _subscriptions.length.toString(),
-                  Icons.subscriptions,
-                  Colors.blue,
-                ),
-                const SizedBox(width: 16),
-                _buildStatCard(
-                  'Pending Payment',
-                  _subscriptions
-                      .where(
-                          (s) => s['subscriptionStatus'] == 'pending_payment')
-                      .length
-                      .toString(),
-                  Icons.payment,
-                  Colors.orange,
-                ),
-                const SizedBox(width: 16),
-                _buildStatCard(
-                  'Pending KYC',
-                  _subscriptions
-                      .where((s) => s['kycStatus'] == 'pending')
-                      .length
-                      .toString(),
-                  Icons.verified_user,
-                  Colors.red,
-                ),
-                const SizedBox(width: 16),
-                _buildStatCard(
-                  'Active',
-                  _subscriptions
-                      .where((s) => s['subscriptionStatus'] == 'active')
-                      .length
-                      .toString(),
-                  Icons.check_circle,
-                  Colors.green,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Subscriptions List
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _filteredSubscriptions.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No subscriptions found',
-                            style: TextStyle(fontSize: 18, color: Colors.grey),
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: _filteredSubscriptions.length,
-                          itemBuilder: (context, index) {
-                            final subscription = _filteredSubscriptions[index];
-                            return _buildSubscriptionCard(subscription);
-                          },
-                        ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-      String title, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.shade200,
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+      body: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                bottom: BorderSide(color: Colors.grey, width: 0.2),
               ),
-              child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(width: 16),
-            Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
+                const Text(
+                  'Сарын хураамжийн удирдлага',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: color,
                   ),
                 ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubscriptionCard(Map<String, dynamic> subscription) {
-    final storeData = subscription['storeData'];
-    final storeId = subscription['storeId'];
-    final subscriptionStatus = subscription['subscriptionStatus'];
-    final kycStatus = subscription['kycStatus'];
-    final paymentRecords = subscription['paymentRecords'] as List;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Store Info
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: Colors.blue.shade100,
-                  child: Text(
-                    (storeData['name'] ?? 'S').substring(0, 1).toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue.shade700,
-                    ),
+                const SizedBox(height: 8),
+                Text(
+                  'Дэлгүүрүүдийн сарын хураамжийн төлбөрүүд, KYC баримт бичгүүд',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        storeData['name'] ?? 'Unknown Store',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Owner: ${storeData['ownerName'] ?? 'Unknown'} | Phone: ${storeData['phone'] ?? 'N/A'}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                const SizedBox(height: 20),
+                // Filters
+                Row(
                   children: [
-                    _buildStatusChip(subscriptionStatus, 'Subscription'),
-                    const SizedBox(height: 8),
-                    _buildStatusChip(kycStatus, 'KYC'),
+                    // Search
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText:
+                              'Дэлгүүрийн нэр эсвэл захиалгын дугаарaar хайх...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Status filter
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _filterStatus,
+                          onChanged: (value) {
+                            setState(() {
+                              _filterStatus = value ?? 'all';
+                            });
+                          },
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'all', child: Text('Бүх статус')),
+                            DropdownMenuItem(
+                                value: 'pending', child: Text('Хүлээгдэж буй')),
+                            DropdownMenuItem(
+                                value: 'verified', child: Text('Баталгаажсан')),
+                            DropdownMenuItem(
+                                value: 'rejected', child: Text('Татгалзсан')),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Refresh button
+                    ElevatedButton.icon(
+                      onPressed: _loadSubscriptionPayments,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Шинэчлэх'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
-
-            const SizedBox(height: 20),
-
-            // Payment Records
-            if (paymentRecords.isNotEmpty) ...[
-              const Text(
-                'Payment Records',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ...paymentRecords
-                  .map((payment) => Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
+          ),
+          // Content
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _filteredPayments.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              payment['status'] == 'verified'
-                                  ? Icons.check_circle
-                                  : Icons.pending,
-                              color: payment['status'] == 'verified'
-                                  ? Colors.green
-                                  : Colors.orange,
+                              Icons.payment_outlined,
+                              size: 64,
+                              color: Colors.grey.shade400,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Amount: ₮${payment['amount']?.toString() ?? 'N/A'}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w500),
-                                  ),
-                                  Text(
-                                    'Date: ${payment['createdAt'] != null ? DateFormat('MMM dd, yyyy HH:mm').format((payment['createdAt'] as Timestamp).toDate()) : 'N/A'}',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            const SizedBox(height: 16),
                             Text(
-                              payment['status'] ?? 'pending',
+                              'Сарын хураамжийн төлбөр байхгүй байна',
                               style: TextStyle(
-                                color: payment['status'] == 'verified'
-                                    ? Colors.green
-                                    : Colors.orange,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 18,
+                                color: Colors.grey.shade600,
                               ),
                             ),
                           ],
                         ),
-                      ))
-                  .toList(),
-            ],
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(24),
+                        itemCount: _filteredPayments.length,
+                        itemBuilder: (context, index) {
+                          final payment = _filteredPayments[index];
+                          final storeData =
+                              payment['storeData'] as Map<String, dynamic>;
+                          final paymentData =
+                              payment['paymentData'] as Map<String, dynamic>;
 
-            const SizedBox(height: 20),
+                          final createdAt =
+                              paymentData['createdAt'] as Timestamp?;
+                          final amount =
+                              paymentData['amount']?.toDouble() ?? 0.0;
+                          final status = paymentData['status'] ?? 'pending';
 
-            // Action Buttons
-            Row(
-              children: [
-                if (kycStatus == 'pending') ...[
-                  ElevatedButton.icon(
-                    onPressed: () => _verifyKYC(storeId),
-                    icon: const Icon(Icons.verified_user),
-                    label: const Text('Verify KYC'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  OutlinedButton.icon(
-                    onPressed: () => _rejectKYC(storeId),
-                    icon: const Icon(Icons.cancel),
-                    label: const Text('Reject KYC'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: BorderSide(color: Colors.red.shade300),
-                    ),
-                  ),
-                ],
-                if (kycStatus == 'verified' &&
-                    subscriptionStatus == 'pending_payment') ...[
-                  const Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: () => _activateStore(storeId),
-                    icon: const Icon(Icons.check_circle),
-                    label: const Text('Activate Store'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+                          Color statusColor;
+                          String statusText;
+                          switch (status) {
+                            case 'verified':
+                              statusColor = Colors.green;
+                              statusText = 'Баталгаажсан';
+                              break;
+                            case 'rejected':
+                              statusColor = Colors.red;
+                              statusText = 'Татгалзсан';
+                              break;
+                            default:
+                              statusColor = Colors.orange;
+                              statusText = 'Хүлээгдэж буй';
+                          }
 
-  Widget _buildStatusChip(String status, String type) {
-    Color color;
-    IconData icon;
-
-    if (type == 'Subscription') {
-      switch (status) {
-        case 'active':
-          color = Colors.green;
-          icon = Icons.check_circle;
-          break;
-        case 'pending_payment':
-          color = Colors.orange;
-          icon = Icons.payment;
-          break;
-        default:
-          color = Colors.grey;
-          icon = Icons.pending;
-      }
-    } else {
-      // KYC
-      switch (status) {
-        case 'verified':
-          color = Colors.green;
-          icon = Icons.verified_user;
-          break;
-        case 'rejected':
-          color = Colors.red;
-          icon = Icons.cancel;
-          break;
-        default:
-          color = Colors.orange;
-          icon = Icons.pending;
-      }
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(
-            status,
-            style: TextStyle(
-              fontSize: 10,
-              color: color,
-              fontWeight: FontWeight.w500,
-            ),
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Header row
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // Store logo
+                                      Container(
+                                        width: 60,
+                                        height: 60,
+                                        decoration: BoxDecoration(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                              color: Colors.grey.shade300),
+                                        ),
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          child: storeData['logo'] != null
+                                              ? CachedNetworkImage(
+                                                  imageUrl: storeData['logo'],
+                                                  fit: BoxFit.cover,
+                                                  placeholder: (context, url) =>
+                                                      const Center(
+                                                    child:
+                                                        CircularProgressIndicator(),
+                                                  ),
+                                                  errorWidget:
+                                                      (context, url, error) =>
+                                                          const Icon(
+                                                    Icons.store,
+                                                    color: Colors.grey,
+                                                  ),
+                                                )
+                                              : const Icon(
+                                                  Icons.store,
+                                                  color: Colors.grey,
+                                                ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      // Store info
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              storeData['name'] ??
+                                                  'Тодорхойгүй дэлгүүр',
+                                              style: const TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Захиалгын дугаар: ${paymentData['orderId'] ?? 'Тодорхойгүй'}',
+                                              style: TextStyle(
+                                                color: Colors.grey.shade600,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Дүн: ${NumberFormat('#,###').format(amount)} ₮',
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.green,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Status and actions
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  statusColor.withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              border: Border.all(
+                                                  color: statusColor),
+                                            ),
+                                            child: Text(
+                                              statusText,
+                                              style: TextStyle(
+                                                color: statusColor,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            createdAt != null
+                                                ? DateFormat('yyyy/MM/dd HH:mm')
+                                                    .format(createdAt.toDate())
+                                                : 'Тодорхойгүй огноо',
+                                            style: TextStyle(
+                                              color: Colors.grey.shade600,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  // Bank info
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade50,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.account_balance,
+                                            size: 20),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Банк: ${storeData['selectedBank'] ?? 'Тодорхойгүй'}',
+                                                style: const TextStyle(
+                                                    fontSize: 14),
+                                              ),
+                                              Text(
+                                                'Данс: ${storeData['bankAccountNumber'] ?? 'Тодорхойгүй'}',
+                                                style: const TextStyle(
+                                                    fontSize: 14),
+                                              ),
+                                              Text(
+                                                'Эзэмшигч: ${storeData['bankAccountHolderName'] ?? 'Тодорхойгүй'}',
+                                                style: const TextStyle(
+                                                    fontSize: 14),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  // Action buttons
+                                  Row(
+                                    children: [
+                                      ElevatedButton.icon(
+                                        onPressed: () =>
+                                            _showKycPhotos(storeData),
+                                        icon: const Icon(Icons.photo_library),
+                                        label: const Text('KYC зургууд'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blue,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      if (status == 'pending') ...[
+                                        ElevatedButton.icon(
+                                          onPressed: () => _updatePaymentStatus(
+                                            payment['storeId'],
+                                            payment['paymentId'],
+                                            'verified',
+                                          ),
+                                          icon: const Icon(Icons.check),
+                                          label: const Text('Зөвшөөрөх'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.green,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        ElevatedButton.icon(
+                                          onPressed: () => _updatePaymentStatus(
+                                            payment['storeId'],
+                                            payment['paymentId'],
+                                            'rejected',
+                                          ),
+                                          icon: const Icon(Icons.close),
+                                          label: const Text('Татгалзах'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),
