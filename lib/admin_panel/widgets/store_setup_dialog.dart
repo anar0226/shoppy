@@ -125,7 +125,7 @@ class _StoreSetupDialogState extends State<StoreSetupDialog> {
       // Verify user authentication first
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
-        throw Exception('User not authenticated. Please sign in again.');
+        throw Exception('Хэрэглэгч баталгаажаагүй байна. Дахин нэвтэрнэ үү.');
       }
 
       // Force token refresh to ensure valid authentication

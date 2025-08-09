@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:math';
-import 'package:url_launcher/url_launcher.dart';
 import '../../features/stores/models/store_model.dart';
 import '../../core/services/error_handler_service.dart';
-import '../../core/services/qpay_service.dart';
 import '../../core/utils/popup_utils.dart';
-import '../../core/utils/order_id_generator.dart';
 import '../../features/settings/themes/app_themes.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/top_nav_bar.dart';
@@ -50,7 +46,6 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
   XFile? _idCardBackFile;
 
   final ImagePicker _picker = ImagePicker();
-  final QPayService _qpayService = QPayService();
 
   @override
   void initState() {
@@ -298,6 +293,68 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
       );
     }
 
+    final width = MediaQuery.of(context).size.width;
+    final isCompact = width < 1100;
+
+    if (isCompact) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF4285F4),
+          elevation: 0,
+          title: const Text('Төлбөрийн тохиргоо',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        drawer: const Drawer(
+          width: 280,
+          child: SafeArea(
+            child: SideMenu(selected: 'Төлбөрийн тохиргоо'),
+          ),
+        ),
+        body: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _buildBankAccountSection(),
+                const SizedBox(height: 16),
+                _buildKYCSection(),
+                const SizedBox(height: 16),
+                _buildSubscriptionSection(),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isSaving ? null : _savePayoutSettings,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4285F4),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text('Тохиргоо хадгалах'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Row(
         children: [
@@ -313,19 +370,12 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
                       padding: const EdgeInsets.all(24),
                       child: Column(
                         children: [
-                          // 1. Банкны дансны мэдээлэл
                           _buildBankAccountSection(),
                           const SizedBox(height: 24),
-
-                          // 2. KYC Баталгаажуулалт
                           _buildKYCSection(),
                           const SizedBox(height: 24),
-
-                          // 3. Сарын хураамж
                           _buildSubscriptionSection(),
                           const SizedBox(height: 32),
-
-                          // Save button
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
@@ -372,6 +422,9 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
   }
 
   Widget _buildBankAccountSection() {
+    final kycStatus = _storeModel!.kycStatus;
+    final isKycApproved = kycStatus == KYCStatus.approved;
+    final isKycRejected = kycStatus == KYCStatus.rejected;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -401,20 +454,43 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade100,
+                  color: isKycApproved
+                      ? Colors.green.shade100
+                      : isKycRejected
+                          ? Colors.red.shade100
+                          : Colors.orange.shade100,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.warning,
-                        color: Colors.orange.shade600, size: 16),
+                    Icon(
+                      isKycApproved
+                          ? Icons.verified
+                          : isKycRejected
+                              ? Icons.error
+                              : Icons.warning,
+                      color: isKycApproved
+                          ? Colors.green.shade700
+                          : isKycRejected
+                              ? Colors.red.shade700
+                              : Colors.orange.shade700,
+                      size: 16,
+                    ),
                     const SizedBox(width: 4),
                     Text(
-                      'Баталгаажуулалт хүлээгдэж байна',
+                      isKycApproved
+                          ? 'Баталгаажуулалт амжилттай'
+                          : isKycRejected
+                              ? 'Баталгаажуулалт амжилтгүй'
+                              : 'Баталгаажуулалт хүлээж байна',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.orange.shade700,
+                        color: isKycApproved
+                            ? Colors.green.shade700
+                            : isKycRejected
+                                ? Colors.red.shade700
+                                : Colors.orange.shade700,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -583,6 +659,10 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
   }
 
   Widget _buildKYCSection() {
+    final kycStatus = _storeModel!.kycStatus;
+    final isKycApproved = kycStatus == KYCStatus.approved;
+    final isKycRejected = kycStatus == KYCStatus.rejected;
+    final isCompact = MediaQuery.of(context).size.width < 1100;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -613,20 +693,43 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade100,
+                  color: isKycApproved
+                      ? Colors.green.shade100
+                      : isKycRejected
+                          ? Colors.red.shade100
+                          : Colors.orange.shade100,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.warning,
-                        color: Colors.orange.shade600, size: 16),
+                    Icon(
+                      isKycApproved
+                          ? Icons.verified
+                          : isKycRejected
+                              ? Icons.error
+                              : Icons.warning,
+                      color: isKycApproved
+                          ? Colors.green.shade700
+                          : isKycRejected
+                              ? Colors.red.shade700
+                              : Colors.orange.shade700,
+                      size: 16,
+                    ),
                     const SizedBox(width: 4),
                     Text(
-                      'Баталгаажуулалт хүлээгдэж байна',
+                      isKycApproved
+                          ? 'Баталгаажуулалт амжилттай'
+                          : isKycRejected
+                              ? 'Баталгаажуулалт амжилтгүй'
+                              : 'Баталгаажуулалт хүлээгдэж байна',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.orange.shade700,
+                        color: isKycApproved
+                            ? Colors.green.shade700
+                            : isKycRejected
+                                ? Colors.red.shade700
+                                : Colors.orange.shade700,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -637,190 +740,61 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
           ),
           const SizedBox(height: 20),
 
-          // Upload sections
-          Row(
-            children: [
-              // Front side
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                        color: AppThemes.getBorderColor(context),
-                        style: BorderStyle.solid),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Иргэний үнэмлэх (Урд тал)',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppThemes.getTextColor(context),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Icon(
-                        Icons.cloud_upload,
-                        size: 48,
-                        color: Colors.grey.shade400,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Иргэний үнэмлэхийн урд талыг оруулна уу',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppThemes.getSecondaryTextColor(context),
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: (_idCardFrontUrl != null &&
-                                      _idCardFrontUrl!.isNotEmpty) ||
-                                  (_storeModel?.kycStatus ==
-                                          KYCStatus.pending ||
-                                      _storeModel?.kycStatus ==
-                                          KYCStatus.approved)
-                              ? null
-                              : () => _pickImage('front'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: (_idCardFrontUrl != null &&
-                                        _idCardFrontUrl!.isNotEmpty) ||
-                                    (_storeModel?.kycStatus ==
-                                            KYCStatus.pending ||
-                                        _storeModel?.kycStatus ==
-                                            KYCStatus.approved)
-                                ? Colors.grey
-                                : const Color(0xFF4285F4),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: Text(
-                            (_idCardFrontUrl != null &&
-                                    _idCardFrontUrl!.isNotEmpty)
-                                ? 'Оруулсан'
-                                : (_storeModel?.kycStatus ==
-                                            KYCStatus.pending ||
-                                        _storeModel?.kycStatus ==
-                                            KYCStatus.approved)
-                                    ? 'Хүлээгдэж байна'
-                                    : 'Файл сонгох',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (_idCardFrontUrl != null || _idCardFrontFile != null)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: Icon(Icons.check_circle,
-                              color: Colors.green, size: 20),
-                        ),
-                    ],
+          // Upload sections (responsive)
+          if (!isCompact)
+            Row(
+              children: [
+                // Front side
+                Expanded(
+                  child: _buildKycSide(
+                    title: 'Иргэний үнэмлэх (Урд тал)',
+                    onPick: () => _pickImage('front'),
+                    uploadedUrl: _idCardFrontUrl,
+                    file: _idCardFrontFile,
+                    isPendingOrApproved:
+                        (_storeModel?.kycStatus == KYCStatus.pending ||
+                            _storeModel?.kycStatus == KYCStatus.approved),
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              // Back side
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                        color: AppThemes.getBorderColor(context),
-                        style: BorderStyle.solid),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Иргэний үнэмлэх (Ар тал)',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppThemes.getTextColor(context),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Icon(
-                        Icons.cloud_upload,
-                        size: 48,
-                        color: Colors.grey.shade400,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Иргэний үнэмлэхийн ар талыг оруулна уу',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppThemes.getSecondaryTextColor(context),
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: (_idCardBackUrl != null &&
-                                      _idCardBackUrl!.isNotEmpty) ||
-                                  (_storeModel?.kycStatus ==
-                                          KYCStatus.pending ||
-                                      _storeModel?.kycStatus ==
-                                          KYCStatus.approved)
-                              ? null
-                              : () => _pickImage('back'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: (_idCardBackUrl != null &&
-                                        _idCardBackUrl!.isNotEmpty) ||
-                                    (_storeModel?.kycStatus ==
-                                            KYCStatus.pending ||
-                                        _storeModel?.kycStatus ==
-                                            KYCStatus.approved)
-                                ? Colors.grey
-                                : const Color(0xFF4285F4),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: Text(
-                            (_idCardBackUrl != null &&
-                                    _idCardBackUrl!.isNotEmpty)
-                                ? 'Оруулсан'
-                                : (_storeModel?.kycStatus ==
-                                            KYCStatus.pending ||
-                                        _storeModel?.kycStatus ==
-                                            KYCStatus.approved)
-                                    ? 'Хүлээгдэж байна'
-                                    : 'Файл сонгох',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (_idCardBackUrl != null || _idCardBackFile != null)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: Icon(Icons.check_circle,
-                              color: Colors.green, size: 20),
-                        ),
-                    ],
+                const SizedBox(width: 16),
+                // Back side
+                Expanded(
+                  child: _buildKycSide(
+                    title: 'Иргэний үнэмлэх (Ар тал)',
+                    onPick: () => _pickImage('back'),
+                    uploadedUrl: _idCardBackUrl,
+                    file: _idCardBackFile,
+                    isPendingOrApproved:
+                        (_storeModel?.kycStatus == KYCStatus.pending ||
+                            _storeModel?.kycStatus == KYCStatus.approved),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            )
+          else
+            Column(
+              children: [
+                _buildKycSide(
+                  title: 'Иргэний үнэмлэх (Урд тал)',
+                  onPick: () => _pickImage('front'),
+                  uploadedUrl: _idCardFrontUrl,
+                  file: _idCardFrontFile,
+                  isPendingOrApproved:
+                      (_storeModel?.kycStatus == KYCStatus.pending ||
+                          _storeModel?.kycStatus == KYCStatus.approved),
+                ),
+                const SizedBox(height: 12),
+                _buildKycSide(
+                  title: 'Иргэний үнэмлэх (Ар тал)',
+                  onPick: () => _pickImage('back'),
+                  uploadedUrl: _idCardBackUrl,
+                  file: _idCardBackFile,
+                  isPendingOrApproved:
+                      (_storeModel?.kycStatus == KYCStatus.pending ||
+                          _storeModel?.kycStatus == KYCStatus.approved),
+                ),
+              ],
+            ),
           const SizedBox(height: 20),
 
           // KYC Requirements
@@ -878,6 +852,89 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // Reusable KYC side widget for compact/desktop
+  Widget _buildKycSide({
+    required String title,
+    required VoidCallback onPick,
+    required String? uploadedUrl,
+    required XFile? file,
+    required bool isPendingOrApproved,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        border: Border.all(
+            color: AppThemes.getBorderColor(context), style: BorderStyle.solid),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppThemes.getTextColor(context),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Icon(
+            Icons.cloud_upload,
+            size: 48,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppThemes.getSecondaryTextColor(context),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: (uploadedUrl != null && uploadedUrl.isNotEmpty) ||
+                      isPendingOrApproved
+                  ? null
+                  : onPick,
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    (uploadedUrl != null && uploadedUrl.isNotEmpty) ||
+                            isPendingOrApproved
+                        ? Colors.grey
+                        : const Color(0xFF4285F4),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                (uploadedUrl != null && uploadedUrl.isNotEmpty)
+                    ? 'Оруулсан'
+                    : isPendingOrApproved
+                        ? 'Хүлээгдэж байна'
+                        : 'Файл сонгох',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          if (uploadedUrl != null || file != null)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Icon(Icons.check_circle, color: Colors.green, size: 20),
+            ),
         ],
       ),
     );
@@ -974,6 +1031,11 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
   }
 
   Widget _buildSubscriptionSection() {
+    final subscriptionStatus = _storeModel!.subscriptionStatus;
+    final isSubPaid = subscriptionStatus == SubscriptionStatus.active;
+    final isSubFailed = subscriptionStatus == SubscriptionStatus.expired ||
+        subscriptionStatus == SubscriptionStatus.cancelled;
+    final isCompact = MediaQuery.of(context).size.width < 1100;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -1004,19 +1066,43 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade100,
+                  color: isSubPaid
+                      ? Colors.green.shade100
+                      : isSubFailed
+                          ? Colors.red.shade100
+                          : Colors.red.shade100,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.error, color: Colors.red.shade600, size: 16),
+                    Icon(
+                      isSubPaid
+                          ? Icons.check_circle
+                          : isSubFailed
+                              ? Icons.error
+                              : Icons.error,
+                      color: isSubPaid
+                          ? Colors.green.shade700
+                          : isSubFailed
+                              ? Colors.red.shade700
+                              : Colors.red.shade700,
+                      size: 16,
+                    ),
                     const SizedBox(width: 4),
                     Text(
-                      'Төлөөгүй',
+                      isSubPaid
+                          ? 'төлсөн'
+                          : isSubFailed
+                              ? 'Төлбөр амжилтгүй'
+                              : 'Төлөөгүй',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.red.shade700,
+                        color: isSubPaid
+                            ? Colors.green.shade700
+                            : isSubFailed
+                                ? Colors.red.shade700
+                                : Colors.red.shade700,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1028,56 +1114,22 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
           const SizedBox(height: 20),
 
           // Subscription overview
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Сарын хураамж төлбөрийн дүн',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppThemes.getSecondaryTextColor(context),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      '₮ 25,000',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF4285F4),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Дараагийн төлбөрийн огноо',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppThemes.getSecondaryTextColor(context),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Тодорхойгүй',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: AppThemes.getTextColor(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          if (!isCompact)
+            Row(
+              children: [
+                Expanded(child: _buildSubSummaryLeft()),
+                Expanded(child: _buildSubSummaryRight()),
+              ],
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSubSummaryLeft(),
+                const SizedBox(height: 12),
+                _buildSubSummaryRight(),
+              ],
+            ),
           const SizedBox(height: 24),
 
           // QPay payment section
@@ -1243,6 +1295,54 @@ class _StorePayoutSettingsPageState extends State<StorePayoutSettingsPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSubSummaryLeft() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Сарын хураамж төлбөрийн дүн',
+          style: TextStyle(
+            fontSize: 14,
+            color: AppThemes.getSecondaryTextColor(context),
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          '₮ 25,000',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF4285F4),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubSummaryRight() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Дараагийн төлбөрийн огноо',
+          style: TextStyle(
+            fontSize: 14,
+            color: AppThemes.getSecondaryTextColor(context),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Тодорхойгүй',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: AppThemes.getTextColor(context),
+          ),
+        ),
+      ],
     );
   }
 }

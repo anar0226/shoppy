@@ -46,6 +46,30 @@ class _ProductsPageState extends State<ProductsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isCompact = width < 1100;
+
+    if (isCompact) {
+      return Scaffold(
+        backgroundColor: AppThemes.getBackgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF4285F4),
+          elevation: 0,
+          title: const Text('Бүтээгдэхүүн',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        drawer: Drawer(
+          width: 280,
+          child: SafeArea(
+            child: SideMenu(selected: 'Бүтээгдэхүүн'),
+          ),
+        ),
+        body: _buildBodyMobile(),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
@@ -286,6 +310,150 @@ class _ProductsPageState extends State<ProductsPage> {
           ]);
         }).toList(),
       ),
+    );
+  }
+
+  Widget _buildBodyMobile() {
+    if (!_storeLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_storeId == null) {
+      return const Center(child: Text('Танд одоогоор дэлгүүр байхгүй байна.'));
+    }
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('products')
+          .where('storeId', isEqualTo: _storeId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Бүтээгдэхүүн',
+                      style:
+                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => const AddProductDialog(),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6)),
+                    ),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Нэмэх'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Бүтээгдэхүүн хайх...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Бүтээгдэхүүнүүд',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              // On mobile, render a simple list instead of a wide DataTable
+              ...docs.map((doc) {
+                final data = doc.data();
+                final name = data['name'] ?? '';
+                final price = _toDouble(data['price']);
+                final stock = _toNum(data['stock'] ?? data['inventory']);
+                final isActive = data['isActive'] ?? true;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppThemes.getCardColor(context),
+                    borderRadius: BorderRadius.circular(12),
+                    border:
+                        Border.all(color: AppThemes.getBorderColor(context)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(name.isNotEmpty ? name[0] : '?',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(name,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 4),
+                            Text(
+                                'Үнэ: ₮${price.toStringAsFixed(0)}  |  Нөөц: $stock',
+                                style: const TextStyle(fontSize: 12)),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? Colors.green.shade200
+                                    : Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(isActive ? 'актив' : 'инактив',
+                                  style: TextStyle(
+                                      color: AppThemes.getTextColor(context),
+                                      fontSize: 11)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () => _editProduct(doc.id, data),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteProduct(doc.id, name),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
     );
   }
 

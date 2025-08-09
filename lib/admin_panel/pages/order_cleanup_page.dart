@@ -18,6 +18,42 @@ class _OrderCleanupPageState extends State<OrderCleanupPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.width < 1100;
+
+    if (isCompact) {
+      return Scaffold(
+        backgroundColor: AppThemes.getBackgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF4285F4),
+          elevation: 0,
+          title: const Text('Захиалгын цэвэрлэлт',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        drawer: Drawer(
+          width: 280,
+          child:
+              const SafeArea(child: SideMenu(selected: 'Захиалгын цэвэрлэлт')),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 16),
+              _buildCleanupInfo(),
+              const SizedBox(height: 16),
+              _buildCleanupActions(),
+              const SizedBox(height: 16),
+              _buildStatusSection(),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(

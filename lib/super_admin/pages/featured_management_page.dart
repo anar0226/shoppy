@@ -10,6 +10,29 @@ class StoreInfo {
   StoreInfo({required this.id, required this.name, required this.logo});
 }
 
+// ===== Category Config Models =====
+class _LeafConfig {
+  final String id;
+  final String name;
+  const _LeafConfig(this.id, this.name);
+}
+
+class _SubcategoryConfig {
+  final String id;
+  final String name;
+  final List<_LeafConfig> leaves;
+  const _SubcategoryConfig(this.id, this.name, [this.leaves = const []]);
+  bool get hasLeaves => leaves.isNotEmpty;
+}
+
+class _CategoryConfig {
+  final String id;
+  final String name;
+  final List<_SubcategoryConfig> subs;
+  const _CategoryConfig(this.id, this.name, [this.subs = const []]);
+  bool get hasSubs => subs.isNotEmpty;
+}
+
 /// Unified Featured management page replicating the provided mock-ups.
 class FeaturedManagementPage extends StatefulWidget {
   const FeaturedManagementPage({super.key});
@@ -26,12 +49,86 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
   List<StoreInfo> _allStores = [];
   List<String> _featuredMain = []; // max 2 store ids
 
-  // === CATEGORY TREE ===
-  List<DocumentSnapshot<Map<String, dynamic>>> _categories = [];
-  final Map<String, List<DocumentSnapshot<Map<String, dynamic>>>>
-      _subcategories = {};
-  final Map<String, List<DocumentSnapshot<Map<String, dynamic>>>>
-      _leafCategories = {};
+  // === CATEGORY TREE (Configured) ===
+  late final List<_CategoryConfig> _categoryConfig = [
+    _CategoryConfig('women', 'Эмэгтэй', [
+      _SubcategoryConfig('outerwear_tshirts', 'Гадуур хувцас & Футболк', [
+        _LeafConfig('hoodie', 'Малгайтай цамц'),
+      ]),
+      _SubcategoryConfig('womens_shoes', 'Эмэгтэй гутал', [
+        _LeafConfig('heels', 'Өндөр өсгийт'),
+        _LeafConfig('slippers', 'Шаахай'),
+        _LeafConfig('sneakers', 'Пүүз'),
+        _LeafConfig('others', 'Бусад'),
+      ]),
+      _SubcategoryConfig('dresses', 'Даашинз'),
+      _SubcategoryConfig('pants', 'Өмд'),
+      _SubcategoryConfig('intimates', 'Дотуур хувцас', [
+        _LeafConfig('bra', 'Лифчик'),
+        _LeafConfig('lingerie', 'Ланжери'),
+        _LeafConfig('shapewear', 'Биеийн даруулга'),
+        _LeafConfig('underwear', 'Дотоож'),
+      ]),
+      _SubcategoryConfig('activewear', 'Актив хувцас'),
+    ]),
+    _CategoryConfig('men', 'Эрэгтэй', [
+      _SubcategoryConfig('shoes', 'Гутал', [
+        _LeafConfig('sneakers', 'Пүүз'),
+        _LeafConfig('slippers', 'Шаахай'),
+        _LeafConfig('boots', 'Гутал'),
+        _LeafConfig('athletic', 'Спорт гутал'),
+      ]),
+      _SubcategoryConfig('outerwear', 'Гадуур хувцас', [
+        _LeafConfig('jackets', 'Куртка'),
+        _LeafConfig('hoodie', 'Малгайтай цамц'),
+        _LeafConfig('polo', 'Поло'),
+        _LeafConfig('shirts', 'Цамц'),
+      ]),
+      _SubcategoryConfig('others', 'Бусад'),
+      _SubcategoryConfig('pants', 'Өмд'),
+      _SubcategoryConfig('tshirts', 'Футболк'),
+      _SubcategoryConfig('activewear', 'Спорт хувцас'),
+    ]),
+    _CategoryConfig('beauty', 'Гоо сайхан', [
+      _SubcategoryConfig('haircare', 'Үс арчилгаа'),
+      _SubcategoryConfig('makeup', 'Нүүр будалт'),
+      _SubcategoryConfig('nailcare', 'Хумс арчилгаа'),
+      _SubcategoryConfig('perfume', 'Үнэртэй ус'),
+      _SubcategoryConfig('skincare', 'Арьс арчилгаа'),
+      _SubcategoryConfig('others', 'Бусад'),
+    ]),
+    _CategoryConfig('foods_drinks', 'Хоол хүнс, ундаа', [
+      _SubcategoryConfig('foods_drinks', 'Хоол хүнс, ундаа'),
+    ]),
+    _CategoryConfig('home', 'Гэр ахуй', [
+      _SubcategoryConfig('home', 'Гэр ахуй'),
+    ]),
+    _CategoryConfig('fitness', 'Фитнесс', [
+      _SubcategoryConfig('equipment', 'Фитнесс тоног төхөөрөмж'),
+      _SubcategoryConfig('supplements', 'Витамин ба нэмэлт бэлдмэлүүд'),
+    ]),
+    _CategoryConfig('accessories', 'Аксессуары', [
+      _SubcategoryConfig('belts', 'Бүс'),
+      _SubcategoryConfig('hats', 'Малгай'),
+      _SubcategoryConfig('jewelry', 'Гоёл чимэглэл'),
+      _SubcategoryConfig('sunglasses', 'Нарны шил'),
+      _SubcategoryConfig('wallets', 'Түрийвч'),
+      _SubcategoryConfig('others', 'Бусад'),
+    ]),
+    _CategoryConfig('pet_products', 'Амьтдын бүтээгдэхүүн', [
+      _SubcategoryConfig('pet_products', 'Амьтдын бүтээгдэхүүн'),
+    ]),
+    _CategoryConfig('toys_games', 'Тоглоомнууд', [
+      _SubcategoryConfig('toys_games', 'Тоглоомнууд'),
+    ]),
+    _CategoryConfig('electronics', 'Цахилгаан бараа', [
+      _SubcategoryConfig('headphones', 'Чихэвч'),
+      _SubcategoryConfig('phones', 'Гар утас'),
+      _SubcategoryConfig('phone_accessories', 'Утасны дагалдах хэрэгсэлүүд'),
+      _SubcategoryConfig(
+          'computer_accessories', 'Компьютерийн дагалдах хэрэгсэлүүд'),
+    ]),
+  ];
 
   bool _loading = true;
 
@@ -63,46 +160,6 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
     if (featuredDoc.exists) {
       _featuredMain =
           List<String>.from(featuredDoc.data()!['storeIds'] ?? <String>[]);
-    }
-
-    // Categories
-    final catSnap = await _firestore.collection('categories').get();
-    _categories = catSnap.docs;
-
-    // Only load subcategories for Women, Men, and Beauty
-    final categoriesWithSubs = ['women', 'men', 'beauty'];
-
-    for (final c in _categories) {
-      final categoryId = c.id.toLowerCase();
-
-      if (categoriesWithSubs.contains(categoryId)) {
-        final subSnap = await c.reference.collection('subcategories').get();
-        _subcategories[c.id] = subSnap.docs;
-
-        // Load leaf categories only for specific subcategories
-        for (final s in subSnap.docs) {
-          final subId = s.id.toLowerCase();
-          bool hasLeafCategories = false;
-
-          if (categoryId == 'women') {
-            // Women subcategories with leaf categories: shoes, intimates
-            hasLeafCategories = ['shoes', 'intimates'].contains(subId);
-          } else if (categoryId == 'men') {
-            // Men subcategories with leaf categories: shoes, outerwear
-            hasLeafCategories = ['shoes', 'outerwear'].contains(subId);
-          }
-          // Beauty has no leaf categories
-
-          if (hasLeafCategories) {
-            final leafSnap =
-                await s.reference.collection('leafCategories').get();
-            _leafCategories['${c.id}_${s.id}'] = leafSnap.docs;
-          }
-        }
-      } else {
-        // Categories without subcategories: electronics, foods_and_drinks, home, fitness, accessories, animal_products, games
-        _subcategories[c.id] = [];
-      }
     }
 
     setState(() => _loading = false);
@@ -147,6 +204,21 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
                 color: Colors.black,
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            TextButton.icon(
+              onPressed: _saveAllFeatured,
+              icon: const Icon(Icons.save, color: Colors.white, size: 18),
+              style: TextButton.styleFrom(
+                backgroundColor: const Color(0xFF4285F4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              label: const Text(
+                'Save',
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -543,10 +615,9 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
   List<Widget> _buildExpandedCategoryList() {
     List<Widget> widgets = [];
 
-    for (final catDoc in _categories) {
-      final categoryName = catDoc.data()?['name'] ?? catDoc.id;
-      final subDocs = _subcategories[catDoc.id] ?? [];
-      final hasSubcategories = subDocs.isNotEmpty;
+    for (int cIndex = 0; cIndex < _categoryConfig.length; cIndex++) {
+      final cat = _categoryConfig[cIndex];
+      final hasSubcategories = cat.hasSubs;
 
       // Category Header
       widgets.add(
@@ -558,7 +629,7 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
                   color: Colors.grey[600], size: 20),
               const SizedBox(width: 8),
               Text(
-                categoryName,
+                cat.name,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -598,11 +669,9 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
       );
 
       if (hasSubcategories) {
-        // Categories with subcategories (Women, Men, Beauty)
-        for (final subDoc in subDocs) {
-          final subName = subDoc.data()?['name'] ?? subDoc.id;
-          final leafDocs = _leafCategories['${catDoc.id}_${subDoc.id}'] ?? [];
-          final hasLeafCategories = leafDocs.isNotEmpty;
+        // Categories with subcategories
+        for (final sub in cat.subs) {
+          final hasLeafCategories = sub.hasLeaves;
 
           widgets.add(
             Container(
@@ -613,7 +682,7 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
                       color: Colors.grey[500], size: 16),
                   const SizedBox(width: 8),
                   Text(
-                    subName,
+                    sub.name,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -640,7 +709,7 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
                   const Spacer(),
                   Text(
                     hasLeafCategories
-                        ? '${leafDocs.length} leaf categories'
+                        ? '${sub.leaves.length} leaf categories'
                         : 'Direct featured stores',
                     style: TextStyle(
                       fontSize: 12,
@@ -661,19 +730,17 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
               Container(
                 margin: const EdgeInsets.only(left: 48, bottom: 16),
                 child: _SubCategoryFeaturedSlots(
-                  categoryId: catDoc.id,
-                  subId: subDoc.id,
-                  leafDoc: null, // null indicates this is for subcategory level
+                  categoryId: cat.id,
+                  subId: sub.id,
+                  leafId: null, // null indicates this is for subcategory level
                   allStores: _allStores,
                 ),
               ),
             );
           }
 
-          // Leaf categories (only for Women's shoes & intimates, Men's shoes & outerwear)
-          for (final leafDoc in leafDocs) {
-            final leafName = leafDoc.data()?['name'] ?? leafDoc.id;
-
+          // Leaf categories
+          for (final leaf in sub.leaves) {
             widgets.add(
               Container(
                 margin: const EdgeInsets.only(left: 48, bottom: 12),
@@ -682,7 +749,7 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
                     Icon(Icons.circle, color: Colors.grey[400], size: 8),
                     const SizedBox(width: 12),
                     Text(
-                      leafName,
+                      leaf.name,
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -716,9 +783,9 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
               Container(
                 margin: const EdgeInsets.only(left: 72, bottom: 20),
                 child: _SubCategoryFeaturedSlots(
-                  categoryId: catDoc.id,
-                  subId: subDoc.id,
-                  leafDoc: leafDoc,
+                  categoryId: cat.id,
+                  subId: sub.id,
+                  leafId: leaf.id,
                   allStores: _allStores,
                 ),
               ),
@@ -726,15 +793,14 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
           }
         }
       } else {
-        // Categories without subcategories (Electronics, Foods & Drinks, Home, Fitness, Accessories, Animal Products, Games)
+        // Categories without subcategories
         widgets.add(
           Container(
             margin: const EdgeInsets.only(left: 24, bottom: 16),
             child: _SubCategoryFeaturedSlots(
-              categoryId: catDoc.id,
-              subId:
-                  'main', // Use 'main' as identifier for direct category featured stores
-              leafDoc: null,
+              categoryId: cat.id,
+              subId: 'main', // identifier for direct category featured stores
+              leafId: null,
               allStores: _allStores,
             ),
           ),
@@ -742,7 +808,7 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
       }
 
       // Add separator between categories
-      if (catDoc != _categories.last) {
+      if (cIndex != _categoryConfig.length - 1) {
         widgets.add(
           Container(
             margin: const EdgeInsets.symmetric(vertical: 20),
@@ -754,6 +820,31 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
     }
 
     return widgets;
+  }
+
+  Future<void> _saveAllFeatured() async {
+    try {
+      // Persist the top featured stores (if used elsewhere)
+      await _firestore
+          .collection('platform_settings')
+          .doc('featured_stores')
+          .set({
+        'storeIds': _featuredMain,
+        'updatedAt': FieldValue.serverTimestamp()
+      });
+
+      // Nothing else to aggregate here because each slot widget writes on drop/delete.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Featured settings saved'),
+            backgroundColor: Colors.green));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Алдаа: $e'), backgroundColor: Colors.red));
+      }
+    }
   }
 }
 
@@ -840,14 +931,13 @@ class _StoreTile extends StatelessWidget {
 class _SubCategoryFeaturedSlots extends StatefulWidget {
   final String categoryId;
   final String subId;
-  final DocumentSnapshot<Map<String, dynamic>>?
-      leafDoc; // null for subcategory level
+  final String? leafId; // null for subcategory level
   final List<StoreInfo> allStores;
 
   const _SubCategoryFeaturedSlots({
     required this.categoryId,
     required this.subId,
-    required this.leafDoc,
+    required this.leafId,
     required this.allStores,
   });
 
@@ -867,8 +957,8 @@ class _SubCategoryFeaturedSlotsState extends State<_SubCategoryFeaturedSlots> {
   }
 
   String get _docId {
-    if (widget.leafDoc != null) {
-      return '${widget.categoryId}_${widget.subId}_${widget.leafDoc!.id}';
+    if (widget.leafId != null) {
+      return '${widget.categoryId}_${widget.subId}_${widget.leafId}';
     } else {
       return '${widget.categoryId}_${widget.subId}';
     }

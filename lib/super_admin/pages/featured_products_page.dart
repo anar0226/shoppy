@@ -344,13 +344,11 @@ class _FeaturedProductsPageState extends State<FeaturedProductsPage> {
       await ErrorHandlerService.instance.handleError(
         operation: 'save_featured_products',
         error: e,
-        context: context,
-        showUserMessage: true,
+        showUserMessage: false,
         logError: true,
         fallbackValue: null,
       );
       if (mounted) {
-        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error saving featured products: $e'),

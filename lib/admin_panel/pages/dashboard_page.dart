@@ -477,6 +477,37 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isCompact = width < 1100;
+
+    if (isCompact) {
+      return Scaffold(
+        backgroundColor: AppThemes.getBackgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF4285F4),
+          elevation: 0,
+          title: const Text(
+            'Home',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        drawer: Drawer(
+          width: 280,
+          child: SafeArea(
+            child: SideMenu(
+              selected: 'Нүүр хуудас',
+            ),
+          ),
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? _buildErrorState()
+                : _buildDashboardContent(),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
@@ -559,130 +590,151 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildStatsCards() {
+    final isCompact = MediaQuery.of(context).size.width < 1100;
+    final cards = <Widget>[
+      StatCard(
+        title: 'Нийт борлуулалт',
+        value: '₮${_metrics?.totalRevenue.toStringAsFixed(0) ?? '0'}',
+        delta: '${_metrics?.revenueChange.toStringAsFixed(1) ?? '0.0'}%',
+        deltaUp: _metrics?.revenueIncreased ?? true,
+        icon: Icons.attach_money,
+        iconBg: Colors.green,
+        periodLabel: 'Сүүлийн 30 хоног',
+        comparisonLabel: 'өмнөх үе',
+      ),
+      StatCard(
+        title: 'Захиалгууд',
+        value: '${_metrics?.totalOrders ?? 0}',
+        delta: '${_metrics?.ordersChange.toStringAsFixed(1) ?? '0.0'}%',
+        deltaUp: _metrics?.ordersIncreased ?? true,
+        icon: Icons.shopping_cart_outlined,
+        iconBg: Colors.blue,
+        periodLabel: 'Сүүлийн 30 хоног',
+        comparisonLabel: 'өмнөх үе',
+      ),
+      StatCard(
+        title: 'Дэлгүүрийн сешн',
+        value: '$_storeSessions',
+        delta: '${_sessionsDelta.toStringAsFixed(1)}%',
+        deltaUp: _sessionsIncreased,
+        icon: Icons.people_outline,
+        iconBg: Colors.purple,
+        periodLabel: 'Сүүлийн 30 хоног',
+        comparisonLabel: 'өмнөх үе',
+      ),
+    ];
+
+    if (isCompact) {
+      return Column(
+        children: [
+          for (int i = 0; i < cards.length; i++) ...[
+            cards[i],
+            if (i != cards.length - 1) const SizedBox(height: 12),
+          ]
+        ],
+      );
+    }
+
     return Row(
       children: [
-        Expanded(
-          child: StatCard(
-            title: 'Нийт борлуулалт',
-            value: '₮${_metrics?.totalRevenue.toStringAsFixed(0) ?? '0'}',
-            delta: '${_metrics?.revenueChange.toStringAsFixed(1) ?? '0.0'}%',
-            deltaUp: _metrics?.revenueIncreased ?? true,
-            icon: Icons.attach_money,
-            iconBg: Colors.green,
-            periodLabel: 'Сүүлийн 30 хоног',
-            comparisonLabel: 'өмнөх үе',
-          ),
-        ),
+        Expanded(child: cards[0]),
         const SizedBox(width: 16),
-        Expanded(
-          child: StatCard(
-            title: 'Захиалгууд',
-            value: '${_metrics?.totalOrders ?? 0}',
-            delta: '${_metrics?.ordersChange.toStringAsFixed(1) ?? '0.0'}%',
-            deltaUp: _metrics?.ordersIncreased ?? true,
-            icon: Icons.shopping_cart_outlined,
-            iconBg: Colors.blue,
-            periodLabel: 'Сүүлийн 30 хоног',
-            comparisonLabel: 'өмнөх үе',
-          ),
-        ),
+        Expanded(child: cards[1]),
         const SizedBox(width: 16),
-        Expanded(
-          child: StatCard(
-            title: 'Дэлгүүрийн сешн',
-            value: '$_storeSessions',
-            delta: '${_sessionsDelta.toStringAsFixed(1)}%',
-            deltaUp: _sessionsIncreased,
-            icon: Icons.people_outline,
-            iconBg: Colors.purple,
-            periodLabel: 'Сүүлийн 30 хоног',
-            comparisonLabel: 'өмнөх үе',
-          ),
-        ),
+        Expanded(child: cards[2]),
       ],
     );
   }
 
   Widget _buildChartsRow() {
+    final isCompact = MediaQuery.of(context).size.width < 1100;
+
+    final revenueChart = Container(
+      decoration: BoxDecoration(
+        color: AppThemes.getCardColor(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppThemes.getBorderColor(context)),
+      ),
+      child: RevenueLineChart(
+        data: _revenueTrends,
+        height: 320,
+        title: 'Орлого ба захиалгууд',
+        lineColor: const Color(0xFF4285F4),
+      ),
+    );
+
+    final topProducts = Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppThemes.getCardColor(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppThemes.getBorderColor(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Шилдэг бүтээгдэхүүн',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              TextButton(
+                onPressed: () {},
+                child: const Text(
+                  'Бүгдийг харах',
+                  style: TextStyle(
+                    color: Color(0xFF4285F4),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 260,
+            child: _topProducts.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Бүтээгдэхүүний мэдээлэл байхгүй',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _topProducts.length,
+                    itemBuilder: (context, index) {
+                      final product = _topProducts[index];
+                      return _buildTopProductItem(product);
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+
+    if (isCompact) {
+      // Stack vertically, revenue chart spans full width
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          revenueChart,
+          const SizedBox(height: 16),
+          topProducts,
+        ],
+      );
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Sales over time chart
-        Expanded(
-          flex: 2,
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppThemes.getCardColor(context),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppThemes.getBorderColor(context)),
-            ),
-            child: RevenueLineChart(
-              data: _revenueTrends,
-              height: 320,
-              title: 'Орлого ба захиалгууд',
-              lineColor: const Color(0xFF4285F4),
-            ),
-          ),
-        ),
+        Expanded(flex: 2, child: revenueChart),
         const SizedBox(width: 24),
-        // Top products
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppThemes.getCardColor(context),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppThemes.getBorderColor(context)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Шилдэг бүтээгдэхүүн',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        // Navigate to full products analytics
-                      },
-                      child: const Text(
-                        'Бүгдийг харах',
-                        style: TextStyle(
-                          color: Color(0xFF4285F4),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 260,
-                  child: _topProducts.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'Бүтээгдэхүүний мэдээлэл байхгүй',
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: _topProducts.length,
-                          itemBuilder: (context, index) {
-                            final product = _topProducts[index];
-                            return _buildTopProductItem(product);
-                          },
-                        ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        Expanded(child: topProducts),
       ],
     );
   }
@@ -767,106 +819,113 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildBottomSection() {
+    final isCompact = MediaQuery.of(context).size.width < 1100;
+
+    final recentOrders = Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppThemes.getCardColor(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppThemes.getBorderColor(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Сүүлийн үеийн захиалгууд',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              TextButton(
+                onPressed: () {},
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF4285F4),
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                ),
+                child: const Text(
+                  'Бүгдийг харах',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildRecentOrdersTable(),
+        ],
+      ),
+    );
+
+    final recentActivity = Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppThemes.getCardColor(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppThemes.getBorderColor(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Сүүлийн үйл ажиллагаа',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              TextButton(
+                onPressed: () {},
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF4285F4),
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                ),
+                child: const Text(
+                  'Бүгдийг харах',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildRecentActivityList(),
+        ],
+      ),
+    );
+
+    if (isCompact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          recentOrders,
+          const SizedBox(height: 16),
+          recentActivity,
+        ],
+      );
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Recent orders
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppThemes.getCardColor(context),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppThemes.getBorderColor(context)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Сүүлийн үеийн захиалгууд',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        // Navigate to orders page
-                      },
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF4285F4),
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                      ),
-                      child: const Text(
-                        'Бүгдийг харах',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                _buildRecentOrdersTable(),
-              ],
-            ),
-          ),
-        ),
+        Expanded(child: recentOrders),
         const SizedBox(width: 24),
-        // Recent activity
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppThemes.getCardColor(context),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppThemes.getBorderColor(context)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Сүүлийн үйл ажиллагаа',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        // Navigate to full activity log
-                      },
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF4285F4),
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                      ),
-                      child: const Text(
-                        'Бүгдийг харах',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildRecentActivityList(),
-              ],
-            ),
-          ),
-        ),
+        Expanded(child: recentActivity),
       ],
     );
   }

@@ -169,6 +169,29 @@ class _CategorizationPageState extends State<CategorizationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.width < 1100;
+
+    if (isCompact) {
+      return Scaffold(
+        backgroundColor: AppThemes.getBackgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF4285F4),
+          elevation: 0,
+          title: const Text('Ангилалын бүртгэл',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        drawer: Drawer(
+          width: 280,
+          child: const SafeArea(child: SideMenu(selected: 'Categorization')),
+        ),
+        body: _currentStoreId == null
+            ? const Center(child: CircularProgressIndicator())
+            : _buildCategorizationContent(),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(

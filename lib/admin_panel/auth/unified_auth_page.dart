@@ -249,20 +249,38 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isCompact = width < 900;
     return Scaffold(
-      body: Row(
-        children: [
-          // Left side - Branding and Features
-          Expanded(
-            flex: 1,
-            child: _buildLeftPanel(),
-          ),
-          // Right side - Authentication Form
-          Expanded(
-            flex: 1,
-            child: _buildRightPanel(),
-          ),
-        ],
+      body: SafeArea(
+        child: isCompact
+            ? Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    child: _buildRightPanel(isCompact: true),
+                  ),
+                ),
+              )
+            : Row(
+                children: [
+                  // Left side - Branding and Features (desktop/tablet only)
+                  Expanded(
+                    flex: 1,
+                    child: _buildLeftPanel(),
+                  ),
+                  // Right side - Authentication Form
+                  Expanded(
+                    flex: 1,
+                    child: Padding(
+                      padding: const EdgeInsets.all(48.0),
+                      child: _buildRightPanel(),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -399,11 +417,11 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
     );
   }
 
-  Widget _buildRightPanel() {
+  Widget _buildRightPanel({bool isCompact = false}) {
     return Container(
       color: Colors.white,
       child: Padding(
-        padding: const EdgeInsets.all(48.0),
+        padding: EdgeInsets.all(isCompact ? 0 : 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -431,13 +449,13 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
             // Form Title
             Text(
               _isLoginMode ? 'Тавтай морилно уу' : 'Бүртгэл үүсгэх',
               style: const TextStyle(
-                fontSize: 28,
+                fontSize: 26,
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
               ),
@@ -452,7 +470,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                 color: Colors.black54,
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
             // Form
             Expanded(
@@ -659,9 +677,13 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                                 // Handle remember me
                               },
                             ),
-                            const Text(
-                              'Нууц үг, Нэвтрэх нэрийг хадгалах.',
-                              style: TextStyle(color: Colors.black87),
+                            const Flexible(
+                              child: Text(
+                                'Нууц үг, Нэвтрэх нэрийг хадгалах.',
+                                style: TextStyle(color: Colors.black87),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
                             ),
                             const Spacer(),
                             TextButton(
@@ -673,12 +695,13 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 8),
                       ],
 
                       // Terms and conditions (only for signup)
                       if (!_isLoginMode) ...[
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Checkbox(
                               value: _acceptedTerms,
@@ -706,7 +729,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 8),
                       ],
 
                       // Error/Success messages
@@ -723,7 +746,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                             style: TextStyle(color: Colors.red.shade700),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                       ],
 
                       if (_successMessage != null) ...[
@@ -739,7 +762,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                             style: TextStyle(color: Colors.green.shade700),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                       ],
 
                       // Submit button
@@ -761,8 +784,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                        Color(
-                                            0xFF4285F4)), // Primary blue color
+                                        Color(0xFF4285F4)),
                                   ),
                                 )
                               : Text(
@@ -810,6 +832,8 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
         child: Center(
           child: Text(
             title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,

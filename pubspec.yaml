@@ -186,6 +186,10 @@ flutter:
     # Electronics
     - assets/images/categories/electronics/
     - assets/images/categories/electronics/electronics.jpg
+    - assets/images/categories/electronics/Headphones.jpg
+    - assets/images/categories/electronics/phone.jpg
+    - assets/images/categories/electronics/PhoneAccessories.jpg
+    - assets/images/categories/electronics/computerAccessories.jpg
     
     # Foods & Drinks
     - assets/images/categories/Foods&drinks/
@@ -194,6 +198,8 @@ flutter:
     # Fitness
     - assets/images/categories/Fitness/
     - assets/images/categories/Fitness/fitness.jpg
+    - assets/images/categories/Fitness/FitnessEquipment.jpg
+    - assets/images/categories/Fitness/Supplement.jpg
     
     # Home
     - assets/images/categories/Home/

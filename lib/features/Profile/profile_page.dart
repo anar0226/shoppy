@@ -141,21 +141,15 @@ class _ProfilePageState extends State<ProfilePage> {
                             );
                           },
                           icon: Icon(Icons.settings,
-                              color: Color(0xFF4285F4),
-                              size: 14), // Primary blue color
+                              color: Colors.white, size: 14),
                           label: Text('Тохиргоо',
-                              style: TextStyle(
-                                  color: Color(0xFF4285F4),
-                                  fontSize: 10)), // Primary blue color
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 10)),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Colors.grey.shade50, // Light grey background
+                            backgroundColor: const Color(0xFF4285F4),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                side: BorderSide(
-                                    color: Color(0xFF4285F4),
-                                    width: 1)), // Blue outline
+                                borderRadius: BorderRadius.circular(8)),
                             fixedSize: Size(90, 30),
                             padding: EdgeInsets.symmetric(horizontal: 12),
                           ),
@@ -166,22 +160,16 @@ class _ProfilePageState extends State<ProfilePage> {
                             showEditProfilePopup(
                                 context, userName, userAvatarUrl ?? '');
                           },
-                          icon: Icon(Icons.person,
-                              color: Color(0xFF4285F4),
-                              size: 14), // Primary blue color
+                          icon:
+                              Icon(Icons.person, color: Colors.white, size: 14),
                           label: Text('Профайл',
-                              style: TextStyle(
-                                  color: Color(0xFF4285F4),
-                                  fontSize: 10)), // Primary blue color
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 10)),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Colors.grey.shade50, // Light grey background
+                            backgroundColor: const Color(0xFF4285F4),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
-                                side: BorderSide(
-                                    color: Color(0xFF4285F4),
-                                    width: 1)), // Blue outline
+                                borderRadius: BorderRadius.circular(4)),
                             fixedSize: Size(90, 30),
                             padding: EdgeInsets.symmetric(horizontal: 12),
                           ),
@@ -307,7 +295,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: 'QPay',
                     subtitle: 'Цахим төлбөр',
                     backgroundColor:
-                        Colors.grey.shade50, // Light grey background
+                        const Color(0xFF4285F4).withValues(alpha: 0.1),
                     iconColor: const Color(0xFF4285F4),
                     iconWidget: Container(
                       width: 50,
@@ -353,7 +341,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: 'StorePay',
                     subtitle: 'Тун удахгүй',
                     backgroundColor:
-                        Colors.grey.shade50, // Light grey background
+                        const Color(0xFF4285F4).withValues(alpha: 0.1),
                     iconColor: const Color(0xFF4285F4),
                     iconWidget: Container(
                       width: 50,
@@ -419,17 +407,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       icon: const Icon(Icons.support_agent, size: 20),
                       label: const Text('Холбоо барих'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            Colors.grey.shade50, // Light grey background
-                        foregroundColor:
-                            Color(0xFF4285F4), // Primary blue color
+                        backgroundColor: const Color(0xFF4285F4),
+                        foregroundColor: Colors.white,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                              color: Color(0xFF4285F4),
-                              width: 1), // Blue outline
                         ),
                       ),
                     ),
@@ -463,10 +446,10 @@ class _ProfilePageState extends State<ProfilePage> {
       width: cardWidth,
       height: 108,
       child: Card(
-        color: Colors.grey.shade50, // Light grey background
+        color: const Color(0xFF4285F4).withValues(alpha: 0.1),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: Color(0xFF4285F4), width: 1), // Blue outline
+          side: BorderSide(color: Color(0xFF4285F4), width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(12),

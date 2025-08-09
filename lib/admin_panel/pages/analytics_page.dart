@@ -165,6 +165,215 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isCompact = width < 1100;
+
+    if (isCompact) {
+      return Scaffold(
+        backgroundColor: AppThemes.getBackgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF4285F4),
+          elevation: 0,
+          title: const Text('Analytics',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        drawer: Drawer(
+          width: 280,
+          child: SafeArea(
+            child: SideMenu(selected: 'Analytics'),
+          ),
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? _buildErrorState()
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Simplified header
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Аналитик мэдээлэл',
+                                style: TextStyle(
+                                    fontSize: 22, fontWeight: FontWeight.bold)),
+                            SizedBox(
+                              width: 160,
+                              child: DropdownButtonFormField<String>(
+                                value: _selectedPeriod,
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'сүүлийн 30 хоног',
+                                    child: Text('сүүлийн 30 хоног'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'сүүлийн 7 хоног',
+                                    child: Text('сүүлийн 7 хоног'),
+                                  ),
+                                ],
+                                onChanged: _handlePeriodChange,
+                                decoration: InputDecoration(
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        // Stats stacked
+                        if (_metrics != null) ...[
+                          StatCard(
+                            title: 'Нийт орлого',
+                            value:
+                                '₮${_metrics!.totalRevenue.toStringAsFixed(2)}',
+                            delta:
+                                '${_metrics!.revenueChange.toStringAsFixed(1)}%',
+                            deltaUp: _metrics!.revenueIncreased,
+                            icon: Icons.attach_money,
+                            iconBg: Colors.green,
+                            periodLabel: _selectedPeriod,
+                            comparisonLabel: 'өмнөх үе',
+                          ),
+                          const SizedBox(height: 12),
+                          StatCard(
+                            title: 'Захиалгын тоо',
+                            value: _metrics!.totalOrders.toString(),
+                            delta:
+                                '${_metrics!.ordersChange.toStringAsFixed(1)}%',
+                            deltaUp: _metrics!.ordersIncreased,
+                            icon: Icons.shopping_cart_outlined,
+                            iconBg: Colors.blue,
+                            periodLabel: _selectedPeriod,
+                            comparisonLabel: 'өмнөх үе',
+                          ),
+                          const SizedBox(height: 12),
+                          StatCard(
+                            title: 'Хэрэглэгчид',
+                            value: _metrics!.totalCustomers.toString(),
+                            delta:
+                                '${_metrics!.customersChange.toStringAsFixed(1)}%',
+                            deltaUp: _metrics!.customersIncreased,
+                            icon: Icons.person_outline,
+                            iconBg: Colors.purple,
+                            periodLabel: _selectedPeriod,
+                            comparisonLabel: 'өмнөх үе',
+                          ),
+                          const SizedBox(height: 12),
+                          StatCard(
+                            title: 'Дундаж үнэ',
+                            value:
+                                '₮${_metrics!.averageOrderValue.toStringAsFixed(2)}',
+                            delta:
+                                '${_metrics!.averageOrderValueChange.toStringAsFixed(1)}%',
+                            deltaUp: _metrics!.averageOrderValueIncreased,
+                            icon: Icons.bar_chart,
+                            iconBg: Colors.orange,
+                            periodLabel: _selectedPeriod,
+                            comparisonLabel: 'өмнөх үе',
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: AppThemes.getCardColor(context),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: AppThemes.getBorderColor(context)),
+                          ),
+                          child: RevenueLineChart(
+                            data: _revenueTrends,
+                            height: 280,
+                            title: 'орлогын трэнд',
+                            lineColor: const Color(0xFF4285F4),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Stack secondary charts vertically for mobile
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppThemes.getCardColor(context),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: AppThemes.getBorderColor(context)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Шилдэг бүтээгдэхүүнүүд',
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700)),
+                              const SizedBox(height: 12),
+                              ...(_topProducts.take(5).map((p) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: _buildTopProductRow(p),
+                                  ))),
+                              if (_topProducts.isEmpty)
+                                const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child: Text(
+                                        'Бүтээгдэхүүнүүд бүртгэлгүй байна',
+                                        style: TextStyle(color: Colors.grey)),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppThemes.getCardColor(context),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: AppThemes.getBorderColor(context)),
+                          ),
+                          child: _conversionFunnel != null
+                              ? ConversionFunnelChart(
+                                  funnel: _conversionFunnel!,
+                                  height: 260,
+                                  title: 'Хөрвүүлэх хувь',
+                                )
+                              : const SizedBox(
+                                  height: 260,
+                                  child: Center(
+                                    child: Text(
+                                        'Хөрвүүлэх хувь бүртгэлгүй байна',
+                                        style: TextStyle(color: Colors.grey)),
+                                  ),
+                                ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: AppThemes.getCardColor(context),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: AppThemes.getBorderColor(context)),
+                          ),
+                          child: OrderTrendBarChart(
+                            data: _orderTrends,
+                            height: 260,
+                            title: 'Захиалгын трэнд',
+                            barColor: const Color(0xFF4285F4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(

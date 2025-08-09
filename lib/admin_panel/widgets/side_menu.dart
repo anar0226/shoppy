@@ -11,7 +11,6 @@ import '../pages/settings_page.dart';
 import '../pages/storefront_page.dart';
 import '../pages/categorization_page.dart';
 import '../pages/order_cleanup_page.dart';
-import '../pages/payment_verification_page.dart';
 
 import '../pages/store_payout_settings_page.dart';
 import '../../features/settings/themes/app_themes.dart';
@@ -327,21 +326,6 @@ class _SideMenuState extends State<SideMenu> {
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(
                               builder: (_) => const OrderCleanupPage()),
-                        );
-                      }
-                    }
-                  }),
-                  _navItem(
-                      context, Icons.verified_user, 'Төлбөр баталгаажуулалт',
-                      selected: widget.selected == 'Төлбөр баталгаажуулалт',
-                      onTap: () {
-                    if (widget.selected != 'Төлбөр баталгаажуулалт') {
-                      if (widget.onPageSelected != null) {
-                        widget.onPageSelected!('Төлбөр баталгаажуулалт');
-                      } else {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                              builder: (_) => const PaymentVerificationPage()),
                         );
                       }
                     }

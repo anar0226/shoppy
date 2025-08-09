@@ -153,6 +153,29 @@ class _CollectionsPageState extends State<CollectionsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.width < 1100;
+
+    if (isCompact) {
+      return Scaffold(
+        backgroundColor: AppThemes.getBackgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF4285F4),
+          elevation: 0,
+          title: const Text('Коллекцүүд',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        drawer: Drawer(
+          width: 280,
+          child: const SafeArea(child: SideMenu(selected: 'Коллекц')),
+        ),
+        body: _currentStoreId == null
+            ? const Center(child: CircularProgressIndicator())
+            : _buildCollectionsContentMobile(),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
@@ -168,6 +191,75 @@ class _CollectionsPageState extends State<CollectionsPage> {
                       : _buildCollectionsContent(),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCollectionsContentMobile() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Коллекцүүд хайх...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    isDense: true,
+                  ),
+                  onChanged: (v) => setState(() => _searchQuery = v),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: _showCreateCollectionDialog,
+                icon: const Icon(Icons.add),
+                label: const Text('Үүсгэх'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppThemes.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: StreamBuilder<List<CollectionModel>>(
+              stream: _searchQuery.isEmpty
+                  ? _collectionService.getStoreCollections(_currentStoreId!)
+                  : _collectionService.searchCollections(
+                      _currentStoreId!, _searchQuery),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final collections = snapshot.data ?? [];
+                if (collections.isEmpty) return _buildEmptyState();
+                return GridView.builder(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount:
+                        MediaQuery.of(context).size.width < 600 ? 1 : 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.1,
+                  ),
+                  itemCount: collections.length,
+                  itemBuilder: (context, index) =>
+                      _buildCollectionCard(collections[index]),
+                );
+              },
             ),
           ),
         ],

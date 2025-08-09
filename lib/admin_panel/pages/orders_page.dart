@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import '../widgets/top_nav_bar.dart';
 import '../widgets/side_menu.dart';
 import '../../features/settings/themes/app_themes.dart';
@@ -1143,6 +1142,119 @@ class _OrdersPageState extends State<OrdersPage> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isCompact = width < 1100;
+
+    if (isCompact) {
+      return Scaffold(
+        backgroundColor: AppThemes.getBackgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF4285F4),
+          elevation: 0,
+          title: const Text('Захиалгууд',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        drawer: Drawer(
+          width: 280,
+          child: SafeArea(
+            child: SideMenu(selected: 'Захиалгууд'),
+          ),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header actions simplified on mobile
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Захиалгууд',
+                      style:
+                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  ElevatedButton.icon(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6)),
+                    ),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Үүсгэх'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Filters in a column to avoid overflow
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _searchController,
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                    decoration: InputDecoration(
+                      hintText: 'Захиалга хайх...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _selectedStatus,
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'бүх төлөв', child: Text('бүх төлөв')),
+                      DropdownMenuItem(
+                          value: 'захиалсан', child: Text('захиалсан')),
+                      DropdownMenuItem(
+                          value: 'хүргэгдсэн', child: Text('хүргэгдсэн')),
+                      DropdownMenuItem(
+                          value: 'цуцлагдсан', child: Text('цуцлагдсан')),
+                    ],
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() => _selectedStatus = newValue);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                      isDense: true,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Stats row simplified
+              Row(
+                children: [
+                  const Icon(Icons.shopping_cart_outlined, size: 16),
+                  const SizedBox(width: 4),
+                  Text('$totalOrders захиалга'),
+                  const SizedBox(width: 12),
+                  const Icon(Icons.attach_money, size: 16),
+                  const SizedBox(width: 4),
+                  Text('₮${totalRevenue.toStringAsFixed(0)}'),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Text('Захиалгын хянах',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              // Mobile-friendly list instead of dense table
+              _ordersStreamMobileList(),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
@@ -1440,6 +1552,132 @@ class _OrdersPageState extends State<OrdersPage> {
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  // Mobile: card list stream for readability
+  Widget _ordersStreamMobileList() {
+    if (_storeId == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: DatabaseService()
+          .collection('orders')
+          .where('storeId', isEqualTo: _storeId)
+          .orderBy('createdAt', descending: true)
+          .limit(50)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Алдаа: ${snapshot.error}'));
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+        final filteredDocs = filterOrders(docs);
+
+        if (filteredDocs.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Text('Захиалга байхгүй'),
+          );
+        }
+
+        return Column(
+          children: filteredDocs.map((order) {
+            final data = order.data();
+            final id = order.id;
+            final date =
+                (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+            final total =
+                TypeUtils.safeCastDouble(data['total'], defaultValue: 0.0);
+            final status = data['status']?.toString() ?? 'placed';
+            final email = data['customerEmail'] ?? data['userEmail'] ?? '';
+            final customer = (data['customerName'] ?? '') as String;
+
+            return Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppThemes.getCardColor(context),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppThemes.getBorderColor(context)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('#${id.substring(0, 8)}...',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14)),
+                      Text('${date.year}/${date.month}/${date.day}',
+                          style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.person_outline, size: 14),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          customer.isNotEmpty
+                              ? customer
+                              : (email.toString().split('@').first),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: getBadgeColor(status),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(getStatusText(status),
+                            style: const TextStyle(fontSize: 12)),
+                      ),
+                      Text('₮${total.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 14)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _showOrderDetailsDialog(order),
+                        icon: const Icon(Icons.visibility, size: 18),
+                        label: const Text('Дэлгэрэнгүй'),
+                      ),
+                      const SizedBox(width: 6),
+                      TextButton.icon(
+                        onPressed: () => _showStatusEditDialog(id, status),
+                        icon: const Icon(Icons.edit, size: 18),
+                        label: const Text('Төлөв'),
+                      ),
+                    ],
+                  )
+                ],
+              ),
+            );
+          }).toList(),
         );
       },
     );

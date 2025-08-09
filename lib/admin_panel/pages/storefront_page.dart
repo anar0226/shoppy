@@ -78,10 +78,25 @@ class _StorefrontPageState extends State<StorefrontPage> {
           backgroundImage = data['backgroundImageUrl'];
         }
 
+        // Filter out product IDs that no longer exist
+        final existingIds = products.map((p) => p.id).toSet();
+        final cleanedSelectedIds =
+            selectedProductIds.where((id) => existingIds.contains(id)).toList();
+        if (cleanedSelectedIds.length != selectedProductIds.length) {
+          // Persist the cleanup so ghost IDs are removed
+          await FirebaseFirestore.instance
+              .collection('seller_cards')
+              .doc(store.id)
+              .set({
+            'featuredProductIds': cleanedSelectedIds,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+
         setState(() {
           _storeModel = store;
           _allProducts = products;
-          _selectedProductIds = selectedProductIds;
+          _selectedProductIds = cleanedSelectedIds;
           _backgroundImageUrl = backgroundImage;
           _profileImageUrl = store.logo;
 
@@ -248,6 +263,31 @@ class _StorefrontPageState extends State<StorefrontPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.width < 1100;
+
+    if (isCompact) {
+      return Scaffold(
+        backgroundColor: AppThemes.getBackgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF4285F4),
+          elevation: 0,
+          title: const Text('Дэлгүүрээ янзлаx',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        drawer: Drawer(
+          width: 280,
+          child: const SafeArea(child: SideMenu(selected: 'Storefront')),
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage.isNotEmpty
+                ? _buildErrorView()
+                : _buildManagementViewMobile(),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
@@ -656,17 +696,46 @@ class _StorefrontPageState extends State<StorefrontPage> {
                                         Positioned(
                                           top: 8,
                                           right: 8,
-                                          child: Container(
-                                            decoration: const BoxDecoration(
-                                              color: AppThemes.primaryColor,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            padding: const EdgeInsets.all(4),
-                                            child: const Icon(
-                                              Icons.check,
-                                              color: Colors.white,
-                                              size: 16,
-                                            ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Container(
+                                                decoration: const BoxDecoration(
+                                                  color: AppThemes.primaryColor,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.all(4),
+                                                child: const Icon(
+                                                  Icons.check,
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              // Remove button for featured item
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    _selectedProductIds
+                                                        .remove(product.id);
+                                                  });
+                                                },
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.red.shade600,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.all(4),
+                                                  child: const Icon(
+                                                    Icons.close,
+                                                    color: Colors.white,
+                                                    size: 14,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                     ],
@@ -749,6 +818,219 @@ class _StorefrontPageState extends State<StorefrontPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildManagementViewMobile() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStoreSettings(),
+          const SizedBox(height: 16),
+          _buildCustomizationOptionsMobile(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomizationOptionsMobile() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Background Image Section
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Дэвсгэр зургийг янзлаx',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 12),
+                if (_backgroundImageUrl != null) ...[
+                  Container(
+                    width: double.infinity,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      image: DecorationImage(
+                        image: NetworkImage(_backgroundImageUrl!),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed:
+                          _isUploadingImage ? null : _selectBackgroundImage,
+                      icon: _isUploadingImage
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.upload),
+                      label: Text(_backgroundImageUrl != null
+                          ? 'Зургийг өөрчлөх'
+                          : 'Зураг оруулах'),
+                    ),
+                    if (_backgroundImageUrl != null) ...[
+                      const SizedBox(width: 12),
+                      TextButton.icon(
+                        onPressed: () {
+                          setState(() => _backgroundImageUrl = null);
+                        },
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        label: const Text('Устгах',
+                            style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Featured Products Section (responsive grid)
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Онцлох бүтээгдэхүүн',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    Chip(
+                      label: Text('${_selectedProductIds.length}/4'),
+                      backgroundColor:
+                          AppThemes.primaryColor.withValues(alpha: 0.1),
+                      labelStyle: const TextStyle(
+                        color: AppThemes.primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (_allProducts.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Бараа олдсонгүй. Эхлээд дэлгүүртээ бараа нэмэх хэрэгтэй.',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    height: 500,
+                    child: GridView.builder(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount:
+                            MediaQuery.of(context).size.width < 600 ? 1 : 2,
+                        childAspectRatio: 0.95,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                      itemCount: _allProducts.length,
+                      itemBuilder: (context, index) {
+                        final product = _allProducts[index];
+                        final isSelected =
+                            _selectedProductIds.contains(product.id);
+                        return GestureDetector(
+                          onTap: () => _toggleProductSelection(product.id),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppThemes.primaryColor
+                                    : Colors.grey.shade300,
+                                width: isSelected ? 2 : 1,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(
+                                        top: Radius.circular(8)),
+                                    child: Image.network(
+                                      product.images.isNotEmpty
+                                          ? product.images.first
+                                          : '',
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Container(
+                                        color: Colors.grey[200],
+                                        child: const Icon(Icons.image,
+                                            size: 30, color: Colors.grey),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        product.name,
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '₮${product.price.toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey.shade600),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

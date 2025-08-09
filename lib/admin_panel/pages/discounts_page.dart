@@ -49,6 +49,28 @@ class _DiscountsPageState extends State<DiscountsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isCompact = width < 1100;
+
+    if (isCompact) {
+      return Scaffold(
+        backgroundColor: AppThemes.getBackgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF4285F4),
+          elevation: 0,
+          title: const Text('Хөнгөлөлтийн код',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        drawer: Drawer(
+          width: 280,
+          child: const SafeArea(child: SideMenu(selected: 'Discounts')),
+        ),
+        body: _buildBodyMobile(),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
@@ -215,6 +237,171 @@ class _DiscountsPageState extends State<DiscountsPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildBodyMobile() {
+    if (!_storeLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_storeId == null) {
+      return const Center(
+          child: Text('Танд одоогоор дэлгүүр нээгээгүй байна.'));
+    }
+
+    return StreamBuilder<List<DiscountModel>>(
+      stream: _discountService.getStoreDiscounts(_storeId!),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final discounts = snapshot.data ?? [];
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Хөнгөлөлтийн код',
+                      style:
+                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => const AddDiscountDialog(),
+                      );
+                    },
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Үүсгэх'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Simple search box
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Код хайх...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (discounts.isEmpty)
+                const Text('Хөнгөлөлтийн код оруулаагүй байна.')
+              else
+                Column(
+                  children: discounts.map((d) => _discountCard(d)).toList(),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _discountCard(DiscountModel discount) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppThemes.getCardColor(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppThemes.getBorderColor(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(discount.iconData, color: Colors.purple),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(discount.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text('Код: ${discount.code}',
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.black54)),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: discount.isActive
+                      ? Colors.green.shade200
+                      : Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(discount.isActive ? 'идэвхтэй' : 'идэвхгүй',
+                    style: const TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Төрөл: ${discount.typeDisplayName}',
+                  style: const TextStyle(fontSize: 12)),
+              Text('Утга: ${discount.valueDisplayText}',
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                  'Хэрэглэгдсэн: ${discount.currentUseCount}/${discount.maxUseCount}',
+                  style: const TextStyle(fontSize: 12)),
+              Row(
+                children: [
+                  TextButton.icon(
+                    onPressed: () => _editDiscount(discount),
+                    icon: const Icon(Icons.edit, size: 16),
+                    label: const Text('Засах'),
+                  ),
+                  const SizedBox(width: 4),
+                  TextButton.icon(
+                    onPressed: () => _deleteDiscount(discount),
+                    icon: const Icon(Icons.delete, size: 16, color: Colors.red),
+                    label: const Text('Устгах',
+                        style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+              )
+            ],
+          ),
+        ],
+      ),
     );
   }
 

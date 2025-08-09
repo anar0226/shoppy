@@ -110,33 +110,66 @@ class _AdminPanelLayoutState extends State<AdminPanelLayout> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isCompact = width < 1100;
+
     // Check if the current page needs navigation wrapper
     if (_needsNavigationWrapper(_currentPage)) {
       // Return the page directly (it has its own navigation)
       return _getCurrentPage();
     } else {
       // Apply navigation wrapper for pages that don't have it
-      return Scaffold(
-        backgroundColor: Colors.white, // Pure white background
-        body: Row(
-          children: [
-            SideMenu(
-              selected: _currentPage,
-              onPageSelected: _navigateToPage,
+      if (!isCompact) {
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: Row(
+            children: [
+              SideMenu(
+                selected: _currentPage,
+                onPageSelected: _navigateToPage,
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    TopNavBar(title: _currentPage),
+                    Expanded(
+                      child: _getCurrentPage(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      } else {
+        // Compact layout: use Drawer
+        return Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF4285F4),
+            elevation: 0,
+            title: Text(
+              _currentPage,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w700),
             ),
-            Expanded(
-              child: Column(
-                children: [
-                  TopNavBar(title: _currentPage),
-                  Expanded(
-                    child: _getCurrentPage(),
-                  ),
-                ],
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          drawer: Drawer(
+            width: 280,
+            child: SafeArea(
+              child: SideMenu(
+                selected: _currentPage,
+                onPageSelected: (p) {
+                  Navigator.of(context).pop();
+                  _navigateToPage(p);
+                },
               ),
             ),
-          ],
-        ),
-      );
+          ),
+          body: _getCurrentPage(),
+        );
+      }
     }
   }
 

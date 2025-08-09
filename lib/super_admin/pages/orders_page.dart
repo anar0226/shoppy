@@ -141,7 +141,8 @@ class _OrdersDataSource extends DataTableSource {
       default:
         color = Colors.grey;
     }
-    return Chip(label: Text(status), backgroundColor: color.withOpacity(0.15));
+    return Chip(
+        label: Text(status), backgroundColor: color.withValues(alpha: 0.15));
   }
 
   Future<void> _showOrderDetails(BuildContext context,
@@ -163,7 +164,7 @@ class _OrdersDataSource extends DataTableSource {
     }
 
     // Show bottom sheet with all the information
-    // ignore: use_build_context_synchronously
+    if (!context.mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

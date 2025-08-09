@@ -129,6 +129,30 @@ class _CustomersPageState extends State<CustomersPage> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isCompact = width < 1100;
+
+    if (isCompact) {
+      return Scaffold(
+        backgroundColor: AppThemes.getBackgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF4285F4),
+          elevation: 0,
+          title: const Text('Үйлчлүүлэгчид',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        drawer: Drawer(
+          width: 280,
+          child: SafeArea(
+            child: SideMenu(selected: 'Үйлчлүүлэгчид'),
+          ),
+        ),
+        body: _buildBodyMobile(),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
@@ -183,6 +207,69 @@ class _CustomersPageState extends State<CustomersPage> {
               const SizedBox(height: 24),
               const Text('Үйлчлүүлэгчид',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              _buildCustomersTable(orders),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBodyMobile() {
+    if (!_storeLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_storeId == null) {
+      return const Center(child: Text('Танд одоогоор дэлгүүр байхгүй байна.'));
+    }
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('orders')
+          .where('storeId', isEqualTo: _storeId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final orders = snapshot.data?.docs ?? [];
+        _calculateStatistics(orders);
+
+        // Build simple stacked UI
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Үйлчлүүлэгчид',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Үйлчлүүлэгч хайх...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  isDense: true,
+                ),
+                onChanged: (v) =>
+                    setState(() => _searchQuery = v.toLowerCase()),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(Icons.person_outline, size: 16),
+                  const SizedBox(width: 4),
+                  Text('$totalCustomers'),
+                  const SizedBox(width: 12),
+                  const Icon(Icons.attach_money, size: 16),
+                  const SizedBox(width: 4),
+                  Text('₮${totalRevenue.toStringAsFixed(0)}'),
+                ],
+              ),
               const SizedBox(height: 12),
               _buildCustomersTable(orders),
             ],

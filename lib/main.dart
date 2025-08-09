@@ -19,6 +19,12 @@ import 'search/women/women_category_page.dart';
 import 'search/men/men_category_page.dart';
 import 'features/categories/presentation/accessories_category_page.dart';
 import 'features/categories/presentation/beauty_category_page.dart';
+import 'features/categories/presentation/electronics_category_page.dart';
+import 'features/categories/presentation/fitness_category_page.dart';
+import 'features/categories/presentation/foods_drinks_category_page.dart';
+import 'features/categories/presentation/toys_games_category_page.dart';
+import 'features/categories/presentation/home_category_page.dart';
+import 'features/categories/presentation/pet_category_page.dart';
 
 import 'features/notifications/fcm_service.dart';
 import 'features/products/presentation/product_page.dart';
@@ -842,6 +848,42 @@ class _SearchScreenState extends State<SearchScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const BeautyCategoryPage()),
+          );
+        } else if (category.name == 'Цахилгаан бараа') {
+          // Electronics in Mongolian
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ElectronicsCategoryPage()),
+          );
+        } else if (category.name == 'Фитнесс') {
+          // Fitness in Mongolian
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const FitnessCategoryPage()),
+          );
+        } else if (category.name == 'Хоол хүнс, ундаа') {
+          // Foods and Drinks in Mongolian
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const FoodsDrinksCategoryPage()),
+          );
+        } else if (category.name == 'Тоглоомнууд') {
+          // Toys and Games in Mongolian
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ToysGamesCategoryPage()),
+          );
+        } else if (category.name == 'Гэр аxуй') {
+          // Home in Mongolian
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const HomeCategoryPage()),
+          );
+        } else if (category.name == 'Амьтдын бүтээгдэхүүн') {
+          // Pet Products in Mongolian
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PetCategoryPage()),
           );
         } else {
           PopupUtils.showInfo(

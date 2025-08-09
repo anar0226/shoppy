@@ -35,6 +35,30 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.width < 1100;
+
+    if (isCompact) {
+      return Scaffold(
+        backgroundColor: AppThemes.getBackgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF4285F4),
+          elevation: 0,
+          title: const Text('Тохиргоо',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        drawer: Drawer(
+          width: 280,
+          child: const SafeArea(child: SideMenu(selected: 'Settings')),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: _buildSettingsContent(),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
@@ -48,78 +72,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Бүтээгдэхүүн бүртгэл',
-                            style: TextStyle(
-                                fontSize: 22, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 16),
-                        _buildSwitchTile(
-                          title: 'бага нөөц алэрт',
-                          subtitle:
-                              'Бүтээгдэхүүний нөөц бага байх үед анхааруулах',
-                          value: _lowStockAlerts,
-                          onChanged: (v) => setState(() => _lowStockAlerts = v),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildNumberField(
-                          label: 'бага нөөц босго',
-                          controller: _thresholdCtrl,
-                          onChanged: (v) => setState(() {
-                            _lowStockThreshold =
-                                int.tryParse(v) ?? _lowStockThreshold;
-                          }),
-                        ),
-                        const SizedBox(height: 32),
-                        const Text('Мэдэгдэл тохируулалт',
-                            style: TextStyle(
-                                fontSize: 22, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 16),
-                        _buildSwitchTile(
-                          title: 'Имэйл мэдэгдэл',
-                          subtitle: 'Үнэлгээний талаар мэдэглэл авах',
-                          value: _emailNotif,
-                          onChanged: (v) => setState(() => _emailNotif = v),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildSwitchTile(
-                          title: 'Захиалгын мэдэгдэл',
-                          subtitle: 'Шинэ захиалгын талаар мэдэглэл авах',
-                          value: _orderNotif,
-                          onChanged: (v) => setState(() => _orderNotif = v),
-                        ),
-                        const SizedBox(height: 32),
-                        const Text('Language',
-                            style: TextStyle(
-                                fontSize: 22, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 16),
-                        DropdownButton<String>(
-                          value: _language,
-                          items: const [
-                            DropdownMenuItem(
-                                value: 'English', child: Text('Англи')),
-                            DropdownMenuItem(
-                                value: 'Mongolian', child: Text('Монгол')),
-                          ],
-                          onChanged: (v) => setState(() => _language = v!),
-                        ),
-                        const SizedBox(height: 48),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              // TODO: Persist settings to Firestore later on
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content:
-                                          Text('Тохируулалт хадгалагдлаа')));
-                            },
-                            child: const Text('Хадгалах'),
-                          ),
-                        )
-                      ],
-                    ),
+                    child: _buildSettingsContent(),
                   ),
                 ),
               ],
@@ -127,6 +80,71 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSettingsContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Бүтээгдэхүүн бүртгэл',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 16),
+        _buildSwitchTile(
+          title: 'бага нөөц алэрт',
+          subtitle: 'Бүтээгдэхүүний нөөц бага байх үед анхааруулах',
+          value: _lowStockAlerts,
+          onChanged: (v) => setState(() => _lowStockAlerts = v),
+        ),
+        const SizedBox(height: 12),
+        _buildNumberField(
+          label: 'бага нөөц босго',
+          controller: _thresholdCtrl,
+          onChanged: (v) => setState(() {
+            _lowStockThreshold = int.tryParse(v) ?? _lowStockThreshold;
+          }),
+        ),
+        const SizedBox(height: 32),
+        const Text('Мэдэгдэл тохируулалт',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 16),
+        _buildSwitchTile(
+          title: 'Имэйл мэдэгдэл',
+          subtitle: 'Үнэлгээний талаар мэдэглэл авах',
+          value: _emailNotif,
+          onChanged: (v) => setState(() => _emailNotif = v),
+        ),
+        const SizedBox(height: 12),
+        _buildSwitchTile(
+          title: 'Захиалгын мэдэгдэл',
+          subtitle: 'Шинэ захиалгын талаар мэдэглэл авах',
+          value: _orderNotif,
+          onChanged: (v) => setState(() => _orderNotif = v),
+        ),
+        const SizedBox(height: 32),
+        const Text('Language',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 16),
+        DropdownButton<String>(
+          value: _language,
+          items: const [
+            DropdownMenuItem(value: 'English', child: Text('Англи')),
+            DropdownMenuItem(value: 'Mongolian', child: Text('Монгол')),
+          ],
+          onChanged: (v) => setState(() => _language = v!),
+        ),
+        const SizedBox(height: 48),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: ElevatedButton(
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Тохируулалт хадгалагдлаа')));
+            },
+            child: const Text('Хадгалах'),
+          ),
+        )
+      ],
     );
   }
 

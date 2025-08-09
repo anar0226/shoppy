@@ -904,9 +904,8 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
             height: 52,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF4285F4),
-                side: const BorderSide(color: Color(0xFF4285F4), width: 1),
+                backgroundColor: const Color(0xFF4285F4),
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -919,7 +918,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF4285F4),
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -930,9 +929,8 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
             height: 52,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF4285F4),
-                side: const BorderSide(color: Color(0xFF4285F4), width: 1),
+                backgroundColor: const Color(0xFF4285F4),
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -945,7 +943,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF4285F4),
+                  color: Colors.white,
                 ),
               ),
             ),

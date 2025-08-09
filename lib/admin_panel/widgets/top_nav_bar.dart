@@ -18,52 +18,83 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final width = MediaQuery.of(context).size.width;
+    final isCompact = width < 900;
     return Material(
       elevation: 0,
       color: const Color(0xFF4285F4), // Brand blue background
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: EdgeInsets.symmetric(horizontal: isCompact ? 12 : 24),
         alignment: Alignment.center,
         height: preferredSize.height,
         child: Row(
           children: [
-            Text(title,
-                style: theme.textTheme.headlineSmall!.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                )),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 360),
-                height: 40,
-                child: TextField(
-                  style: TextStyle(color: AppThemes.getTextColor(context)),
-                  decoration: InputDecoration(
-                    hintText: 'Search',
-                    hintStyle: TextStyle(
-                        color: AppThemes.getSecondaryTextColor(context)),
-                    prefixIcon: Icon(Icons.search,
-                        color: AppThemes.getSecondaryTextColor(context)),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide:
-                          BorderSide(color: AppThemes.getBorderColor(context)),
+            // Title
+            Flexible(
+              flex: 0,
+              child: Text(title,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.headlineSmall!.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    fontSize: isCompact ? 18 : null,
+                  )),
+            ),
+            const SizedBox(width: 12),
+            // Search
+            if (!isCompact)
+              Expanded(
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 360),
+                  height: 40,
+                  child: TextField(
+                    style: TextStyle(color: AppThemes.getTextColor(context)),
+                    decoration: InputDecoration(
+                      hintText: 'Search',
+                      hintStyle: TextStyle(
+                          color: AppThemes.getSecondaryTextColor(context)),
+                      prefixIcon: Icon(Icons.search,
+                          color: AppThemes.getSecondaryTextColor(context)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                            color: AppThemes.getBorderColor(context)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                            color: AppThemes.getBorderColor(context)),
+                      ),
+                      fillColor: AppThemes.getCardColor(context),
+                      filled: true,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide:
-                          BorderSide(color: AppThemes.getBorderColor(context)),
-                    ),
-                    fillColor: AppThemes.getCardColor(context),
-                    filled: true,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
                 ),
+              )
+            else
+              IconButton(
+                icon: const Icon(Icons.search, color: Colors.white),
+                tooltip: 'Хайх',
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) {
+                      return AlertDialog(
+                        title: const Text('Хайх'),
+                        content: TextField(
+                          decoration:
+                              const InputDecoration(hintText: 'Хайх...'),
+                          autofocus: true,
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
-            ),
-            const SizedBox(width: 24),
+            const SizedBox(width: 12),
+            // Notifications
             StreamBuilder<int>(
               stream: NotificationService().getUnreadCount(),
               builder: (context, snapshot) {
@@ -72,8 +103,11 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
                   clipBehavior: Clip.none,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.notifications_none_outlined,
-                          color: Colors.white),
+                      icon: Icon(
+                        Icons.notifications_none_outlined,
+                        color: Colors.white,
+                        size: isCompact ? 22 : 24,
+                      ),
                       onPressed: () => _showNotificationsDropdown(context),
                     ),
                     if (unreadCount > 0)
@@ -99,11 +133,11 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
                 );
               },
             ),
-            const SizedBox(width: 8),
-
+            const SizedBox(width: 4),
             // Settings dropdown
             PopupMenuButton<String>(
-              icon: const Icon(Icons.settings, color: Colors.white),
+              icon: Icon(Icons.settings,
+                  color: Colors.white, size: isCompact ? 22 : 24),
               tooltip: 'Settings',
               offset: const Offset(0, 40),
               onSelected: (value) {
@@ -152,8 +186,8 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
                 ];
               },
             ),
-
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
+            // Account
             PopupMenuButton<String>(
               offset: const Offset(0, 40),
               tooltip: 'Account',
@@ -188,7 +222,7 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
                 final user = FirebaseAuth.instance.currentUser;
                 final photoUrl = user?.photoURL;
                 return CircleAvatar(
-                  radius: 18,
+                  radius: isCompact ? 16 : 18,
                   backgroundColor: photoUrl == null || photoUrl.isEmpty
                       ? Colors.grey.shade300
                       : Colors.transparent,

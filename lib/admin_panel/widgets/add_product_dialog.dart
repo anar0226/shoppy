@@ -86,6 +86,29 @@ class _AddProductDialogState extends State<AddProductDialog> {
     'Other': {},
   };
 
+  String _localizedCategoryName(String key) {
+    switch (key) {
+      case 'Men':
+        return 'Эрэгтэй';
+      case 'Women':
+        return 'Эмэгтэй';
+      case 'Beauty':
+        return 'Гоо сайхан';
+      case 'Electronics':
+        return 'Цахилгаан бараа';
+      case 'Home':
+        return 'Гэр ахуй';
+      case 'Sports':
+        return 'Фитнесс';
+      case 'Kids':
+        return 'Хүүхэд';
+      case 'Other':
+        return 'Бусад';
+      default:
+        return key;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -908,7 +931,8 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         items: _catMap.keys
                             .map<DropdownMenuItem<String>>((c) =>
                                 DropdownMenuItem<String>(
-                                    value: c, child: Text(c)))
+                                    value: c,
+                                    child: Text(_localizedCategoryName(c))))
                             .toList(),
                         onChanged: (v) => setState(() {
                           _category = v;

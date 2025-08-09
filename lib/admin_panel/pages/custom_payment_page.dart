@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter/services.dart';
-import 'dart:math';
 import '../widgets/side_menu.dart';
 import '../widgets/top_nav_bar.dart';
 import '../../features/settings/themes/app_themes.dart';
@@ -179,7 +178,159 @@ class _CustomPaymentPageState extends State<CustomPaymentPage> {
   Widget build(BuildContext context) {
     final selectedBankData = _bankAccounts[_selectedBank]!;
     final qrData = selectedBankData['qr_data']!;
+    final isCompact = MediaQuery.of(context).size.width < 1100;
 
+    if (isCompact) {
+      // Compact: AppBar + stacked sections
+      return Scaffold(
+        backgroundColor: AppThemes.getBackgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF4285F4),
+          elevation: 0,
+          title: const Text('Төлбөр',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // QR section
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('QR код уншуулах',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 12),
+                      Center(
+                        child: QrImageView(
+                          data: qrData,
+                          version: QrVersions.auto,
+                          size: 230,
+                          backgroundColor: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                          'Захиалгын дүн: ${widget.amount.toStringAsFixed(0)} ₮',
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Bank transfer section
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Дансаар шилжүүлэх',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: _banks.map((bank) {
+                          final isSelected = _selectedBank == bank;
+                          return Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _selectedBank = bank),
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? const Color(0xFF4285F4)
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? const Color(0xFF4285F4)
+                                        : Colors.grey.shade300,
+                                  ),
+                                ),
+                                child: Text(bank,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : Colors.grey.shade700,
+                                      fontWeight: FontWeight.w500,
+                                    )),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildInfoBox(
+                          'Хүлээн авах данс', selectedBankData['account']!),
+                      _buildInfoBox(
+                          'Хүлээн авагч', selectedBankData['recipient']!),
+                      _buildInfoBox('Захиалгын дүн',
+                          '${widget.amount.toStringAsFixed(0)} ₮'),
+                      _buildInfoBox('Гүйлгээний утга', widget.orderId),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Instructions
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.amber.shade200),
+                ),
+                child: Text(
+                  'Төлбөр төлөгдсөний дараа таны дэлгүүр идэвхжих болно. Заавал ${widget.orderId} дугаарыг гүйлгээний утгад бичнэ үү.',
+                  style: TextStyle(color: Colors.amber.shade800),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Буцах'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _checkPaymentStatus,
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4285F4)),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('Төлбөр шалгах'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Desktop/default layout
     return Scaffold(
       backgroundColor: AppThemes.getBackgroundColor(context),
       body: Row(
@@ -251,7 +402,6 @@ class _CustomPaymentPageState extends State<CustomPaymentPage> {
                                   ],
                                 ),
                                 const SizedBox(height: 32),
-
                                 // Main content - two columns
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,7 +456,6 @@ class _CustomPaymentPageState extends State<CustomPaymentPage> {
                                       ),
                                     ),
                                     const SizedBox(width: 32),
-
                                     // Right column - Bank Transfer
                                     Expanded(
                                       child: Column(
@@ -322,8 +471,6 @@ class _CustomPaymentPageState extends State<CustomPaymentPage> {
                                             ),
                                           ),
                                           const SizedBox(height: 20),
-
-                                          // Bank selection
                                           Row(
                                             children: _banks.map((bank) {
                                               final isSelected =
@@ -379,32 +526,21 @@ class _CustomPaymentPageState extends State<CustomPaymentPage> {
                                             }).toList(),
                                           ),
                                           const SizedBox(height: 20),
-
-                                          // Bank account details
-                                          _buildInfoBox(
-                                            'Хүлээн авах данс',
-                                            selectedBankData['account']!,
-                                          ),
-                                          _buildInfoBox(
-                                            'Хүлээн авагч',
-                                            selectedBankData['recipient']!,
-                                          ),
-                                          _buildInfoBox(
-                                            'Захиалгын дүн',
-                                            '${widget.amount.toStringAsFixed(0)} ₮',
-                                          ),
-                                          _buildInfoBox(
-                                            'Гүйлгээний утга',
-                                            widget.orderId,
-                                          ),
+                                          _buildInfoBox('Хүлээн авах данс',
+                                              selectedBankData['account']!),
+                                          _buildInfoBox('Хүлээн авагч',
+                                              selectedBankData['recipient']!),
+                                          _buildInfoBox('Захиалгын дүн',
+                                              '${widget.amount.toStringAsFixed(0)} ₮'),
+                                          _buildInfoBox('Гүйлгээний утга',
+                                              widget.orderId),
                                         ],
                                       ),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 32),
-
-                                // Information box
+                                // Information + actions remain
                                 Container(
                                   width: double.infinity,
                                   padding: const EdgeInsets.all(20),
@@ -420,20 +556,16 @@ class _CustomPaymentPageState extends State<CustomPaymentPage> {
                                     children: [
                                       Row(
                                         children: [
-                                          Icon(
-                                            Icons.info_outline,
-                                            color: Colors.amber.shade700,
-                                            size: 20,
-                                          ),
+                                          Icon(Icons.info_outline,
+                                              color: Colors.amber.shade700,
+                                              size: 20),
                                           const SizedBox(width: 8),
-                                          Text(
-                                            'Төлбөрийн заавар',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.amber.shade800,
-                                            ),
-                                          ),
+                                          Text('Төлбөрийн заавар',
+                                              style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                  color:
+                                                      Colors.amber.shade800)),
                                         ],
                                       ),
                                       const SizedBox(height: 12),
@@ -449,8 +581,6 @@ class _CustomPaymentPageState extends State<CustomPaymentPage> {
                                   ),
                                 ),
                                 const SizedBox(height: 24),
-
-                                // Action buttons
                                 Row(
                                   children: [
                                     Expanded(
@@ -463,13 +593,10 @@ class _CustomPaymentPageState extends State<CustomPaymentPage> {
                                           side: BorderSide(
                                               color: Colors.grey.shade300),
                                         ),
-                                        child: const Text(
-                                          'Буцах',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
+                                        child: const Text('Буцах',
+                                            style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w500)),
                                       ),
                                     ),
                                     const SizedBox(width: 16),

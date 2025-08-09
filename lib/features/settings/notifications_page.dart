@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../notifications/widgets/notification_permission_widget.dart';
-import '../notifications/fcm_service.dart';
 import '../../core/services/error_handler_service.dart';
 
 class NotificationsPage extends StatefulWidget {
