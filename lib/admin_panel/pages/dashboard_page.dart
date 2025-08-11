@@ -492,7 +492,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           iconTheme: const IconThemeData(color: Colors.white),
         ),
-        drawer: Drawer(
+        drawer: const Drawer(
           width: 280,
           child: SafeArea(
             child: SideMenu(

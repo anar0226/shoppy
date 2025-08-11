@@ -363,7 +363,7 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                       : Container(
                           width: 32,
                           height: 32,
-                          color: Color(0xFF4285F4), // Primary blue color
+                          color: const Color(0xFF4285F4), // Primary blue color
                           alignment: Alignment.center,
                           child: Text(
                             _storeName.isNotEmpty ? _storeName[0] : '?',
@@ -720,10 +720,10 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
                 Expanded(
                   child: Text(
                     shippingText,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF4285F4),
+                      color: Color(0xFF4285F4),
                     ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -840,9 +840,9 @@ class _ProductPageState extends State<ProductPage> with ListenerManagerMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Тоо',
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 18,
               color: Color(0xFF4285F4),

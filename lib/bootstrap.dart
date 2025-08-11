@@ -9,12 +9,12 @@ import 'core/services/production_logger.dart';
 import 'core/services/error_recovery_service.dart';
 import 'core/config/environment_config.dart';
 import 'features/notifications/fcm_service.dart';
-import 'main.dart' show ShopUBApp;
+// import 'main.dart' show ShopUBApp; // removed to avoid circular import
 import 'dart:async';
 import 'firebase_options.dart';
 
 /// Initialise services & run the Flutter app.
-Future<void> bootstrap() async {
+Future<void> bootstrap(Widget app) async {
   // Global Flutter error handling with production logging
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
@@ -37,7 +37,7 @@ Future<void> bootstrap() async {
 
   // Catch all uncaught async errors
   runZonedGuarded(() async {
-    await _internalBootstrap();
+    await _internalBootstrap(app);
   }, (error, stack) {
     // Log uncaught errors
     Future.microtask(() async {
@@ -56,7 +56,7 @@ Future<void> bootstrap() async {
 }
 
 // Internal bootstrap moved here to allow zone wrapper
-Future<void> _internalBootstrap() async {
+Future<void> _internalBootstrap(Widget app) async {
   try {
     // 1. Initialize Flutter bindings first (outside of any special zones)
     WidgetsFlutterBinding.ensureInitialized();
@@ -89,18 +89,13 @@ Future<void> _internalBootstrap() async {
       debugPrint(' Using compile-time environment variables instead');
     }
 
-    // 3. Firebase initialization with error handling
-    try {
+    // 3. Firebase initialization with guard (no exceptions)
+    if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-    } catch (e) {
-      // If Firebase is already initialized, continue
-      if (e.toString().contains('duplicate-app')) {
-        debugPrint('Firebase already initialized, continuing...');
-      } else {
-        rethrow;
-      }
+    } else {
+      debugPrint('Firebase already initialized (${Firebase.apps.length} apps)');
     }
 
     // 4. Initialize production logger
@@ -138,7 +133,7 @@ Future<void> _internalBootstrap() async {
           EnvironmentConfig.isProduction ? 'production' : 'development',
     });
 
-    runApp(const ShopUBApp());
+    runApp(app);
   } catch (error, stackTrace) {
     // Bootstrap failed - log the error and try to continue
     try {
@@ -157,7 +152,7 @@ Future<void> _internalBootstrap() async {
     }
 
     // Try to run app anyway for better user experience
-    runApp(const ShopUBApp());
+    runApp(app);
   }
 }
 

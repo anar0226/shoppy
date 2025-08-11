@@ -63,9 +63,9 @@ class _DiscountsPageState extends State<DiscountsPage> {
                   TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
           iconTheme: const IconThemeData(color: Colors.white),
         ),
-        drawer: Drawer(
+        drawer: const Drawer(
           width: 280,
-          child: const SafeArea(child: SideMenu(selected: 'Discounts')),
+          child: SafeArea(child: SideMenu(selected: 'Discounts')),
         ),
         body: _buildBodyMobile(),
       );

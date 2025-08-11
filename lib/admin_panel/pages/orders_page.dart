@@ -1156,7 +1156,7 @@ class _OrdersPageState extends State<OrdersPage> {
                   TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
           iconTheme: const IconThemeData(color: Colors.white),
         ),
-        drawer: Drawer(
+        drawer: const Drawer(
           width: 280,
           child: SafeArea(
             child: SideMenu(selected: 'Захиалгууд'),

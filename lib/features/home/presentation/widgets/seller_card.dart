@@ -584,7 +584,9 @@ class _SellerProductCardState extends State<SellerProductCard> {
                 },
                 child: Icon(
                   isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: isFavorite ? Color(0xFF4285F4) : Color(0xFF4285F4),
+                  color: isFavorite
+                      ? const Color(0xFF4285F4)
+                      : const Color(0xFF4285F4),
                   size: 28,
                   shadows: [
                     Shadow(

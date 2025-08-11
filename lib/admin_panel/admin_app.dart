@@ -6,6 +6,7 @@ import 'pages/admin_panel_layout.dart';
 import 'auth/auth_service.dart';
 import 'auth/unified_auth_page.dart';
 import 'auth/verify_email_page.dart';
+import 'auth/reset_password_page.dart';
 import 'widgets/store_setup_dialog.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../features/settings/providers/app_settings_provider.dart';
@@ -114,6 +115,16 @@ class _AdminAppState extends State<AdminApp> {
       create: (context) => AppSettingsProvider(),
       child: Consumer<AppSettingsProvider>(
         builder: (context, settings, child) {
+          // Handle Firebase action links (e.g., reset password) on web
+          final uri = Uri.base;
+          final mode = uri.queryParameters['mode'];
+          if (mode == 'resetPassword') {
+            return const MaterialApp(
+              debugShowCheckedModeBanner: false,
+              home: ResetPasswordPage(),
+            );
+          }
+
           return MaterialApp(
             title: 'Avii.mn Admin',
             theme: AppThemes.lightTheme,

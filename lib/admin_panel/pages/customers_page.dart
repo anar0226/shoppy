@@ -143,7 +143,7 @@ class _CustomersPageState extends State<CustomersPage> {
                   TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
           iconTheme: const IconThemeData(color: Colors.white),
         ),
-        drawer: Drawer(
+        drawer: const Drawer(
           width: 280,
           child: SafeArea(
             child: SideMenu(selected: 'Үйлчлүүлэгчид'),

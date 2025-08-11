@@ -81,11 +81,10 @@ class TopNavBar extends StatelessWidget implements PreferredSizeWidget {
                   showDialog(
                     context: context,
                     builder: (ctx) {
-                      return AlertDialog(
-                        title: const Text('Хайх'),
+                      return const AlertDialog(
+                        title: Text('Хайх'),
                         content: TextField(
-                          decoration:
-                              const InputDecoration(hintText: 'Хайх...'),
+                          decoration: InputDecoration(hintText: 'Хайх...'),
                           autofocus: true,
                         ),
                       );

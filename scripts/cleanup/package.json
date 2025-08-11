@@ -1,0 +1,16 @@
+{
+  "name": "cleanup",
+  "version": "1.0.0",
+  "main": "clean_non_target_stores.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@google-cloud/storage": "^7.16.0",
+    "firebase-admin": "^13.4.0"
+  }
+}

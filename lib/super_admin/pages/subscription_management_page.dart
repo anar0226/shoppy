@@ -337,9 +337,9 @@ class _SubscriptionManagementPageState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Банкны мэдээлэл:',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 4),
                     Text('Банк: ${storeData['selectedBank'] ?? 'Тодорхойгүй'}'),
@@ -612,8 +612,8 @@ class _SubscriptionManagementPageState
                                               vertical: 6,
                                             ),
                                             decoration: BoxDecoration(
-                                              color:
-                                                  statusColor.withOpacity(0.1),
+                                              color: statusColor.withValues(
+                                                  alpha: 0.1),
                                               borderRadius:
                                                   BorderRadius.circular(20),
                                               border: Border.all(

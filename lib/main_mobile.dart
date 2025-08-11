@@ -40,7 +40,7 @@ import 'core/widgets/paginated_firestore_list.dart';
 import 'core/providers/connectivity_provider.dart';
 import 'core/services/error_handler_service.dart';
 
-void main() => boot.bootstrap();
+void main() => boot.bootstrap(const ShopUBApp());
 
 class ShopUBApp extends StatefulWidget {
   const ShopUBApp({super.key});

@@ -29,9 +29,11 @@ Future<void> main() async {
   debugPrint('🔧 Loading environment from: $envFile');
   await dotenv.load(fileName: envFile);
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
 
   runApp(const AdminApp());
 }

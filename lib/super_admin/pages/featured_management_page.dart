@@ -51,7 +51,7 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
 
   // === CATEGORY TREE (Configured) ===
   late final List<_CategoryConfig> _categoryConfig = [
-    _CategoryConfig('women', 'Эмэгтэй', [
+    const _CategoryConfig('women', 'Эмэгтэй', [
       _SubcategoryConfig('outerwear_tshirts', 'Гадуур хувцас & Футболк', [
         _LeafConfig('hoodie', 'Малгайтай цамц'),
       ]),
@@ -71,7 +71,7 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
       ]),
       _SubcategoryConfig('activewear', 'Актив хувцас'),
     ]),
-    _CategoryConfig('men', 'Эрэгтэй', [
+    const _CategoryConfig('men', 'Эрэгтэй', [
       _SubcategoryConfig('shoes', 'Гутал', [
         _LeafConfig('sneakers', 'Пүүз'),
         _LeafConfig('slippers', 'Шаахай'),
@@ -89,7 +89,7 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
       _SubcategoryConfig('tshirts', 'Футболк'),
       _SubcategoryConfig('activewear', 'Спорт хувцас'),
     ]),
-    _CategoryConfig('beauty', 'Гоо сайхан', [
+    const _CategoryConfig('beauty', 'Гоо сайхан', [
       _SubcategoryConfig('haircare', 'Үс арчилгаа'),
       _SubcategoryConfig('makeup', 'Нүүр будалт'),
       _SubcategoryConfig('nailcare', 'Хумс арчилгаа'),
@@ -97,17 +97,17 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
       _SubcategoryConfig('skincare', 'Арьс арчилгаа'),
       _SubcategoryConfig('others', 'Бусад'),
     ]),
-    _CategoryConfig('foods_drinks', 'Хоол хүнс, ундаа', [
+    const _CategoryConfig('foods_drinks', 'Хоол хүнс, ундаа', [
       _SubcategoryConfig('foods_drinks', 'Хоол хүнс, ундаа'),
     ]),
-    _CategoryConfig('home', 'Гэр ахуй', [
+    const _CategoryConfig('home', 'Гэр ахуй', [
       _SubcategoryConfig('home', 'Гэр ахуй'),
     ]),
-    _CategoryConfig('fitness', 'Фитнесс', [
+    const _CategoryConfig('fitness', 'Фитнесс', [
       _SubcategoryConfig('equipment', 'Фитнесс тоног төхөөрөмж'),
       _SubcategoryConfig('supplements', 'Витамин ба нэмэлт бэлдмэлүүд'),
     ]),
-    _CategoryConfig('accessories', 'Аксессуары', [
+    const _CategoryConfig('accessories', 'Аксессуары', [
       _SubcategoryConfig('belts', 'Бүс'),
       _SubcategoryConfig('hats', 'Малгай'),
       _SubcategoryConfig('jewelry', 'Гоёл чимэглэл'),
@@ -115,13 +115,13 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
       _SubcategoryConfig('wallets', 'Түрийвч'),
       _SubcategoryConfig('others', 'Бусад'),
     ]),
-    _CategoryConfig('pet_products', 'Амьтдын бүтээгдэхүүн', [
+    const _CategoryConfig('pet_products', 'Амьтдын бүтээгдэхүүн', [
       _SubcategoryConfig('pet_products', 'Амьтдын бүтээгдэхүүн'),
     ]),
-    _CategoryConfig('toys_games', 'Тоглоомнууд', [
+    const _CategoryConfig('toys_games', 'Тоглоомнууд', [
       _SubcategoryConfig('toys_games', 'Тоглоомнууд'),
     ]),
-    _CategoryConfig('electronics', 'Цахилгаан бараа', [
+    const _CategoryConfig('electronics', 'Цахилгаан бараа', [
       _SubcategoryConfig('headphones', 'Чихэвч'),
       _SubcategoryConfig('phones', 'Гар утас'),
       _SubcategoryConfig('phone_accessories', 'Утасны дагалдах хэрэгсэлүүд'),
@@ -299,7 +299,7 @@ class _FeaturedManagementPageState extends State<FeaturedManagementPage> {
                                 feedback: Material(
                                   elevation: 4,
                                   borderRadius: BorderRadius.circular(8),
-                                  child: Container(
+                                  child: SizedBox(
                                     width: 280,
                                     child: _StoreTile(
                                         store: store, draggable: true),

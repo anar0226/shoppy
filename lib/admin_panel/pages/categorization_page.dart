@@ -182,9 +182,9 @@ class _CategorizationPageState extends State<CategorizationPage> {
                   TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
           iconTheme: const IconThemeData(color: Colors.white),
         ),
-        drawer: Drawer(
+        drawer: const Drawer(
           width: 280,
-          child: const SafeArea(child: SideMenu(selected: 'Categorization')),
+          child: SafeArea(child: SideMenu(selected: 'Categorization')),
         ),
         body: _currentStoreId == null
             ? const Center(child: CircularProgressIndicator())

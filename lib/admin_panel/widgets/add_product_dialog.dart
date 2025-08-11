@@ -7,6 +7,8 @@ import '../../core/services/image_upload_service.dart';
 import '../../core/services/direct_upload_service.dart';
 import '../../features/discounts/models/discount_model.dart';
 import '../../features/discounts/services/discount_service.dart';
+import '../../core/utils/popup_utils.dart';
+import '../pages/store_payout_settings_page.dart';
 
 class ProductVariant {
   final String name;
@@ -293,16 +295,18 @@ class _AddProductDialogState extends State<AddProductDialog> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_imageFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please choose an image')));
+      PopupUtils.showWarning(
+        context: context,
+        message: 'Барааны зургийг заавал сонгоно уу',
+      );
       return;
     }
 
     // Validate variants if product has variants
     if (_hasVariants && _variants.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please add at least one variant for this product')),
+      PopupUtils.showWarning(
+        context: context,
+        message: 'Энэ бүтээгдэхүүнд дор хаяж нэг хувилбар нэмнэ үү',
       );
       return;
     }
@@ -314,28 +318,80 @@ class _AddProductDialogState extends State<AddProductDialog> {
       final uid = AuthService.instance.currentUser?.uid;
       if (uid == null) throw Exception('Нэвтрээгүй байна');
 
-      // 2. Fetch active store for this owner
+      // 2. Fetch store for this owner (regardless of status) and validate activation
       final storeSnap = await FirebaseFirestore.instance
           .collection('stores')
           .where('ownerId', isEqualTo: uid)
-          .where('status', isEqualTo: 'active')
           .limit(1)
           .get();
 
+      if (!mounted) return;
+
       if (storeSnap.docs.isEmpty) {
-        throw Exception('Идэвхитэй дэлгүүр олдоогүй байна.');
+        PopupUtils.showError(
+          context: context,
+          message: 'Таны дэлгүүр олдсонгүй. Эхлээд дэлгүүрээ бүртгэнэ үү.',
+        );
+        return;
       }
-      final storeId = storeSnap.docs.first.id;
+
+      final storeDoc = storeSnap.docs.first;
+      final storeData = storeDoc.data();
+      final String status = (storeData['status'] ?? '').toString();
+      final String subscriptionStatus =
+          (storeData['subscriptionStatus'] ?? '').toString();
+      final String kycStatus = (storeData['kycStatus'] ?? '').toString();
+
+      final bool isStoreActive = status == 'active';
+      final bool isSubscriptionActive = subscriptionStatus == 'active';
+      final bool isKycApproved = kycStatus == 'approved';
+
+      if (!isStoreActive || !isSubscriptionActive || !isKycApproved) {
+        final List<String> reasons = [];
+        if (!isSubscriptionActive) {
+          reasons
+              .add('• Сарын төлбөр идэвхжээгүй эсвэл хугацаа дууссан байна.');
+        }
+        if (!isKycApproved) {
+          reasons.add('• KYC баталгаажуулалт хийгдээгүй байна.');
+        }
+        if (!isStoreActive) {
+          reasons.add('• Дэлгүүр идэвхжээгүй байна.');
+        }
+
+        final message =
+            'Таны дэлгүүр идэвхжээгүй тул бүтээгдэхүүн нэмэх боломжгүй.\n\n${reasons.join('\n')}\n\n"Төлбөрийн тохиргоо" хуудас руу орж идэвхжүүлнэ үү.';
+
+        PopupUtils.showCustom(
+          context: context,
+          title: 'Бүтээгдэхүүн нэмэх боломжгүй',
+          message: message,
+          icon: Icons.lock_outline,
+          iconColor: Colors.orange,
+          titleColor: Colors.orange,
+          buttonText: 'Төлбөрийн тохиргоо руу очих',
+          onButtonPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => StorePayoutSettingsPage(storeId: storeDoc.id),
+              ),
+            );
+          },
+        );
+        return;
+      }
+
+      final storeId = storeDoc.id;
 
       // 3. Create product document reference
       final docRef = FirebaseFirestore.instance.collection('products').doc();
 
       // 4. Upload image
 
-      // 4. Upload image
       String imageUrl;
 
       final imageBytes = await _imageFile!.readAsBytes();
+      if (!mounted) return;
       final fileName = ImageUploadService.generateFileName(_imageFile!.name);
 
       imageUrl = await DirectUploadService.uploadImageDirect(
@@ -345,10 +401,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
         fileName: fileName,
       );
 
+      if (!mounted) return;
       // Update progress to 100% since upload completed
-      if (mounted) {
-        setState(() => _uploadProgress = 1.0);
-      }
+      setState(() => _uploadProgress = 1.0);
 
       // 5. Build product data
       final price = double.tryParse(_priceCtrl.text.trim()) ?? 0;
@@ -406,30 +461,27 @@ class _AddProductDialogState extends State<AddProductDialog> {
       // 6. Save product to Firestore
       await docRef.set(data);
 
-      if (mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Амжилттай нэмэгдлээ!')));
-      }
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      PopupUtils.showSuccess(
+        context: context,
+        message: 'Бүтээгдэхүүн амжилттай нэмэгдлээ!',
+      );
     } catch (e) {
       if (mounted) {
-        String errorMessage = 'Бүтээгдэхүүн нэмэгдэхэд алдаа гарлаа';
-        if (e.toString().contains('permission-denied')) {
+        String errorMessage = 'Бүтээгдэхүүн нэмэхэд алдаа гарлаа';
+        final err = e.toString();
+        if (err.contains('permission-denied')) {
+          errorMessage = 'Зөвшөөрлийн алдаа. Эрхийн тохиргоог шалгана уу.';
+        } else if (err.contains('network')) {
+          errorMessage = 'Сүлжээний алдаа. Холболтоо шалгана уу.';
+        } else if (err.contains('storage')) {
           errorMessage =
-              'Зөвшөөрөл алдаа. Firebase тоглолтын дүрэмүүдийг шалгана уу.';
-        } else if (e.toString().contains('network')) {
-          errorMessage = 'Интернет алдаа. Холболтоо шалгана уу.';
-        } else if (e.toString().contains('storage')) {
-          errorMessage =
-              'Зураг оруулах алдаа гарлаа. Жижиг хэмжээтэй зургийг оруулна уу.';
+              'Зураг байршуулахад алдаа гарлаа. Жижиг хэмжээтэй зургийг оруулна уу.';
         }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
+        PopupUtils.showError(
+          context: context,
+          message: errorMessage,
         );
       }
     } finally {

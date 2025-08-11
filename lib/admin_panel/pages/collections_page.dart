@@ -166,9 +166,9 @@ class _CollectionsPageState extends State<CollectionsPage> {
                   TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
           iconTheme: const IconThemeData(color: Colors.white),
         ),
-        drawer: Drawer(
+        drawer: const Drawer(
           width: 280,
-          child: const SafeArea(child: SideMenu(selected: 'Коллекц')),
+          child: SafeArea(child: SideMenu(selected: 'Коллекц')),
         ),
         body: _currentStoreId == null
             ? const Center(child: CircularProgressIndicator())

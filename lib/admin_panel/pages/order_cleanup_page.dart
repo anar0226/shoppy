@@ -31,10 +31,9 @@ class _OrderCleanupPageState extends State<OrderCleanupPage> {
                   TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
           iconTheme: const IconThemeData(color: Colors.white),
         ),
-        drawer: Drawer(
+        drawer: const Drawer(
           width: 280,
-          child:
-              const SafeArea(child: SideMenu(selected: 'Захиалгын цэвэрлэлт')),
+          child: SafeArea(child: SideMenu(selected: 'Захиалгын цэвэрлэлт')),
         ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),

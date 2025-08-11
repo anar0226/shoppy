@@ -18,8 +18,11 @@ Future<void> main() async {
     // Environment file not found, using default configuration
   }
 
-  // Initialize Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Initialize Firebase once
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
+  }
 
   runApp(const SuperAdminApp());
 }

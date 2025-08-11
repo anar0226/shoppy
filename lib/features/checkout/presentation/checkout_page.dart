@@ -917,7 +917,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 foregroundColor: _appliedDiscount != null
                     ? Colors.white
                     : const Color(0xFF4285F4),
-                side: BorderSide(color: const Color(0xFF4285F4), width: 1),
+                side: const BorderSide(color: Color(0xFF4285F4), width: 1),
               ),
               onPressed: (_isApplyingDiscount || _appliedDiscount != null)
                   ? null

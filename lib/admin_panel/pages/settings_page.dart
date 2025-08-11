@@ -48,9 +48,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
           iconTheme: const IconThemeData(color: Colors.white),
         ),
-        drawer: Drawer(
+        drawer: const Drawer(
           width: 280,
-          child: const SafeArea(child: SideMenu(selected: 'Settings')),
+          child: SafeArea(child: SideMenu(selected: 'Settings')),
         ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -91,14 +91,14 @@ class _SettingsPageState extends State<SettingsPage> {
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
         const SizedBox(height: 16),
         _buildSwitchTile(
-          title: 'бага нөөц алэрт',
+          title: 'Бүтээгдэхүүн бага нөөцтэй болох үед мэдэглэл илгээx',
           subtitle: 'Бүтээгдэхүүний нөөц бага байх үед анхааруулах',
           value: _lowStockAlerts,
           onChanged: (v) => setState(() => _lowStockAlerts = v),
         ),
         const SizedBox(height: 12),
         _buildNumberField(
-          label: 'бага нөөц босго',
+          label: 'Нөөцийн доод түвшин',
           controller: _thresholdCtrl,
           onChanged: (v) => setState(() {
             _lowStockThreshold = int.tryParse(v) ?? _lowStockThreshold;

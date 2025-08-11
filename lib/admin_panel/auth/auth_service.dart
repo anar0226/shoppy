@@ -37,7 +37,7 @@ class AuthService {
       try {
         await credential.user?.sendEmailVerification(
           ActionCodeSettings(
-            url: 'https://avii.mn/_auth/action',
+            url: 'https://avii.mn/_/auth/action',
             handleCodeInApp: true,
           ),
         );
@@ -60,7 +60,13 @@ class AuthService {
   }
 
   Future<void> sendPasswordReset(String email) async {
-    await _auth.sendPasswordResetEmail(email: email);
+    await _auth.sendPasswordResetEmail(
+      email: email,
+      actionCodeSettings: ActionCodeSettings(
+        url: 'https://avii.mn/_/auth/action',
+        handleCodeInApp: true,
+      ),
+    );
   }
 
   Future<void> sendEmailVerification() async {
@@ -86,7 +92,7 @@ class AuthService {
 
       await currentUser!.sendEmailVerification(
         ActionCodeSettings(
-          url: 'https://avii.mn/_auth/action',
+          url: 'https://avii.mn/_/auth/action',
           handleCodeInApp: true,
         ),
       );
