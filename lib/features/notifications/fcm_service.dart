@@ -6,6 +6,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/services/error_handler_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../core/config/environment_config.dart';
 
 class FCMService {
   static final FCMService _instance = FCMService._internal();
@@ -134,7 +136,14 @@ class FCMService {
   /// Initialize and save FCM token
   Future<void> _initializeToken() async {
     try {
-      _currentToken = await _firebaseMessaging.getToken();
+      if (kIsWeb) {
+        final vapidKey = EnvironmentConfig.firebaseWebVapidKey;
+        _currentToken = await _firebaseMessaging.getToken(
+          vapidKey: vapidKey.isNotEmpty ? vapidKey : null,
+        );
+      } else {
+        _currentToken = await _firebaseMessaging.getToken();
+      }
       if (_currentToken != null) {
         await _saveTokenToFirestore(_currentToken!);
         // FCM Token retrieved

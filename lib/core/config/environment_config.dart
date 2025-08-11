@@ -130,6 +130,20 @@ class EnvironmentConfig {
     return '';
   }
 
+  // Firebase Web VAPID key used to retrieve FCM token on web
+  static String get firebaseWebVapidKey {
+    const envValue =
+        String.fromEnvironment('F_WEB_VAPID_KEY', defaultValue: '');
+    if (envValue.isNotEmpty) {
+      return envValue;
+    }
+    final dotenvValue = dotenv.env['F_WEB_VAPID_KEY'];
+    if (dotenvValue != null && dotenvValue.isNotEmpty) {
+      return dotenvValue;
+    }
+    return '';
+  }
+
   // App configurations
   static const String appVersion =
       String.fromEnvironment('APP_VERSION', defaultValue: '1.0.0');
